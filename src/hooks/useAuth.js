@@ -150,6 +150,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   // Helper: load profile.role for a user
   const loadUserRole = async (userObj) => {
@@ -175,12 +176,14 @@ export function AuthProvider({ children }) {
       const { data: profile, error } = await Promise.race([queryPromise, timeoutPromise]);
 
       if (error) {
-        console.error("❌ Error loading profile role:", error.message, error);
-        console.warn("⚠️ Defaulting to 'user' role. Please check:");
-        console.warn("  1. Profile exists in database for user:", userObj.id);
-        console.warn("  2. RLS policies allow reading profiles table");
-        console.warn("  3. Database connection is working");
-        setRole("user");
+        // PGRST116 is the error for "The result contains 0 rows" when using .single()
+        if (error.code === 'PGRST116') {
+          console.warn("ℹ️ Profile not found (PGRST116). Defaulting to 'user' role.");
+          setRole("user");
+        } else {
+          console.error("❌ Error loading profile role:", error.message);
+          setRole("user");
+        }
       } else {
         const userRole = profile?.role || "user";
         console.log("✅ Profile loaded successfully! Role:", userRole);
@@ -261,6 +264,7 @@ export function AuthProvider({ children }) {
 
   const signOut = async () => {
     console.log("🚨 SignOut called from AuthContext");
+    setLoggingOut(true);
     try {
       // Clear state immediately for instant UI feedback
       setUser(null);
@@ -286,6 +290,8 @@ export function AuthProvider({ children }) {
       setUser(null);
       setRole(null);
       localStorage.clear();
+    } finally {
+      setLoggingOut(false);
     }
   };
 
@@ -293,6 +299,7 @@ export function AuthProvider({ children }) {
     user,
     role,
     loading,
+    loggingOut,
     signOut,
   };
 

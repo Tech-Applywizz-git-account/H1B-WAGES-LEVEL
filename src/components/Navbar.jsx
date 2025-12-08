@@ -9,7 +9,7 @@ const Navbar = () => {
 
     const navigate = useNavigate();
     const location = useLocation();
-    const { user, role, signOut } = useAuth();
+    const { user, role, loggingOut, signOut } = useAuth();
 
     const handleSectionClick = (sectionId) => {
         if (location.pathname !== '/') {
@@ -122,10 +122,20 @@ const Navbar = () => {
 
                                         <button
                                             onClick={handleLogout}
-                                            className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 text-red-600"
+                                            disabled={loggingOut}
+                                            className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                                         >
-                                            <LogOut size={18} />
-                                            <span className="font-medium">Logout</span>
+                                            {loggingOut ? (
+                                                <>
+                                                    <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                                                    <span className="font-medium">Logging out...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <LogOut size={18} />
+                                                    <span className="font-medium">Logout</span>
+                                                </>
+                                            )}
                                         </button>
                                     </div>
                                 )}
@@ -190,10 +200,20 @@ const Navbar = () => {
 
                                 <button
                                     onClick={handleLogout}
-                                    className="w-full flex items-center gap-3 py-2 text-red-600 font-medium hover:text-red-700"
+                                    disabled={loggingOut}
+                                    className="w-full flex items-center gap-3 py-2 text-red-600 font-medium hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <LogOut size={18} />
-                                    Logout
+                                    {loggingOut ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                                            Logging out...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <LogOut size={18} />
+                                            Logout
+                                        </>
+                                    )}
                                 </button>
                             </>
                         ) : (

@@ -3,46 +3,54 @@ import { MapPin, Briefcase, GraduationCap, FileText, Search, X } from 'lucide-re
 
 
 const filterOptions = {
-    visa: ['H-1B', 'Green Card', 'OPT', 'CPT', 'TN', 'E-3', 'J-1', 'AU E-3', 'CA/MX TN', 'SG H-1B1', 'CL H-1B1'],
+    role: ['Software Engineer', 'Product Manager', 'Data Scientist', 'Designer', 'Marketing Manager'],
     location: ['New York, New York', 'Chicago, Illinois', 'San Francisco, California', 'Austin, Texas', 'Boston, Massachusetts'],
-    education: ["High School", "Associate's", "Bachelor's", "Master's", "Doctorate", "Other"],
+    company: ['Google', 'Microsoft', 'Amazon', 'Meta', 'Netflix', 'Tesla'],
     experience: ['Internship', '<1 year', '1-2 years', '3-4 years', '5-7 years', '8-14 years', '15+ years'],
 };
 
 
 const tabs = [
-    { id: 'visa', label: 'Visa You Want', icon: FileText },
+    { id: 'role', label: 'Role', icon: Briefcase },
     { id: 'location', label: 'Location', icon: MapPin },
-    { id: 'education', label: 'Education', icon: GraduationCap },
+    { id: 'company', label: 'Company', icon: FileText },
     { id: 'experience', label: 'Experience', icon: Briefcase },
 ];
 
 
-const SearchFilters = () => {
-    const [activeTab, setActiveTab] = useState('visa');
+const SearchFilters = ({ onFilterChange }) => {
+    const [activeTab, setActiveTab] = useState('role');
     const [activeFilters, setActiveFilters] = useState({
-        visa: ['H-1B', 'Green Card'],
+        role: [],
         location: [],
-        education: [],
+        company: [],
         experience: [],
     });
 
 
     const toggleFilter = (category, value) => {
-        setActiveFilters(prev => ({
-            ...prev,
-            [category]: prev[category].includes(value)
-                ? prev[category].filter(v => v !== value)
-                : [...prev[category], value],
-        }));
+        setActiveFilters(prev => {
+            const newState = {
+                ...prev,
+                [category]: prev[category].includes(value)
+                    ? prev[category].filter(v => v !== value)
+                    : [...prev[category], value],
+            };
+            if (onFilterChange) onFilterChange(newState);
+            return newState;
+        });
     };
 
 
     const removeFilter = (category, value) => {
-        setActiveFilters(prev => ({
-            ...prev,
-            [category]: prev[category].filter(v => v !== value),
-        }));
+        setActiveFilters(prev => {
+            const newState = {
+                ...prev,
+                [category]: prev[category].filter(v => v !== value),
+            };
+            if (onFilterChange) onFilterChange(newState);
+            return newState;
+        });
     };
 
 
@@ -66,11 +74,10 @@ const SearchFilters = () => {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`inline-flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm transition-colors ${
-                                    isActive
-                                        ? 'text-purple-600 border-purple-600'
-                                        : 'text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300'
-                                }`}
+                                className={`inline-flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm transition-colors ${isActive
+                                    ? 'text-purple-600 border-purple-600'
+                                    : 'text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300'
+                                    }`}
                             >
                                 <Icon size={18} />
                                 <span>{tab.label}</span>
@@ -89,11 +96,10 @@ const SearchFilters = () => {
                                 <button
                                     key={option}
                                     onClick={() => toggleFilter(activeTab, option)}
-                                    className={`px-4 py-2 rounded-full text-sm font-medium shadow-sm cursor-pointer transition-all border ${
-                                        isSelected
-                                            ? 'bg-purple-50 border-purple-200 text-gray-800'
-                                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'
-                                    }`}
+                                    className={`px-4 py-2 rounded-full text-sm font-medium shadow-sm cursor-pointer transition-all border ${isSelected
+                                        ? 'bg-purple-50 border-purple-200 text-gray-800'
+                                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'
+                                        }`}
                                 >
                                     {option}
                                 </button>
@@ -121,15 +127,9 @@ const SearchFilters = () => {
                                     key={`${category}-${value}`}
                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-full text-sm font-medium text-gray-800"
                                 >
-                                    {category === 'visa' && (
-                                        <span
-                                            className={`w-2 h-2 rounded-full ${
-                                                value === 'Green Card' ? 'bg-green-500' : 'bg-blue-500'
-                                            }`}
-                                        />
-                                    )}
+                                    {category === 'role' && <Briefcase size={12} className="text-blue-500" />}
                                     {category === 'location' && <MapPin size={12} className="text-pink-500" />}
-                                    {category === 'education' && <GraduationCap size={12} className="text-orange-500" />}
+                                    {category === 'company' && <FileText size={12} className="text-orange-500" />}
                                     {category === 'experience' && <Briefcase size={12} className="text-indigo-500" />}
 
 

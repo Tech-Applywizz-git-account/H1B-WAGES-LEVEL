@@ -663,14 +663,28 @@ import {
   CreditCard,
   Search,
   Shield,
+  List,
 } from "lucide-react";
 import AdminControls from "../components/AdminControls";
+import AdminOverview from "../components/AdminOverview";
+import AllJobsTab from "../components/AllJobsTab";
+import SavedJobsTab from "../components/SavedJobsTab";
+import BillingTab from "../components/BillingTab";
 import useAuth from "../hooks/useAuth";
+import { supabase } from "../supabaseClient";
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const { role, loading, user, signOut } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect 'All Jobs' to Homepage
+  useEffect(() => {
+    if (activeTab === 'alljobs') {
+      navigate('/');
+    }
+  }, [activeTab, navigate]);
+  const [savedJobsCount, setSavedJobsCount] = useState(0);
 
   // Authentication redirect
   useEffect(() => {
@@ -678,6 +692,28 @@ const Dashboard = () => {
       navigate("/login");
     }
   }, [loading, user, navigate]);
+
+  // Fetch saved jobs count
+  useEffect(() => {
+    if (user) {
+      fetchSavedJobsCount();
+    }
+  }, [user]);
+
+  const fetchSavedJobsCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('saved_jobs')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      setSavedJobsCount(count || 0);
+    } catch (err) {
+      console.error('Error fetching saved jobs count:', err);
+      setSavedJobsCount(0);
+    }
+  };
 
   // Determine admin status from role
   const isAdmin = role === "admin";
@@ -702,6 +738,7 @@ const Dashboard = () => {
 
   const tabs = [
     { id: "overview", label: "Overview", icon: Search },
+    { id: "alljobs", label: "All Jobs", icon: List },
     { id: "saved", label: "Saved Jobs", icon: Heart },
     { id: "applied", label: "Applied Jobs", icon: Briefcase },
     { id: "profile", label: "Profile", icon: User },
@@ -791,56 +828,54 @@ const Dashboard = () => {
           </div>
 
           {activeTab === "overview" && (
-            <>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                Dashboard Overview
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-lg shadow-md border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-500 text-sm">Saved Jobs</p>
-                      <p className="text-2xl font-bold mt-2">0</p>
+            isAdmin ? (
+              <AdminOverview />
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                  Dashboard Overview
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <div className="bg-white p-6 rounded-lg shadow-md border">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-gray-500 text-sm">Saved Jobs</p>
+                        <p className="text-2xl font-bold mt-2">{savedJobsCount}</p>
+                      </div>
+                      <Heart className="h-8 w-8 text-gray-300" />
                     </div>
-                    <Heart className="h-8 w-8 text-gray-300" />
+                  </div>
+                  <div className="bg-white p-6 rounded-lg shadow-md border">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-gray-500 text-sm">Applied Jobs</p>
+                        <p className="text-2xl font-bold mt-2">0</p>
+                      </div>
+                      <Briefcase className="h-8 w-8 text-gray-300" />
+                    </div>
+                  </div>
+                  <div className="bg-white p-6 rounded-lg shadow-md border">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-gray-500 text-sm">Account Type</p>
+                        <p className="text-2xl font-bold mt-2">{isAdmin ? "Admin" : "Standard"}</p>
+                      </div>
+                      <User className="h-8 w-8 text-gray-300" />
+                    </div>
                   </div>
                 </div>
                 <div className="bg-white p-6 rounded-lg shadow-md border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-500 text-sm">Applied Jobs</p>
-                      <p className="text-2xl font-bold mt-2">0</p>
-                    </div>
-                    <Briefcase className="h-8 w-8 text-gray-300" />
-                  </div>
+                  <h3 className="text-xl font-semibold mb-4">Recent Activity</h3>
+                  <p className="text-gray-600">No recent activity to display.</p>
                 </div>
-                <div className="bg-white p-6 rounded-lg shadow-md border">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-gray-500 text-sm">Account Type</p>
-                      <p className="text-2xl font-bold mt-2">{isAdmin ? "Admin" : "Standard"}</p>
-                    </div>
-                    <User className="h-8 w-8 text-gray-300" />
-                  </div>
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-lg shadow-md border">
-                <h3 className="text-xl font-semibold mb-4">Recent Activity</h3>
-                <p className="text-gray-600">No recent activity to display.</p>
-              </div>
-            </>
+              </>
+            )
           )}
 
+
+
           {activeTab === "saved" && (
-            <>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                Saved Jobs
-              </h2>
-              <div className="bg-white p-10 rounded-lg shadow-md border text-center">
-                <Heart size={45} className="mx-auto text-gray-300 mb-4" />
-                <p className="text-gray-600">No saved jobs yet.</p>
-              </div>
-            </>
+            <SavedJobsTab />
           )}
 
           {activeTab === "applied" && (
@@ -900,16 +935,7 @@ const Dashboard = () => {
           )}
 
           {activeTab === "billing" && (
-            <>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                Billing & Subscription
-              </h2>
-              <div className="bg-white p-6 rounded-lg shadow-md border">
-                <p className="text-gray-600">
-                  Subscription and invoice history.
-                </p>
-              </div>
-            </>
+            <BillingTab />
           )}
 
           {activeTab === "admin" && isAdmin && (
