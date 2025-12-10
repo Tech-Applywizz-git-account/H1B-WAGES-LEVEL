@@ -669,7 +669,9 @@ import AdminControls from "../components/AdminControls";
 import AdminOverview from "../components/AdminOverview";
 import AllJobsTab from "../components/AllJobsTab";
 import SavedJobsTab from "../components/SavedJobsTab";
+import AppliedJobsTab from "../components/AppliedJobsTab";
 import BillingTab from "../components/BillingTab";
+import ProfileTab from "../components/ProfileTab";
 import useAuth from "../hooks/useAuth";
 import { supabase } from "../supabaseClient";
 
@@ -742,7 +744,7 @@ const Dashboard = () => {
     { id: "saved", label: "Saved Jobs", icon: Heart },
     { id: "applied", label: "Applied Jobs", icon: Briefcase },
     { id: "profile", label: "Profile", icon: User },
-    { id: "settings", label: "Settings", icon: Settings },
+    // { id: "settings", label: "Settings", icon: Settings },
     { id: "billing", label: "Billing", icon: CreditCard },
     ...(isAdmin ? [{ id: "admin", label: "Admin Controls", icon: Shield }] : []),
   ];
@@ -879,46 +881,11 @@ const Dashboard = () => {
           )}
 
           {activeTab === "applied" && (
-            <>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                Applied Jobs
-              </h2>
-              <div className="bg-white p-10 rounded-lg shadow-md border text-center">
-                <Briefcase size={45} className="mx-auto text-gray-300 mb-4" />
-                <p className="text-gray-600">No applications yet.</p>
-              </div>
-            </>
+            <AppliedJobsTab />
           )}
 
           {activeTab === "profile" && (
-            <>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                Profile Settings
-              </h2>
-              <div className="bg-white p-6 rounded-lg shadow-md border">
-                <div className="mb-6">
-                  <label className="block text-gray-700 mb-2">Email</label>
-                  <input
-                    type="email"
-                    value={user?.email || ""}
-                    readOnly
-                    className="w-full p-3 border rounded-lg bg-gray-50"
-                  />
-                </div>
-                <div className="mb-6">
-                  <label className="block text-gray-700 mb-2">Account Role</label>
-                  <input
-                    type="text"
-                    value={isAdmin ? "Administrator" : "Standard User"}
-                    readOnly
-                    className="w-full p-3 border rounded-lg bg-gray-50"
-                  />
-                </div>
-                <p className="text-gray-600 text-sm">
-                  More profile options coming soon...
-                </p>
-              </div>
-            </>
+            <ProfileTab />
           )}
 
           {activeTab === "settings" && (

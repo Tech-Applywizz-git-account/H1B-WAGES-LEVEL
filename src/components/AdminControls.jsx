@@ -42,6 +42,7 @@ export default function AdminControls() {
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
+        .neq('role', 'admin')  // Exclude admin users
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -203,7 +204,6 @@ export default function AdminControls() {
             <thead className="bg-gray-100 text-gray-600 font-medium border-b">
               <tr>
                 <th className="px-6 py-4">User Details</th>
-                <th className="px-6 py-4">Role</th>
                 <th className="px-6 py-4">Payment Status</th>
                 <th className="px-6 py-4 text-right">Joined</th>
                 <th className="px-6 py-4 text-right">End Date</th>
@@ -213,14 +213,14 @@ export default function AdminControls() {
             <tbody className="divide-y divide-gray-200">
               {loadingUsers ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
                     <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-2 text-blue-500" />
                     Loading users...
                   </td>
                 </tr>
               ) : paginatedUsers.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
                     No users found matching your search.
                   </td>
                 </tr>
@@ -244,30 +244,14 @@ export default function AdminControls() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <select
-                          className={`text-xs font-semibold px-2 py-1 rounded border-0 cursor-pointer focus:ring-2 focus:ring-blue-500 ${u.role === 'admin'
-                            ? 'bg-purple-100 text-purple-700'
-                            : 'bg-gray-100 text-gray-700'
-                            }`}
-                          value={u.role || 'user'}
-                          onChange={(e) => updateUserRole(u.id, e.target.value)}
-                        >
-                          <option value="user">User</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                      </td>
-                      <td className="px-6 py-4">
-                        <select
-                          className={`text-xs font-semibold px-2 py-1 rounded border-0 cursor-pointer focus:ring-2 focus:ring-blue-500 ${u.payment_status === 'completed' || u.has_paid
+                        <span
+                          className={`inline-flex items-center text-xs font-semibold px-3 py-1.5 rounded-full ${u.payment_status === 'completed' || u.has_paid
                             ? 'bg-green-100 text-green-700'
                             : 'bg-yellow-100 text-yellow-700'
                             }`}
-                          value={u.payment_status === 'completed' ? 'completed' : 'pending'}
-                          onChange={(e) => updateUserStatus(u.id, e.target.value)}
                         >
-                          <option value="pending">Pending</option>
-                          <option value="completed">Completed</option>
-                        </select>
+                          {u.payment_status === 'completed' || u.has_paid ? 'Completed' : 'Pending'}
+                        </span>
                       </td>
                       <td className="px-6 py-4 text-right text-gray-500 whitespace-nowrap">
                         {joinedDate.toLocaleDateString()}

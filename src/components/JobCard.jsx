@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
-import { MapPin, Clock, Briefcase, ExternalLink, Building2, Bookmark, BookmarkCheck, Globe } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { MapPin, Clock, Briefcase, ExternalLink, Building2, Bookmark, BookmarkCheck, Globe, CheckCircle, Circle } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import useAuth from '../hooks/useAuth';
 
-const JobCard = ({ job, isSaved = false, onSaveToggle }) => {
+const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onApplyToggle }) => {
     const { user } = useAuth();
     const [saved, setSaved] = useState(isSaved);
+    const [applied, setApplied] = useState(isApplied);
     const [saving, setSaving] = useState(false);
+    const [applying, setApplying] = useState(false);
+
+    // Sync local state with props when they change
+    useEffect(() => {
+        setSaved(isSaved);
+    }, [isSaved]);
+
+    useEffect(() => {
+        setApplied(isApplied);
+    }, [isApplied]);
 
     const formatDate = (dateString) => {
         if (!dateString) return 'Recently';
@@ -29,6 +40,7 @@ const JobCard = ({ job, isSaved = false, onSaveToggle }) => {
         }
 
         const jobId = job.job_id || job.id;
+        const newSavedState = !saved; // Calculate new state first
 
         setSaving(true);
         try {
@@ -48,11 +60,86 @@ const JobCard = ({ job, isSaved = false, onSaveToggle }) => {
                 if (error && error.code !== '23505') throw error;
                 setSaved(true);
             }
-            if (onSaveToggle) onSaveToggle(jobId, !saved);
+            // Call parent callback with the NEW state
+            if (onSaveToggle) onSaveToggle(jobId, newSavedState);
         } catch (error) {
             console.error('Error toggling save:', error);
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleApplyToggle = async (e) => {
+        e.preventDefault();
+        if (!user) {
+            alert('Please log in to mark jobs as applied');
+            return;
+        }
+
+        const jobId = job.job_id || job.id;
+        const jobIdString = String(jobId); // Ensure consistent string format
+        const newAppliedState = !applied; // Calculate new state first
+
+        console.log('🔵 Apply Toggle - Current:', applied, '→ New:', newAppliedState, 'JobID:', jobIdString);
+        console.log('📊 Job Data:', {
+            job_id: job.job_id,
+            id: job.id,
+            title: job.title,
+            company: job.company
+        });
+
+        setApplying(true);
+        try {
+            if (applied) {
+                // Currently applied, so unapply
+                console.log('🗑️ Attempting to unapply job:', jobIdString);
+                const { error, count } = await supabase
+                    .from('applied_jobs')
+                    .delete()
+                    .eq('user_id', user.id)
+                    .eq('job_id', jobIdString);
+
+                if (error) throw error;
+                console.log('✅ Unapplied job from database, rows deleted:', count);
+                setApplied(false);
+            } else {
+                // Not applied, so apply
+                console.log('✅ Attempting to apply job:', jobIdString);
+                const { data, error } = await supabase
+                    .from('applied_jobs')
+                    .insert([{
+                        user_id: user.id,
+                        job_id: jobIdString, // Use string format
+                        job_data: job,
+                        application_status: 'applied'
+                    }])
+                    .select(); // Return the inserted row
+
+                if (error) {
+                    if (error.code === '23505') {
+                        console.log('⚠️ Job already applied (duplicate key), marking as applied');
+                    } else {
+                        throw error;
+                    }
+                } else {
+                    console.log('✅ Applied job to database, inserted:', data);
+                }
+                setApplied(true);
+            }
+            // Call parent callback with the NEW state
+            if (onApplyToggle) {
+                console.log('📞 Calling parent callback with:', { jobId: jobIdString, isApplied: newAppliedState });
+                onApplyToggle(jobIdString, newAppliedState);
+            }
+        } catch (error) {
+            console.error('❌ Error toggling apply:', error);
+            console.error('Error details:', {
+                message: error.message,
+                code: error.code,
+                details: error.details
+            });
+        } finally {
+            setApplying(false);
         }
     };
 
@@ -134,6 +221,30 @@ const JobCard = ({ job, isSaved = false, onSaveToggle }) => {
                         Apply Now
                         <ExternalLink className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
                     </a>
+
+                    {/* Applied Button */}
+                    <button
+                        onClick={handleApplyToggle}
+                        disabled={applying}
+                        className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border font-medium text-sm transition-all ${applied
+                            ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                            : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                            }`}
+                    >
+                        {applying ? (
+                            <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                        ) : applied ? (
+                            <>
+                                <CheckCircle className="w-4 h-4" />
+                                Applied
+                            </>
+                        ) : (
+                            <>
+                                <Circle className="w-4 h-4" />
+                                Mark Applied
+                            </>
+                        )}
+                    </button>
 
                     {/* Save Button */}
                     <button

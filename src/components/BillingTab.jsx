@@ -199,61 +199,110 @@ const BillingTab = () => {
             </div>
 
             {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Total Revenue/Spent */}
-                <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-green-700 font-medium mb-1">{isAdmin ? 'Total Revenue' : 'Total Spent'}</p>
-                            <p className="text-2xl font-bold text-green-900">
-                                ${stats.totalSpent}
-                            </p>
+            {isAdmin ? (
+                // Admin View - Show all 4 stats cards
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Total Revenue */}
+                    <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-green-700 font-medium mb-1">Total Revenue</p>
+                                <p className="text-2xl font-bold text-green-900">
+                                    ${stats.totalSpent}
+                                </p>
+                            </div>
+                            <DollarSign className="w-10 h-10 text-green-600 opacity-50" />
                         </div>
-                        <DollarSign className="w-10 h-10 text-green-600 opacity-50" />
                     </div>
-                </div>
 
-                {/* Total Transactions */}
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-blue-700 font-medium mb-1">Total Transactions</p>
-                            <p className="text-2xl font-bold text-blue-900">
-                                {stats.totalTransactions}
-                            </p>
+                    {/* Total Transactions */}
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-blue-700 font-medium mb-1">Total Transactions</p>
+                                <p className="text-2xl font-bold text-blue-900">
+                                    {stats.totalTransactions}
+                                </p>
+                            </div>
+                            <Receipt className="w-10 h-10 text-blue-600 opacity-50" />
                         </div>
-                        <Receipt className="w-10 h-10 text-blue-600 opacity-50" />
                     </div>
-                </div>
 
-                {/* Successful Payments */}
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-purple-700 font-medium mb-1">Successful</p>
-                            <p className="text-2xl font-bold text-purple-900">
-                                {stats.successfulPayments}
-                            </p>
+                    {/* Successful Payments */}
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-purple-700 font-medium mb-1">Successful</p>
+                                <p className="text-2xl font-bold text-purple-900">
+                                    {stats.successfulPayments}
+                                </p>
+                            </div>
+                            <CheckCircle className="w-10 h-10 text-purple-600 opacity-50" />
                         </div>
-                        <CheckCircle className="w-10 h-10 text-purple-600 opacity-50" />
                     </div>
-                </div>
 
-                {/* Last Payment */}
-                <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-xl border border-yellow-200">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-sm text-yellow-700 font-medium mb-1">Last Payment</p>
-                            <p className="text-sm font-bold text-yellow-900">
-                                {stats.lastPaymentDate
-                                    ? new Date(stats.lastPaymentDate).toLocaleDateString()
-                                    : 'N/A'}
-                            </p>
+                    {/* Last Payment */}
+                    <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-xl border border-yellow-200">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-yellow-700 font-medium mb-1">Last Payment</p>
+                                <p className="text-sm font-bold text-yellow-900">
+                                    {stats.lastPaymentDate
+                                        ? new Date(stats.lastPaymentDate).toLocaleDateString()
+                                        : 'N/A'}
+                                </p>
+                            </div>
+                            <Calendar className="w-10 h-10 text-yellow-600 opacity-50" />
                         </div>
-                        <Calendar className="w-10 h-10 text-yellow-600 opacity-50" />
                     </div>
                 </div>
-            </div>
+            ) : (
+                // User View - Show only Paid Date and End Date
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Paid Date */}
+                    <div className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-green-700 font-medium mb-1">Paid Date</p>
+                                <p className="text-2xl font-bold text-green-900">
+                                    {stats.lastPaymentDate
+                                        ? new Date(stats.lastPaymentDate).toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'short',
+                                            day: 'numeric'
+                                        })
+                                        : 'N/A'}
+                                </p>
+                            </div>
+                            <Calendar className="w-10 h-10 text-green-600 opacity-50" />
+                        </div>
+                    </div>
+
+                    {/* End Date */}
+                    <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-blue-700 font-medium mb-1">End Date</p>
+                                <p className="text-2xl font-bold text-blue-900">
+                                    {stats.lastPaymentDate
+                                        ? (() => {
+                                            const paidDate = new Date(stats.lastPaymentDate);
+                                            const endDate = new Date(paidDate);
+                                            endDate.setMonth(endDate.getMonth() + 1); // Add 1 month
+                                            return endDate.toLocaleDateString('en-US', {
+                                                year: 'numeric',
+                                                month: 'short',
+                                                day: 'numeric'
+                                            });
+                                        })()
+                                        : 'N/A'}
+                                </p>
+                            </div>
+                            <Calendar className="w-10 h-10 text-blue-600 opacity-50" />
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Payment History */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200">

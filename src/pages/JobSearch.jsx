@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { Search, MapPin, Briefcase, GraduationCap, FileText, X } from 'lucide-react';
+import useAuth from '../hooks/useAuth';
 
 const mockJobs = [
     {
@@ -50,6 +51,7 @@ const filterOptions = {
 };
 
 const JobSearch = () => {
+    const { user } = useAuth();
     const [searchQuery, setSearchQuery] = useState('');
     const [activeTab, setActiveTab] = useState('visa');
     const [activeFilters, setActiveFilters] = useState({
@@ -110,41 +112,43 @@ const JobSearch = () => {
 
             <div className="min-h-screen bg-gray-50">
                 {/* Hero Section - Responsive */}
-                <div className="relative bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 text-white">
-                    <div className="absolute inset-0 bg-black opacity-30"></div>
+                {!user && (
+                    <div className="relative bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 text-white">
+                        <div className="absolute inset-0 bg-black opacity-30"></div>
 
-                    <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 md:py-32">
-                        <div className="text-center">
-                            <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 sm:mb-6 leading-tight">
-                                Land Your Dream Job <br className="hidden sm:block" />
-                                in the <span className="text-primary-yellow">United States</span>
-                            </h1>
+                        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 md:py-32">
+                            <div className="text-center">
+                                <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold mb-4 sm:mb-6 leading-tight">
+                                    Land Your Dream Job <br className="hidden sm:block" />
+                                    in the <span className="text-primary-yellow">United States</span>
+                                </h1>
 
-                            <p className="text-base sm:text-xl md:text-2xl text-gray-200 mb-6 sm:mb-8 max-w-3xl mx-auto">
-                                500,000+ verified roles with H-1B, OPT, Green Card, and other visa sponsorships
-                            </p>
+                                <p className="text-base sm:text-xl md:text-2xl text-gray-200 mb-6 sm:mb-8 max-w-3xl mx-auto">
+                                    500,000+ verified roles with H-1B, OPT, Green Card, and other visa sponsorships
+                                </p>
 
-                            <form onSubmit={(e) => e.preventDefault()} className="max-w-2xl mx-auto mb-6 sm:mb-8">
-                                <div className="flex items-center bg-white rounded-lg shadow-xl overflow-hidden">
-                                    <input
-                                        type="text"
-                                        placeholder="Search for jobs..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="flex-1 px-4 sm:px-6 py-3 sm:py-4 text-gray-900 text-base sm:text-lg focus:outline-none"
-                                    />
-                                    <button
-                                        type="submit"
-                                        className="bg-primary-yellow text-primary-dark px-6 sm:px-8 py-3 sm:py-4 hover:bg-yellow-500 transition font-semibold flex items-center space-x-1 sm:space-x-2 flex-shrink-0"
-                                    >
-                                        <Search size={18} className="sm:w-5 sm:h-5" />
-                                        <span className="text-sm sm:text-base">Search</span>
-                                    </button>
-                                </div>
-                            </form>
+                                <form onSubmit={(e) => e.preventDefault()} className="max-w-2xl mx-auto mb-6 sm:mb-8">
+                                    <div className="flex items-center bg-white rounded-lg shadow-xl overflow-hidden">
+                                        <input
+                                            type="text"
+                                            placeholder="Search for jobs..."
+                                            value={searchQuery}
+                                            onChange={(e) => setSearchQuery(e.target.value)}
+                                            className="flex-1 px-4 sm:px-6 py-3 sm:py-4 text-gray-900 text-base sm:text-lg focus:outline-none"
+                                        />
+                                        <button
+                                            type="submit"
+                                            className="bg-primary-yellow text-primary-dark px-6 sm:px-8 py-3 sm:py-4 hover:bg-yellow-500 transition font-semibold flex items-center space-x-1 sm:space-x-2 flex-shrink-0"
+                                        >
+                                            <Search size={18} className="sm:w-5 sm:h-5" />
+                                            <span className="text-sm sm:text-base">Search</span>
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
                 {/* Tabbed Filter Section - Horizontally Scrollable on Mobile */}
                 <div className="bg-white border-b border-gray-200">
@@ -160,8 +164,8 @@ const JobSearch = () => {
                                             key={tab.id}
                                             onClick={() => setActiveTab(tab.id)}
                                             className={`inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2.5 sm:py-3 border-b-2 font-medium text-xs sm:text-sm transition-colors whitespace-nowrap flex-shrink-0 ${isActive
-                                                    ? 'text-purple-600 border-purple-600'
-                                                    : 'text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300'
+                                                ? 'text-purple-600 border-purple-600'
+                                                : 'text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300'
                                                 }`}
                                         >
                                             <Icon size={16} className="sm:w-[18px] sm:h-[18px]" />
@@ -182,8 +186,8 @@ const JobSearch = () => {
                                             key={option}
                                             onClick={() => toggleFilter(activeTab, option)}
                                             className={`px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium shadow-sm cursor-pointer transition-all border min-h-[44px] sm:min-h-0 ${isSelected
-                                                    ? 'bg-purple-50 border-purple-200 text-gray-800'
-                                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'
+                                                ? 'bg-purple-50 border-purple-200 text-gray-800'
+                                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'
                                                 }`}
                                         >
                                             {option}

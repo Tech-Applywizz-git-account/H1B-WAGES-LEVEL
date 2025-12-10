@@ -47,8 +47,19 @@ const homepageJobs = [
 ];
 
 const Homepage = () => {
-  const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [jobs, setJobs] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('homepageJobs');
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      console.error("Failed to parse cached jobs", e);
+      sessionStorage.removeItem('homepageJobs');
+      return [];
+    }
+  });
+  const [loading, setLoading] = useState(() => {
+    return !sessionStorage.getItem('homepageJobs');
+  });
   const [searchInput, setSearchInput] = useState('');
   const [filters, setFilters] = useState({
     role: [],
@@ -57,8 +68,12 @@ const Homepage = () => {
     experience: []
   });
   const [savedJobIds, setSavedJobIds] = useState(new Set());
+  const [appliedJobIds, setAppliedJobIds] = useState(new Set());
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalJobs, setTotalJobs] = useState(0);
+  const [totalJobs, setTotalJobs] = useState(() => {
+    const cachedTotal = sessionStorage.getItem('homepageTotalJobs');
+    return cachedTotal ? parseInt(cachedTotal, 10) : 0;
+  });
 
   const [subscriptionExpired, setSubscriptionExpired] = useState(false);
 
@@ -86,6 +101,27 @@ const Homepage = () => {
     }
   };
 
+  const fetchAppliedJobIds = async () => {
+    if (!user) {
+      setAppliedJobIds(new Set());
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('applied_jobs')
+        .select('job_id')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      const ids = new Set(data.map(item => item.job_id));
+      setAppliedJobIds(ids);
+      console.log('✅ Fetched applied job IDs:', Array.from(ids));
+    } catch (err) {
+      console.error('Error fetching applied jobs:', err);
+    }
+  };
   // Check subscription status
   useEffect(() => {
     const checkSubscription = async () => {
@@ -122,6 +158,7 @@ const Homepage = () => {
   // Fetch saved job IDs for the current user
   useEffect(() => {
     fetchSavedJobIds();
+    fetchAppliedJobIds();
   }, [user]);
 
   // Handle save/unsave toggle callback
@@ -129,6 +166,19 @@ const Homepage = () => {
     setSavedJobIds(prev => {
       const newSet = new Set(prev);
       if (isSaved) {
+        newSet.add(jobId);
+      } else {
+        newSet.delete(jobId);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle apply toggle callback
+  const handleApplyToggle = (jobId, isApplied) => {
+    setAppliedJobIds(prev => {
+      const newSet = new Set(prev);
+      if (isApplied) {
         newSet.add(jobId);
       } else {
         newSet.delete(jobId);
@@ -149,7 +199,11 @@ const Homepage = () => {
   }, [filters, currentPage, user, subscriptionExpired]);
 
   const fetchJobs = async () => {
-    setLoading(true);
+    // Only show loading spinner if we clearly don't have data to show, 
+    // or if we want to ensure the user knows a search is happening (e.g. invalid current data).
+    // But for tab switching, we want to act 'instant'.
+    if (jobs.length === 0) setLoading(true);
+
     try {
       let query = supabase
         .from('job_jobrole_all')
@@ -158,6 +212,7 @@ const Homepage = () => {
 
       // Apply Search
       if (searchInput) {
+        setLoading(true); // Always show loader for explicit search interactions
         query = query.or(`title.ilike.%${searchInput}%,company.ilike.%${searchInput}%,description.ilike.%${searchInput}%`);
       }
 
@@ -177,6 +232,57 @@ const Homepage = () => {
         if (locConditions) query = query.or(locConditions);
       }
 
+      // Smart Experience Filter - maps to years_exp_required column with intelligent range matching
+      if (filters.experience.length > 0) {
+        const expConditions = [];
+
+        filters.experience.forEach(expInput => {
+          // Extract numbers from input (e.g., "1", "8", "5-7", "8-14")
+          const numbers = expInput.match(/\d+/g);
+
+          if (numbers && numbers.length > 0) {
+            // Convert to numbers
+            const nums = numbers.map(n => parseInt(n));
+            const minInput = Math.min(...nums);
+            const maxInput = nums.length > 1 ? Math.max(...nums) : minInput;
+
+            // Match ranges that overlap with the input
+            // For "0-4 years", "5-7 years", "8-11 years", "11+ years"
+            const rangePatterns = [];
+
+            // Check common patterns in your database
+            const dbRanges = [
+              { pattern: '0-4', min: 0, max: 4 },
+              { pattern: '5-7', min: 5, max: 7 },
+              { pattern: '8-11', min: 8, max: 11 },
+              { pattern: '11+', min: 11, max: 100 } // 11+ means 11 or more
+            ];
+
+            dbRanges.forEach(range => {
+              // Check if ranges overlap
+              // Ranges overlap if: minInput <= range.max AND maxInput >= range.min
+              if (minInput <= range.max && maxInput >= range.min) {
+                rangePatterns.push(`years_exp_required.ilike.%${range.pattern}%`);
+              }
+            });
+
+            // Add all matching patterns
+            if (rangePatterns.length > 0) {
+              expConditions.push(...rangePatterns);
+            }
+          } else {
+            // If no numbers found, do simple string match (fallback)
+            expConditions.push(`years_exp_required.ilike.%${expInput}%`);
+          }
+        });
+
+        // Remove duplicates and apply
+        const uniqueConditions = [...new Set(expConditions)];
+        if (uniqueConditions.length > 0) {
+          query = query.or(uniqueConditions.join(','));
+        }
+      }
+
       // Pagination
       const from = (currentPage - 1) * JOBS_PER_PAGE;
       const to = from + JOBS_PER_PAGE - 1;
@@ -187,6 +293,12 @@ const Homepage = () => {
 
       setJobs(data || []);
       setTotalJobs(count || 0);
+
+      // Cache results only if it's the default view (no search, page 1, basic filters)
+      // or simply cache the latest view so navigating back restores it.
+      // Saving simpler: just cache what we have.
+      sessionStorage.setItem('homepageJobs', JSON.stringify(data || []));
+      sessionStorage.setItem('homepageTotalJobs', (count || 0).toString());
 
     } catch (error) {
       console.error("Error fetching homepage jobs:", error);
@@ -212,7 +324,7 @@ const Homepage = () => {
   return (
     <div>
       <Navbar />
-      <HeroSection />
+      {!user && <HeroSection />}
 
       <div className="flex bg-gray-50">
         {/* Sidebar for logged-in users, below Hero, beside Search */}
@@ -289,14 +401,29 @@ const Homepage = () => {
                     // Active Subscription: Real Data + Pagination
                     jobs.length > 0 ? (
                       <>
-                        {jobs.map((job) => (
-                          <JobCard
-                            key={job.job_id || job.id}
-                            job={job}
-                            isSaved={savedJobIds.has(job.job_id || job.id)}
-                            onSaveToggle={handleSaveToggle}
-                          />
-                        ))}
+                        {jobs.map((job) => {
+                          const jobId = job.job_id || job.id;
+                          const jobIdString = String(jobId); // Convert to string for consistency
+
+                          console.log('📋 Homepage Rendering Job:', {
+                            jobId: jobIdString,
+                            title: job.title,
+                            company: job.company,
+                            isSaved: savedJobIds.has(jobIdString),
+                            isApplied: appliedJobIds.has(jobIdString)
+                          });
+
+                          return (
+                            <JobCard
+                              key={jobIdString}
+                              job={job}
+                              isSaved={savedJobIds.has(jobIdString)}
+                              isApplied={appliedJobIds.has(jobIdString)}
+                              onSaveToggle={handleSaveToggle}
+                              onApplyToggle={handleApplyToggle}
+                            />
+                          );
+                        })}
 
                         {/* Pagination Controls */}
                         <div className="flex items-center justify-center gap-4 mt-8">
