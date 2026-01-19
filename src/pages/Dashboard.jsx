@@ -653,7 +653,7 @@
 
 //src/pages/Dashboard.jsx
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import {
   Briefcase,
@@ -672,21 +672,94 @@ import SavedJobsTab from "../components/SavedJobsTab";
 import AppliedJobsTab from "../components/AppliedJobsTab";
 import BillingTab from "../components/BillingTab";
 import ProfileTab from "../components/ProfileTab";
+import RenewalPayment from "../components/RenewalPayment";
 import useAuth from "../hooks/useAuth";
 import { supabase } from "../supabaseClient";
+import { CheckCircle } from "lucide-react";
 
 const Dashboard = () => {
-  const [activeTab, setActiveTab] = useState("overview");
-  const { role, loading, user, signOut } = useAuth();
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(location.state?.initialTab || "overview");
+  const { role, loading, user, signOut, isAdmin, subscriptionExpired, subscriptionEndDate, checkingSub } = useAuth();
   const navigate = useNavigate();
 
-  // Redirect 'All Jobs' to Homepage
+  const [savedJobsCount, setSavedJobsCount] = useState(0);
+  const [showRenewalFlow, setShowRenewalFlow] = useState(false);
+  const [renewalStep, setRenewalStep] = useState(1);
+  const [renewProfile, setRenewProfile] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    location: ''
+  });
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [renewError, setRenewError] = useState('');
+  const [renewLoading, setRenewLoading] = useState(false);
+
+  // Sync activeTab with location state
   useEffect(() => {
-    if (activeTab === 'alljobs') {
+    if (location.state?.initialTab) {
+      setActiveTab(location.state.initialTab);
+    }
+  }, [location.state]);
+
+  // Redirect 'All Jobs' to Homepage only if NOT expired
+  useEffect(() => {
+    if (activeTab === 'alljobs' && !subscriptionExpired && !isAdmin) {
       navigate('/');
     }
-  }, [activeTab, navigate]);
-  const [savedJobsCount, setSavedJobsCount] = useState(0);
+  }, [activeTab, navigate, subscriptionExpired, isAdmin]);
+
+
+  const handleRenewClick = async () => {
+    setRenewLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+
+      setRenewProfile({
+        firstName: data.first_name || '',
+        lastName: data.last_name || '',
+        email: data.email || user.email || '',
+        phone: data.phone || '',
+        location: data.location || ''
+      });
+      setShowRenewalFlow(true);
+      setRenewalStep(1);
+    } catch (err) {
+      console.error('Error fetching profile for renewal:', err);
+    } finally {
+      setRenewLoading(false);
+    }
+  };
+
+  const handleUpdateProfileAndProceed = async () => {
+    setRenewLoading(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          first_name: renewProfile.firstName,
+          last_name: renewProfile.lastName,
+          mobile_number: renewProfile.phone
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      setRenewalStep(2);
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      setRenewError('Failed to update profile details.');
+    } finally {
+      setRenewLoading(false);
+    }
+  };
 
   // Authentication redirect
   useEffect(() => {
@@ -718,7 +791,6 @@ const Dashboard = () => {
   };
 
   // Determine admin status from role
-  const isAdmin = role === "admin";
 
   console.log(
     "🔍 Dashboard ==> user:",
@@ -730,10 +802,13 @@ const Dashboard = () => {
   );
 
   // Show loading while auth context initializes
-  if (loading) {
+  if (loading || (user && checkingSub)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-dark"></div>
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-dark mb-4"></div>
+          <p className="text-gray-500 font-medium">Verifying account access...</p>
+        </div>
       </div>
     );
   }
@@ -829,93 +904,235 @@ const Dashboard = () => {
             </p>
           </div>
 
-          {activeTab === "overview" && (
-            isAdmin ? (
-              <AdminOverview />
-            ) : (
-              <>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                  Dashboard Overview
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                  <div className="bg-white p-6 rounded-lg shadow-md border">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-gray-500 text-sm">Saved Jobs</p>
-                        <p className="text-2xl font-bold mt-2">{savedJobsCount}</p>
-                      </div>
-                      <Heart className="h-8 w-8 text-gray-300" />
-                    </div>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow-md border">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-gray-500 text-sm">Applied Jobs</p>
-                        <p className="text-2xl font-bold mt-2">0</p>
-                      </div>
-                      <Briefcase className="h-8 w-8 text-gray-300" />
-                    </div>
-                  </div>
-                  <div className="bg-white p-6 rounded-lg shadow-md border">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-gray-500 text-sm">Account Type</p>
-                        <p className="text-2xl font-bold mt-2">{isAdmin ? "Admin" : "Standard"}</p>
-                      </div>
-                      <User className="h-8 w-8 text-gray-300" />
-                    </div>
-                  </div>
-                </div>
-                <div className="bg-white p-6 rounded-lg shadow-md border">
-                  <h3 className="text-xl font-semibold mb-4">Recent Activity</h3>
-                  <p className="text-gray-600">No recent activity to display.</p>
-                </div>
-              </>
-            )
-          )}
-
-
-
-          {activeTab === "saved" && (
-            <SavedJobsTab />
-          )}
-
-          {activeTab === "applied" && (
-            <AppliedJobsTab />
-          )}
-
-          {activeTab === "profile" && (
-            <ProfileTab />
-          )}
-
-          {activeTab === "settings" && (
-            <>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                Account Settings
-              </h2>
-              <div className="bg-white p-6 rounded-lg shadow-md border">
-                <p className="text-gray-600">
-                  Notification settings and account configuration.
-                </p>
+          {/* Main Content Area */}
+          {!isAdmin && subscriptionExpired && !["billing", "profile"].includes(activeTab) ? (
+            <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-100 max-w-4xl mx-auto">
+              <div className="p-4 bg-red-50 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
               </div>
-            </>
-          )}
+              <h2 className="text-4xl font-bold text-gray-900 mb-2 font-display">Subscription Expired</h2>
+              <p className="text-sm text-gray-500 mb-2 italic">subscribe to get the access</p>
+              {subscriptionEndDate && (
+                <p className="text-xs text-red-400 mb-10 font-medium">Your access ended on {new Date(subscriptionEndDate).toLocaleDateString()}</p>
+              )}
 
-          {activeTab === "billing" && (
-            <BillingTab />
-          )}
+              {showRenewalFlow ? (
+                <div className="max-w-xl mx-auto p-4 text-left">
+                  {renewalStep === 1 && (
+                    <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-xl">
+                      <div className="flex justify-between items-center mb-6">
+                        <h3 className="text-xl font-bold text-gray-900">Your Registration Details</h3>
+                        <button
+                          onClick={() => setIsEditingProfile(!isEditingProfile)}
+                          className="text-sm text-blue-600 font-semibold hover:underline bg-blue-50 px-3 py-1 rounded-full"
+                        >
+                          {isEditingProfile ? 'Save Changes' : 'Edit Details'}
+                        </button>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">First Name</label>
+                            <input
+                              type="text"
+                              value={renewProfile.firstName}
+                              disabled={!isEditingProfile}
+                              onChange={(e) => setRenewProfile({ ...renewProfile, firstName: e.target.value })}
+                              className={`w-full p-3 rounded-xl border transition-all ${!isEditingProfile ? 'bg-gray-50 border-gray-100 text-gray-700 font-medium' : 'bg-white border-blue-400 focus:ring-4 focus:ring-blue-100'}`}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-gray-500 uppercase">Last Name</label>
+                            <input
+                              type="text"
+                              value={renewProfile.lastName}
+                              disabled={!isEditingProfile}
+                              onChange={(e) => setRenewProfile({ ...renewProfile, lastName: e.target.value })}
+                              className={`w-full p-3 rounded-xl border transition-all ${!isEditingProfile ? 'bg-gray-50 border-gray-100 text-gray-700 font-medium' : 'bg-white border-blue-400 focus:ring-4 focus:ring-blue-100'}`}
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Email</label>
+                          <input type="text" value={renewProfile.email} disabled className="w-full p-3 rounded-xl border border-gray-100 bg-gray-50 text-gray-500 cursor-not-allowed" />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-gray-500 uppercase">Phone</label>
+                          <input
+                            type="text"
+                            value={renewProfile.phone}
+                            disabled={!isEditingProfile}
+                            onChange={(e) => setRenewProfile({ ...renewProfile, phone: e.target.value })}
+                            className={`w-full p-3 rounded-xl border transition-all ${!isEditingProfile ? 'bg-gray-50 border-gray-100 text-gray-700 font-medium' : 'bg-white border-blue-400 focus:ring-4 focus:ring-blue-100'}`}
+                          />
+                        </div>
 
-          {activeTab === "admin" && isAdmin && (
+                        <div className="pt-6 border-t border-gray-100 mt-6">
+                          {renewError && <p className="text-red-500 text-sm mb-4 bg-red-50 p-3 rounded-lg border border-red-100">{renewError}</p>}
+                          <button
+                            onClick={handleUpdateProfileAndProceed}
+                            disabled={renewLoading}
+                            className="w-full bg-primary-yellow text-primary-dark font-black text-lg py-4 rounded-xl hover:bg-yellow-400 transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                          >
+                            {renewLoading ? 'Saving Info...' : 'Get Access'}
+                          </button>
+                          <button onClick={() => setShowRenewalFlow(false)} className="w-full mt-4 text-gray-400 text-sm font-semibold hover:text-gray-600 transition-colors uppercase tracking-widest">Cancel Renewal</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {renewalStep === 2 && (
+                    <div className="bg-white p-10 rounded-2xl border border-gray-200 shadow-xl text-center">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-2">Complete Your Payment</h3>
+                      <p className="text-gray-600 mb-8">Unlock full access for 1 month ($30.00)</p>
+                      <div className="max-w-sm mx-auto p-6 border-2 border-dashed border-gray-100 rounded-2xl bg-gray-50">
+                        <RenewalPayment
+                          user={user}
+                          profile={renewProfile}
+                          onSuccess={() => {
+                            setRenewalStep(3);
+                            setSubscriptionExpired(false);
+                            setTimeout(() => {
+                              setShowRenewalFlow(false);
+                              setActiveTab("billing");
+                            }, 3000);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {renewalStep === 3 && (
+                    <div className="bg-white p-12 rounded-2xl border border-gray-200 shadow-xl text-center">
+                      <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <CheckCircle size={40} />
+                      </div>
+                      <h3 className="text-3xl font-bold text-gray-900 mb-2">Payment Successful!</h3>
+                      <p className="text-gray-600 text-lg">Your subscription is now active. Enjoy your access!</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  onClick={handleRenewClick}
+                  className="px-12 py-5 bg-primary-yellow text-primary-dark font-black text-xl rounded-2xl shadow-2xl hover:bg-yellow-400 transition-all transform hover:-translate-y-1 active:scale-95 flex items-center gap-3 mx-auto"
+                >
+                  Get Access
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          ) : (
             <>
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  Admin Controls
-                </h2>
-                <p className="text-gray-600">
-                  Manage users, jobs, and platform settings
-                </p>
-              </div>
-              <AdminControls />
+              {activeTab === "overview" && (
+                isAdmin ? (
+                  <AdminOverview />
+                ) : (
+                  <>
+                    <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                      Dashboard Overview
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                      <div
+                        onClick={() => setActiveTab("saved")}
+                        className="bg-white p-6 rounded-lg shadow-md border cursor-pointer hover:border-yellow-400 hover:shadow-lg transition-all"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-500 text-sm font-medium">Saved Jobs</p>
+                            <p className="text-2xl font-bold mt-2 text-gray-900">{savedJobsCount}</p>
+                          </div>
+                          <div className="p-3 bg-green-50 rounded-full">
+                            <Heart className="h-6 w-6 text-green-500" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        onClick={() => setActiveTab("applied")}
+                        className="bg-white p-6 rounded-lg shadow-md border cursor-pointer hover:border-yellow-400 hover:shadow-lg transition-all"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-500 text-sm font-medium">Applied Jobs</p>
+                            <p className="text-2xl font-bold mt-2 text-gray-900">0</p>
+                          </div>
+                          <div className="p-3 bg-blue-50 rounded-full">
+                            <Briefcase className="h-6 w-6 text-blue-500" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div
+                        onClick={() => setActiveTab("profile")}
+                        className="bg-white p-6 rounded-lg shadow-md border cursor-pointer hover:border-yellow-400 hover:shadow-lg transition-all"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-gray-500 text-sm font-medium">Account Type</p>
+                            <p className="text-2xl font-bold mt-2 text-gray-900">{isAdmin ? "Admin" : "Standard"}</p>
+                          </div>
+                          <div className="p-3 bg-purple-50 rounded-full">
+                            <User className="h-6 w-6 text-purple-500" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-lg shadow-md border">
+                      <h3 className="text-xl font-semibold mb-4">Recent Activity</h3>
+                      <p className="text-gray-600">No recent activity to display.</p>
+                    </div>
+                  </>
+                )
+              )}
+
+              {activeTab === "saved" && (
+                <SavedJobsTab />
+              )}
+
+              {activeTab === "applied" && (
+                <AppliedJobsTab />
+              )}
+
+              {activeTab === "profile" && (
+                <ProfileTab />
+              )}
+
+              {activeTab === "settings" && (
+                <>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                    Account Settings
+                  </h2>
+                  <div className="bg-white p-6 rounded-lg shadow-md border">
+                    <p className="text-gray-600">
+                      Notification settings and account configuration.
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {activeTab === "billing" && (
+                <BillingTab />
+              )}
+
+              {activeTab === "admin" && isAdmin && (
+                <>
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">
+                      Admin Controls
+                    </h2>
+                    <p className="text-gray-600">
+                      Manage users, jobs, and platform settings
+                    </p>
+                  </div>
+                  <AdminControls />
+                </>
+              )}
             </>
           )}
         </main>

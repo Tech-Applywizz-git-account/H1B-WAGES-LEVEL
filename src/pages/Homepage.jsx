@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Navbar from '../components/Navbar';
 import HeroSection from '../components/HeroSection';
 import FeaturesSection from '../components/FeaturesSection';
@@ -11,35 +11,36 @@ import JobCard from '../components/JobCard';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import useAuth from '../hooks/useAuth';
-import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Loader2, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
+import RenewalPayment from '../components/RenewalPayment';
 
 const JOBS_PER_PAGE = 10;
 
 const homepageJobs = [
   {
     id: 1,
-    company: 'HDR',
-    title: 'Electrical EIT/Designer',
-    location: 'Charlotte, North Carolina',
+    company: 'hackajob',
+    title: 'Data Engineer',
+    location: 'Philadelphia, PA',
     categories: ['Electrical Engineering', 'Specialized Engineering'],
     tags: ['On-Site', "Bachelor's", 'Full Time'],
     visas: ['Green Card', 'TN', 'OPT', 'CPT'],
   },
   {
     id: 2,
-    company: 'ADT',
-    title: 'Installation Technician',
-    location: 'Miami, Florida',
+    company: 'Torch Dental',
+    title: 'Software Engineer, Product',
+    location: 'New York, NY',
     categories: ['Electrical Technician', 'HVAC Technician'],
     tags: ['On-Site', 'Associate', 'Full Time'],
     visas: ['Green Card', 'OPT'],
   },
   {
     id: 3,
-    company: 'Google',
-    title: 'Product Manager',
-    location: 'Mountain View, CA',
+    company: 'Verisk',
+    title: 'Devops Engineer II',
+    location: 'Jersey City, NJ',
     categories: ['Product', 'Strategy'],
     tags: ['Hybrid', "Bachelor's", 'Full Time'],
     visas: ['H-1B', 'TN', 'Green Card'],
@@ -69,6 +70,18 @@ const Homepage = () => {
     company: [],
     experience: []
   });
+  const [showRenewalFlow, setShowRenewalFlow] = useState(false);
+  const [renewalStep, setRenewalStep] = useState(1); // 1: Details, 2: Payment, 3: Success
+  const [renewProfile, setRenewProfile] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    location: ''
+  });
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [renewError, setRenewError] = useState('');
+  const [renewLoading, setRenewLoading] = useState(false);
   const [savedJobIds, setSavedJobIds] = useState(new Set());
   const [appliedJobIds, setAppliedJobIds] = useState(new Set());
   const [currentPage, setCurrentPage] = useState(1);
@@ -77,10 +90,9 @@ const Homepage = () => {
     return cachedTotal ? parseInt(cachedTotal, 10) : 0;
   });
 
-  const [subscriptionExpired, setSubscriptionExpired] = useState(false);
-
-  const { user } = useAuth();
+  const { user, role, isAdmin, subscriptionExpired, subscriptionEndDate, checkingSub } = useAuth();
   const navigate = useNavigate();
+  const searchSectionRef = useRef(null);
 
   const fetchSavedJobIds = async () => {
     if (!user) {
@@ -169,38 +181,7 @@ const Homepage = () => {
       fetchSavedJobIds();
     }
   };
-  // Check subscription status
-  useEffect(() => {
-    const checkSubscription = async () => {
-      if (!user) return;
-
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('created_at')
-          .eq('id', user.id)
-          .single();
-
-        if (error) throw error;
-
-        if (data) {
-          const joinedDate = new Date(data.created_at);
-          const endDate = new Date(joinedDate);
-          endDate.setMonth(endDate.getMonth() + 1);
-
-          if (new Date() > endDate) {
-            setSubscriptionExpired(true);
-          } else {
-            setSubscriptionExpired(false);
-          }
-        }
-      } catch (err) {
-        console.error('Error checking subscription:', err);
-      }
-    };
-
-    checkSubscription();
-  }, [user]);
+  // Subscription check is now handled by useAuth hook
 
   // Fetch saved job IDs for the current user
   useEffect(() => {
@@ -263,10 +244,34 @@ const Homepage = () => {
       // --- Apply Filters to SQL Query ---
 
       // Search Text (SQL Filter)
+      let searchKeywords = [];
+      let searchRolePart = '';
+      let searchLocPart = '';
       if (activeSearch) {
-        // If user is searching, show loader to indicate work
         setLoading(true);
-        query = query.or(`title.ilike.%${activeSearch}%,company.ilike.%${activeSearch}%,description.ilike.%${activeSearch}%`);
+        const searchLower = activeSearch.toLowerCase();
+
+        if (searchLower.includes(' in ')) {
+          const parts = searchLower.split(' in ');
+          searchRolePart = parts[0].trim();
+          searchLocPart = parts[1].trim();
+          searchKeywords = [searchRolePart, searchLocPart];
+          // Match role OR location in query to pull candidates for client-side scoring
+          query = query.or(`title.ilike.%${searchRolePart}%,job_role_name.ilike.%${searchRolePart}%,location.ilike.%${searchLocPart}%`);
+        } else {
+          searchKeywords = searchLower.split(/\s+/).filter(k => k.length > 1);
+          if (searchKeywords.length > 0) {
+            const conditions = searchKeywords.flatMap(k => [
+              `title.ilike.%${k}%`,
+              `company.ilike.%${k}%`,
+              `job_role_name.ilike.%${k}%`,
+              `location.ilike.%${k}%`
+            ]).join(',');
+            query = query.or(conditions);
+          } else {
+            query = query.or(`title.ilike.%${activeSearch}%,company.ilike.%${activeSearch}%,description.ilike.%${activeSearch}%,job_role_name.ilike.%${activeSearch}%,location.ilike.%${activeSearch}%`);
+          }
+        }
       }
 
       // Role Filter
@@ -323,7 +328,6 @@ const Homepage = () => {
 
       // --- Sorting Strategy ---
       // If we have a Search Input OR Role Filters, we prioritize strict relevance (Client Side Sorting).
-      // Otherwise, we just use standard Date sorting (Server Side Pagination).
       const useRelevanceSorting = activeSearch || filters.role.length > 0;
 
       if (useRelevanceSorting) {
@@ -343,21 +347,42 @@ const Homepage = () => {
               let score = 0;
               const title = (job.title || '').trim().toLowerCase();
               const role = (job.job_role_name || '').trim().toLowerCase();
+              const location = (job.location || '').trim().toLowerCase();
+              const company = (job.company || '').trim().toLowerCase();
+              const description = (job.description || '').toLowerCase();
 
               // 1. Text Search Relevance
               if (normalizedSearch) {
-                // PRIORITIZE TITLE
-                if (title === normalizedSearch) score += 1000; // Exact Title Match (Highest)
-                else if (title.startsWith(normalizedSearch)) score += 500;
-                else if (title.includes(normalizedSearch)) score += 250;
-
-                // THEN CHECK ROLE
-                if (role === normalizedSearch) score += 200; // Exact Role Match
-                else if (role.startsWith(normalizedSearch)) score += 100;
-                else if (role.includes(normalizedSearch)) score += 50;
-
-                // Boost for description last
-                if ((job.description || '').toLowerCase().includes(normalizedSearch)) score += 10;
+                if (searchRolePart && searchLocPart) {
+                  // "Role in Location" Query
+                  if (title === searchRolePart) score += 1000;
+                  else if (title.includes(searchRolePart)) score += 500;
+                  if (role === searchRolePart) score += 300;
+                  else if (role.includes(searchRolePart)) score += 150;
+                  if (location.includes(searchLocPart)) score += 800;
+                  if (description.includes(searchRolePart)) score += 50;
+                } else if (searchKeywords.length > 0) {
+                  // Multi-keyword Search
+                  let matchCount = 0;
+                  searchKeywords.forEach(kw => {
+                    let kwMatch = false;
+                    if (title.includes(kw)) { score += 300; kwMatch = true; }
+                    if (role.includes(kw)) { score += 150; kwMatch = true; }
+                    if (location.includes(kw)) { score += 200; kwMatch = true; }
+                    if (company.includes(kw)) { score += 100; kwMatch = true; }
+                    if (description.includes(kw)) { score += 20; kwMatch = true; }
+                    if (kwMatch) matchCount++;
+                  });
+                  // Bonus for matching multiple keywords
+                  if (matchCount > 1) score += (matchCount * 500);
+                  // Huge bonus for exact full string match in title
+                  if (title.includes(normalizedSearch)) score += 1000;
+                } else {
+                  // Fallback
+                  if (title.includes(normalizedSearch)) score += 1000;
+                  if (role.includes(normalizedSearch)) score += 500;
+                  if (location.includes(normalizedSearch)) score += 300;
+                }
               }
 
               // 2. Role Filter Relevance
@@ -416,19 +441,77 @@ const Homepage = () => {
     }
   };
 
+  const handleRenewClick = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error) throw error;
+
+      setRenewProfile({
+        firstName: data.first_name || '',
+        lastName: data.last_name || '',
+        email: data.email || user.email || '',
+        phone: data.phone || '',
+        location: data.location || ''
+      });
+      setShowRenewalFlow(true);
+      setRenewalStep(1);
+    } catch (err) {
+      console.error('Error fetching profile for renewal:', err);
+      alert('Failed to load profile details. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateProfileAndProceed = async () => {
+    setRenewLoading(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          first_name: renewProfile.firstName,
+          last_name: renewProfile.lastName,
+          mobile_number: renewProfile.phone
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      setRenewalStep(2);
+    } catch (err) {
+      console.error('Error updating profile:', err);
+      setRenewError('Failed to update profile details.');
+    } finally {
+      setRenewLoading(false);
+    }
+  };
+
   const handleSearchClick = () => {
+    // Clear any pending suggestions timeout to prevent them from reappearing after search
+    if (searchTimeout) clearTimeout(searchTimeout);
+    setSuggestions([]);
+
     setCurrentPage(1); // Reset to page 1 on search
     if (user && !subscriptionExpired) {
       // Pass the current search input explicitly to avoid stale state issues, though normally handleSearchClick 
       // is called well after input change.
       fetchJobs(1, searchInput);
       fetchSavedJobIds(); // Refresh saved status on search
+
+      // Scroll to search area on mobile/desktop
+      searchSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage);
+      searchSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -448,13 +531,18 @@ const Homepage = () => {
         <main className="flex-1 w-full">
           <section className="bg-white">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <div className="text-center mb-6">
+              <div ref={searchSectionRef} className="text-center mb-6">
                 <h3 className="text-3xl font-semibold text-gray-900">Search for your perfect role.</h3>
                 <p className="text-gray-500 mt-2">Data verified by the U.S. Government.</p>
               </div>
 
+              <SearchFilters onFilterChange={(newFilters) => {
+                setFilters(newFilters);
+                setCurrentPage(1); // Reset page on filter change
+              }} />
+
               {/* Search Bar Wrapper */}
-              <div className="relative max-w-4xl mx-auto mb-6 z-20">
+              <div className="relative max-w-4xl mx-auto mb-6 mt-8 z-20">
                 <div className="flex items-center bg-white rounded-full shadow-lg border border-gray-100 overflow-hidden">
                   <div className="px-4 text-gray-400">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -466,6 +554,11 @@ const Homepage = () => {
                     value={searchInput}
                     onChange={(e) => handleSearchSuggestions(e.target.value)}
                     onBlur={() => setTimeout(() => setSuggestions([]), 200)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSearchClick();
+                      }
+                    }}
                     placeholder="Search for jobs, companies, or titles..."
                     className="flex-1 px-2 py-4 text-gray-900 text-base focus:outline-none"
                   />
@@ -496,14 +589,9 @@ const Homepage = () => {
                 )}
               </div>
 
-              <SearchFilters onFilterChange={(newFilters) => {
-                setFilters(newFilters);
-                setCurrentPage(1); // Reset page on filter change
-              }} />
-
               {/* Job Cards List */}
               <div className="mt-8 max-w-4xl mx-auto space-y-4">
-                {loading ? (
+                {loading || (user && checkingSub) ? (
                   <div className="flex justify-center py-10">
                     <Loader2 className="w-10 h-10 text-yellow-500 animate-spin" />
                   </div>
@@ -517,17 +605,121 @@ const Homepage = () => {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                       </div>
-                      <h2 className="text-2xl font-bold text-gray-900 mb-3">Your subscription is expired</h2>
-                      <p className="text-gray-500 max-w-md mx-auto mb-8">
-                        Your monthly access has ended. Subscribe again to continue accessing verified job listings and premium features.
-                      </p>
-                      <Link
-                        to="/pricing"
-                        className="inline-flex items-center gap-2 px-8 py-3 bg-primary-yellow text-primary-dark font-bold rounded-lg shadow-lg hover:bg-yellow-400 transition-all transform hover:-translate-y-1"
-                      >
-                        Subscribe Now
-                        <ChevronRight className="w-5 h-5" />
-                      </Link>
+                      <h2 className="text-3xl font-bold text-gray-900 mb-2 font-display">Subscription Expired</h2>
+                      <p className="text-sm text-gray-500 mb-2 italic">subscribe to get the access</p>
+                      {subscriptionEndDate && (
+                        <p className="text-xs text-red-400 mb-8 font-medium">Your access ended on {new Date(subscriptionEndDate).toLocaleDateString()}</p>
+                      )}
+
+                      {showRenewalFlow ? (
+                        <div className="max-w-xl mx-auto p-4 text-left">
+                          {renewalStep === 1 && (
+                            <div className="bg-white p-8 rounded-2xl border border-gray-200 shadow-xl">
+                              <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold text-gray-900">Your Registration Details</h3>
+                                <button
+                                  onClick={() => setIsEditingProfile(!isEditingProfile)}
+                                  className="text-sm text-blue-600 font-semibold hover:underline bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition-colors"
+                                >
+                                  {isEditingProfile ? 'Save Changes' : 'Edit Details'}
+                                </button>
+                              </div>
+                              <div className="space-y-5">
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">First Name</label>
+                                    <input
+                                      type="text"
+                                      value={renewProfile.firstName}
+                                      disabled={!isEditingProfile}
+                                      onChange={(e) => setRenewProfile({ ...renewProfile, firstName: e.target.value })}
+                                      className={`w-full p-3 rounded-xl border transition-all ${!isEditingProfile ? 'bg-gray-50 border-gray-100 text-gray-700 font-medium' : 'bg-white border-blue-400 focus:ring-4 focus:ring-blue-100'}`}
+                                    />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Last Name</label>
+                                    <input
+                                      type="text"
+                                      value={renewProfile.lastName}
+                                      disabled={!isEditingProfile}
+                                      onChange={(e) => setRenewProfile({ ...renewProfile, lastName: e.target.value })}
+                                      className={`w-full p-3 rounded-xl border transition-all ${!isEditingProfile ? 'bg-gray-50 border-gray-100 text-gray-700 font-medium' : 'bg-white border-blue-400 focus:ring-4 focus:ring-blue-100'}`}
+                                    />
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Email Address</label>
+                                  <input type="text" value={renewProfile.email} disabled className="w-full p-3 rounded-xl border border-gray-100 bg-gray-50 text-gray-500 font-medium cursor-not-allowed" />
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Phone Number</label>
+                                  <input
+                                    type="text"
+                                    value={renewProfile.phone}
+                                    disabled={!isEditingProfile}
+                                    onChange={(e) => setRenewProfile({ ...renewProfile, phone: e.target.value })}
+                                    className={`w-full p-3 rounded-xl border transition-all ${!isEditingProfile ? 'bg-gray-50 border-gray-100 text-gray-700 font-medium' : 'bg-white border-blue-400 focus:ring-4 focus:ring-blue-100'}`}
+                                  />
+                                </div>
+
+                                <div className="pt-6 border-t border-gray-100 mt-6">
+                                  {renewError && <p className="text-red-500 text-sm mb-4 bg-red-50 p-3 rounded-lg border border-red-100">{renewError}</p>}
+                                  <button
+                                    onClick={handleUpdateProfileAndProceed}
+                                    disabled={renewLoading}
+                                    className="w-full bg-primary-yellow text-primary-dark font-black text-lg py-4 rounded-xl hover:bg-yellow-400 transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                                  >
+                                    {renewLoading ? 'Saving Info...' : 'Get Access'}
+                                  </button>
+                                  <button onClick={() => setShowRenewalFlow(false)} className="w-full mt-4 text-gray-400 text-sm font-semibold hover:text-gray-600 transition-colors uppercase tracking-widest">Cancel Renewal</button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {renewalStep === 2 && (
+                            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                              <h3 className="text-xl font-bold text-gray-900 mb-2">Complete Payment</h3>
+                              <p className="text-gray-600 mb-6 text-sm">Subscribe for 1 month access ($30.00)</p>
+                              <div id="paypal-renewal-container">
+                                {/* Component for Renewal Payment */}
+                                <div className="p-10 text-center border-2 border-dashed border-gray-200 rounded-lg">
+                                  <p className="text-gray-500 text-sm mb-4">Click below to pay with PayPal</p>
+                                  <RenewalPayment
+                                    user={user}
+                                    profile={renewProfile}
+                                    onSuccess={() => {
+                                      setRenewalStep(3);
+                                      setSubscriptionExpired(false);
+                                      setTimeout(() => setShowRenewalFlow(false), 3000);
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {renewalStep === 3 && (
+                            <div className="text-center p-8">
+                              <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <CheckCircle className="w-10 h-10" />
+                              </div>
+                              <h3 className="text-2xl font-bold text-gray-900 mb-2">Payment Successful!</h3>
+                              <p className="text-gray-600">Your subscription has been renewed. Redirecting...</p>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            onClick={handleRenewClick}
+                            className="inline-flex items-center gap-2 px-10 py-4 bg-primary-yellow text-primary-dark font-bold rounded-xl shadow-xl hover:bg-yellow-400 transition-all transform hover:-translate-y-1 active:scale-95"
+                          >
+                            Get Access
+                            <ChevronRight className="w-5 h-5" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   ) : (
                     // Active Subscription: Real Data + Pagination

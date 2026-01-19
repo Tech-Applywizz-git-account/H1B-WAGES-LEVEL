@@ -329,7 +329,11 @@ import { supabase } from "../supabaseClient";
 const AuthContext = createContext({
   user: null,
   role: null,
+  subscriptionExpired: false,
+  subscriptionEndDate: null,
+  checkingSub: true,
   loading: true,
+  refresh: async () => { },
   signOut: async () => { },
 });
 
@@ -344,6 +348,9 @@ export function AuthProvider({ children }) {
     const storedRole = localStorage.getItem("userRole");
     return storedRole || null;
   });
+  const [subscriptionExpired, setSubscriptionExpired] = useState(false);
+  const [subscriptionEndDate, setSubscriptionEndDate] = useState(null);
+  const [checkingSub, setCheckingSub] = useState(true);
   const [loading, setLoading] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
   const isInitialLoad = useRef(true);
@@ -360,11 +367,14 @@ export function AuthProvider({ children }) {
     const userId = userObj.id;
 
     // Check cache first
-    const cachedRole = roleCache.get(userId);
-    if (cachedRole && (Date.now() - cachedRole.timestamp) < CACHE_DURATION) {
-      console.log("✅ Using cached role:", cachedRole.role);
-      setRole(cachedRole.role);
-      localStorage.setItem("userRole", cachedRole.role);
+    const cachedData = roleCache.get(userId);
+    if (cachedData && (Date.now() - cachedData.timestamp) < CACHE_DURATION) {
+      console.log("✅ Using cached role & sub status:", cachedData.role);
+      setRole(cachedData.role);
+      setSubscriptionExpired(cachedData.subscriptionExpired);
+      setSubscriptionEndDate(cachedData.subscriptionEndDate);
+      setCheckingSub(false);
+      localStorage.setItem("userRole", cachedData.role);
       return;
     }
 
@@ -389,7 +399,7 @@ export function AuthProvider({ children }) {
       // Remove timeout - let Supabase handle its own timeout
       const { data: profile, error } = await supabase
         .from("profiles")
-        .select("role, updated_at")
+        .select("role, updated_at, created_at, subscription_end_date")
         .eq("id", userId)
         .maybeSingle(); // Use maybeSingle instead of single to avoid PGRST116 error
 
@@ -400,40 +410,100 @@ export function AuthProvider({ children }) {
         if (!storedRole) {
           console.warn("⚠️ Defaulting to 'user' role due to error");
           setRole("user");
+          setSubscriptionExpired(false);
           localStorage.setItem("userRole", "user");
-          roleCache.set(userId, { role: "user", timestamp: Date.now() });
+          roleCache.set(userId, { role: "user", subscriptionExpired: false, timestamp: Date.now() });
         }
       } else if (profile) {
         const userRole = profile?.role || "user";
-        console.log("✅ Profile loaded successfully! Role:", userRole);
+        const isAdmin = userRole === "admin";
+
+        // Calculate subscription status
+        let isExpired = false;
+        let endDate = null;
+
+        console.log("🔍 RAW DB DATA:", {
+          subscription_end_date: profile.subscription_end_date,
+          created_at: profile.created_at,
+          role: userRole,
+          isAdmin: isAdmin
+        });
+
+        if (!isAdmin) {
+          if (profile.subscription_end_date) {
+            endDate = new Date(profile.subscription_end_date);
+            const now = new Date();
+            isExpired = now > endDate;
+
+            console.log("⏰ DATE COMPARISON:", {
+              dbDate: profile.subscription_end_date,
+              parsedEndDate: endDate.toISOString(),
+              currentTime: now.toISOString(),
+              isNowGreaterThanEnd: now > endDate,
+              millisecondsDiff: now.getTime() - endDate.getTime()
+            });
+          } else {
+            // If no subscription date exists, user is considered expired/no-access
+            isExpired = true;
+            console.log("❌ NO SUBSCRIPTION DATE - User marked as EXPIRED");
+          }
+        } else {
+          console.log("👑 ADMIN USER - Bypassing expiry check");
+        }
+
+        console.log("📊 FINAL ACCESS DECISION:", {
+          user: profile.email || userId,
+          role: userRole,
+          isAdmin: isAdmin,
+          expiryDate: endDate ? endDate.toISOString() : "None",
+          isExpired: isExpired,
+          willSeeLinks: !isExpired || isAdmin
+        });
 
         // Update state and cache
         setRole(userRole);
+        setSubscriptionExpired(isExpired);
+        setSubscriptionEndDate(endDate);
         localStorage.setItem("userRole", userRole);
         roleCache.set(userId, {
           role: userRole,
+          subscriptionExpired: isExpired,
+          subscriptionEndDate: endDate,
           timestamp: Date.now(),
           updatedAt: profile.updated_at
         });
       } else {
-        // No profile found
-        console.warn("📭 No profile found for user, defaulting to 'user'");
+        // No profile found - USER SHOULD BE BLOCKED
+        console.warn("📭 No profile found for user - MARKING AS EXPIRED");
         const defaultRole = "user";
         setRole(defaultRole);
+        setSubscriptionExpired(true);  // ✅ FIX: No profile = No access
+        setSubscriptionEndDate(null);
         localStorage.setItem("userRole", defaultRole);
-        roleCache.set(userId, { role: defaultRole, timestamp: Date.now() });
+        roleCache.set(userId, {
+          role: defaultRole,
+          subscriptionExpired: true,  // ✅ FIX: Block access
+          subscriptionEndDate: null,
+          timestamp: Date.now()
+        });
       }
     } catch (err) {
       console.error("💥 Unexpected error loading profile role:", err);
-      // Keep existing role from localStorage if available
       if (!storedRole) {
-        console.warn("⚠️ Defaulting to 'user' role due to exception");
         setRole("user");
+        setSubscriptionExpired(true);  // ✅ FIX: Error = No access
+        setSubscriptionEndDate(null);
         localStorage.setItem("userRole", "user");
-        roleCache.set(userId, { role: "user", timestamp: Date.now() });
+        roleCache.set(userId, {
+          role: "user",
+          subscriptionExpired: true,  // ✅ FIX: Block access on error
+          subscriptionEndDate: null,
+          timestamp: Date.now()
+        });
       }
     } finally {
       isInitialLoad.current = false;
+      setCheckingSub(false);
     }
   };
 
@@ -491,6 +561,7 @@ export function AuthProvider({ children }) {
             setUser(null);
             setRole(null);
             setLoading(false);
+            setCheckingSub(false);
           }
         }
 
@@ -499,6 +570,7 @@ export function AuthProvider({ children }) {
         if (isMounted) {
           clearTimeout(initTimeout);
           setLoading(false);
+          setCheckingSub(false);
         }
       }
     };
@@ -544,6 +616,15 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  const refresh = async () => {
+    if (user) {
+      console.log("🔄 Manually refreshing auth for:", user.email);
+      roleCache.delete(user.id);
+      hasProfileQueryRun.current = false;
+      await loadUserRole(user);
+    }
+  };
+
   const signOut = async () => {
     console.log("🚨 SignOut called from AuthContext");
     setLoggingOut(true);
@@ -574,8 +655,13 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     role,
+    isAdmin: role === "admin",
+    subscriptionExpired,
+    subscriptionEndDate,
+    checkingSub,
     loading,
     loggingOut,
+    refresh,
     signOut,
   };
 
