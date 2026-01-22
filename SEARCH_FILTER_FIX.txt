@@ -1,0 +1,14 @@
+// TEMPORARY FIX FILE
+// The client-side filter at lines 486-506 in Homepage.jsx is eliminating 99% of valid results
+// 
+// ROOT CAUSE: SQL query uses OR logic (fetch jobs matching ANY keyword)
+//             Client filter uses AND logic (require ALL keywords in same field)
+//
+// SOLUTION: Remove or comment out lines 486-506 (the entire else if block for multi-word searches)
+//
+// After removing those lines, the flow should be:
+// 1. Role filter check (lines 454-468) - KEEP THIS
+// 2. "Role in city" special case (lines 472-485) - KEEP THIS  
+// 3. Skip straight to: return item._score > 0; (line 510)
+//
+// This will allow all 12,142 SQL-filtered jobs to display instead of just 90.

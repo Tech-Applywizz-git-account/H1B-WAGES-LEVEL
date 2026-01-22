@@ -67,40 +67,115 @@ const AllJobsTab = () => {
                 .select('*', { count: 'exact' })
                 .order('upload_date', { ascending: false });
 
-            // Apply search filter (searches in title, company, description)
+            // APPLY FILTERS
+            const hasActiveSearch = !!(searchTerm || filterRole || filterCompany || filterLocation);
+
+            // If searching/filtering, we fetch more to allow better client-side relevance sorting
+            const fetchLimit = hasActiveSearch ? 100 : JOBS_PER_PAGE;
+            const from = hasActiveSearch ? 0 : (page - 1) * JOBS_PER_PAGE;
+            const to = hasActiveSearch ? fetchLimit - 1 : from + JOBS_PER_PAGE - 1;
+
             if (searchTerm) {
-                query = query.or(`title.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%`);
+                // Search in title, company, description, and job_role_name
+                query = query.or(`title.ilike.%${searchTerm}%,company.ilike.%${searchTerm}%,description.ilike.%${searchTerm}%,job_role_name.ilike.%${searchTerm}%`);
             }
 
-            // Apply company filter
-            if (filterCompany) {
-                query = query.ilike('company', `%${filterCompany}%`);
-            }
+            if (filterCompany) query = query.ilike('company', `%${filterCompany}%`);
+            if (filterLocation) query = query.ilike('location', `%${filterLocation}%`);
+            if (filterRole) query = query.ilike('job_role_name', `%${filterRole}%`);
 
-            // Apply location filter
-            if (filterLocation) {
-                query = query.ilike('location', `%${filterLocation}%`);
-            }
-
-            // Apply job role filter
-            if (filterRole) {
-                query = query.ilike('job_role_name', `%${filterRole}%`);
-            }
-
-            // Add pagination
-            const from = (page - 1) * JOBS_PER_PAGE;
-            const to = from + JOBS_PER_PAGE - 1;
             query = query.range(from, to);
 
             const { data, error: fetchError, count } = await query;
 
-            if (fetchError) {
-                throw fetchError;
-            }
+            if (fetchError) throw fetchError;
 
-            console.log('✅ Jobs fetched successfully:', data?.length || 0);
-            setJobs(data || []);
-            setTotalJobs(count || 0);
+            let processedData = data || [];
+
+            if (hasActiveSearch && processedData.length > 0) {
+                const sTerm = searchTerm.toLowerCase();
+                const rTerm = filterRole.toLowerCase();
+                const cTerm = filterCompany.toLowerCase();
+                const lTerm = filterLocation.toLowerCase();
+
+                processedData = processedData
+                    .map(job => {
+                        let score = 0;
+                        const title = (job.title || '').toLowerCase();
+                        const role = (job.job_role_name || '').toLowerCase();
+                        const company = (job.company || '').toLowerCase();
+                        const loc = (job.location || '').toLowerCase();
+                        const desc = (job.description || '').toLowerCase();
+
+                        if (sTerm) {
+                            if (title === sTerm) score += 1000;
+                            else if (title.includes(sTerm)) score += 500;
+                            if (role === sTerm) score += 300;
+                            else if (role.includes(sTerm)) score += 150;
+                            if (company.includes(sTerm)) score += 100;
+                            if (desc.includes(sTerm)) score += 10;
+                        }
+
+                        if (rTerm) {
+                            if (role.includes(rTerm)) score += 500;
+                            if (title.includes(rTerm)) score += 300;
+                        }
+
+                        if (cTerm && company.includes(cTerm)) score += 500;
+                        if (lTerm && loc.includes(lTerm)) score += 500;
+
+                        return { ...job, _score: score };
+                    })
+                    // Strict filter: Enforce that the result actually matches the intent
+                    .filter(job => {
+                        const title = (job.title || '').toLowerCase();
+                        const role = (job.job_role_name || '').toLowerCase();
+                        const company = (job.company || '').toLowerCase();
+
+                        // 1. If Role Filter is active, title MUST contain the keywords
+                        if (rTerm) {
+                            const rKeywords = rTerm.split(/\s+/).filter(k => k.length > 2);
+                            const titleMatchesRole = title.includes(rTerm) || (rKeywords.length > 0 && rKeywords.every(k => title.includes(k)));
+                            if (!titleMatchesRole) return false;
+                        }
+
+                        // 2. If General Search is active, enforce strict matching
+                        if (sTerm) {
+                            const sKeywords = sTerm.split(/\s+/).filter(k => k.length > 2);
+
+                            if (sKeywords.length > 1) {
+                                // Multi-word search: require ALL keywords in title or exact company match
+                                const hasExactPhrase = title.includes(sTerm);
+                                const hasAllKeywords = sKeywords.every(k => title.includes(k));
+                                const companyMatch = company.includes(sTerm);
+
+                                if (!hasExactPhrase && !hasAllKeywords && !companyMatch) {
+                                    return false;
+                                }
+                            } else {
+                                // Single word: must match title or company
+                                const titleMatch = title.includes(sTerm);
+                                const companyMatch = company.includes(sTerm);
+
+                                if (!titleMatch && !companyMatch) {
+                                    return false;
+                                }
+                            }
+                        }
+
+                        return job._score > 0 || !hasActiveSearch;
+                    })
+                    .sort((a, b) => b._score - a._score);
+
+                // Re-calculate pagination for client-side sorted results
+                setTotalJobs(processedData.length);
+                const pFrom = (page - 1) * JOBS_PER_PAGE;
+                const pTo = pFrom + JOBS_PER_PAGE;
+                setJobs(processedData.slice(pFrom, pTo));
+            } else {
+                setJobs(processedData);
+                setTotalJobs(count || 0);
+            }
             setCurrentPage(page);
         } catch (err) {
             console.error('❌ Error fetching jobs:', err);

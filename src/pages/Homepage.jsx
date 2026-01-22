@@ -83,6 +83,7 @@ const Homepage = () => {
   const [renewError, setRenewError] = useState('');
   const [renewLoading, setRenewLoading] = useState(false);
   const [savedJobIds, setSavedJobIds] = useState(new Set());
+  const [shouldScrollToSearch, setShouldScrollToSearch] = useState(false);
   const [appliedJobIds, setAppliedJobIds] = useState(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [totalJobs, setTotalJobs] = useState(() => {
@@ -226,14 +227,34 @@ const Homepage = () => {
     }
   }, [filters, currentPage, user?.id, subscriptionExpired]);
 
+  // Scroll to search bar after jobs are loaded
+  useEffect(() => {
+    if (!loading && shouldScrollToSearch) {
+      // Use requestAnimationFrame to ensure DOM has updated
+      requestAnimationFrame(() => {
+        const searchElement = document.getElementById('search-anchor');
+        if (searchElement) {
+          const offset = 100; // Account for navbar
+          const elementPosition = searchElement.offsetTop;
+          window.scrollTo({
+            top: elementPosition - offset,
+            behavior: 'smooth'
+          });
+        }
+        setShouldScrollToSearch(false);
+      });
+    }
+  }, [loading, shouldScrollToSearch]);
+
   const fetchJobs = async (pageOverride = null, searchOverride = null) => {
     // Determine effective values (use overrides or fall back to state)
     const activePage = pageOverride !== null ? pageOverride : currentPage;
     const activeSearch = searchOverride !== null ? searchOverride : searchInput;
 
-    // Only show loading spinner if we clearly don't have data to show, 
-    // or if searching (which we decide based on activeSearch presence).
-    if (jobs.length === 0) setLoading(true);
+    // Show loading spinner if:
+    // 1. We don't have data to show yet (jobs.length === 0), OR
+    // 2. There are active role filters
+    if (jobs.length === 0 || filters.role.length > 0) setLoading(true);
 
     try {
       let query = supabase
@@ -243,7 +264,7 @@ const Homepage = () => {
 
       // --- Apply Filters to SQL Query ---
 
-      // Search Text (SQL Filter)
+      // Search Text (SQL Filter) - Prioritize Role/Title Search
       let searchKeywords = [];
       let searchRolePart = '';
       let searchLocPart = '';
@@ -252,6 +273,7 @@ const Homepage = () => {
         const searchLower = activeSearch.toLowerCase();
 
         if (searchLower.includes(' in ')) {
+          // "Software Engineer in New York" format
           const parts = searchLower.split(' in ');
           searchRolePart = parts[0].trim();
           searchLocPart = parts[1].trim();
@@ -259,24 +281,31 @@ const Homepage = () => {
           // Match role OR location in query to pull candidates for client-side scoring
           query = query.or(`title.ilike.%${searchRolePart}%,job_role_name.ilike.%${searchRolePart}%,location.ilike.%${searchLocPart}%`);
         } else {
+          // Regular search - PRIORITIZE role/title, same as filter dropdown
           searchKeywords = searchLower.split(/\s+/).filter(k => k.length > 1);
           if (searchKeywords.length > 0) {
+            // Search primarily in title and job_role_name (matching filter behavior)
             const conditions = searchKeywords.flatMap(k => [
               `title.ilike.%${k}%`,
-              `company.ilike.%${k}%`,
               `job_role_name.ilike.%${k}%`,
+              // Secondary: also check company and location
+              `company.ilike.%${k}%`,
               `location.ilike.%${k}%`
             ]).join(',');
             query = query.or(conditions);
           } else {
-            query = query.or(`title.ilike.%${activeSearch}%,company.ilike.%${activeSearch}%,description.ilike.%${activeSearch}%,job_role_name.ilike.%${activeSearch}%,location.ilike.%${activeSearch}%`);
+            // Single term - prioritize role/title first
+            query = query.or(`title.ilike.%${activeSearch}%,job_role_name.ilike.%${activeSearch}%,company.ilike.%${activeSearch}%,location.ilike.%${activeSearch}%,description.ilike.%${activeSearch}%`);
           }
         }
       }
 
-      // Role Filter
+      // Role Filter - search in BOTH title and job_role_name to match search bar behavior
       if (filters.role.length > 0) {
-        const roleConditions = filters.role.map(r => `job_role_name.ilike.%${r}%`).join(',');
+        const roleConditions = filters.role.flatMap(r => [
+          `title.ilike.%${r}%`,
+          `job_role_name.ilike.%${r}%`
+        ]).join(',');
         if (roleConditions) query = query.or(roleConditions);
       }
 
@@ -331,8 +360,7 @@ const Homepage = () => {
       const useRelevanceSorting = activeSearch || filters.role.length > 0;
 
       if (useRelevanceSorting) {
-        // FETCH MORE for client-side sorting to work effectively
-        query = query.limit(200);
+        // Fetch ALL matching results for client-side sorting (no limit)
 
         const { data, error, count } = await query;
         if (error) throw error;
@@ -341,70 +369,154 @@ const Homepage = () => {
           const normalizedSearch = activeSearch ? activeSearch.trim().toLowerCase() : '';
           const roleFilters = filters.role.map(r => r.toLowerCase());
 
-          // Sort by Relevance
-          const sortedData = data.sort((a, b) => {
-            const getScore = (job) => {
-              let score = 0;
-              const title = (job.title || '').trim().toLowerCase();
-              const role = (job.job_role_name || '').trim().toLowerCase();
-              const location = (job.location || '').trim().toLowerCase();
-              const company = (job.company || '').trim().toLowerCase();
-              const description = (job.description || '').toLowerCase();
+          // Sort by Relevance and Filter
+          const sortedData = data
+            .map(job => {
+              const getScore = (item) => {
+                let score = 0;
+                const title = (item.title || '').trim().toLowerCase();
+                const role = (item.job_role_name || '').trim().toLowerCase();
+                const location = (item.location || '').trim().toLowerCase();
+                const company = (item.company || '').trim().toLowerCase();
+                const description = (item.description || '').toLowerCase();
 
-              // 1. Text Search Relevance
-              if (normalizedSearch) {
-                if (searchRolePart && searchLocPart) {
-                  // "Role in Location" Query
-                  if (title === searchRolePart) score += 1000;
-                  else if (title.includes(searchRolePart)) score += 500;
-                  if (role === searchRolePart) score += 300;
-                  else if (role.includes(searchRolePart)) score += 150;
-                  if (location.includes(searchLocPart)) score += 800;
-                  if (description.includes(searchRolePart)) score += 50;
-                } else if (searchKeywords.length > 0) {
-                  // Multi-keyword Search
-                  let matchCount = 0;
-                  searchKeywords.forEach(kw => {
-                    let kwMatch = false;
-                    if (title.includes(kw)) { score += 300; kwMatch = true; }
-                    if (role.includes(kw)) { score += 150; kwMatch = true; }
-                    if (location.includes(kw)) { score += 200; kwMatch = true; }
-                    if (company.includes(kw)) { score += 100; kwMatch = true; }
-                    if (description.includes(kw)) { score += 20; kwMatch = true; }
-                    if (kwMatch) matchCount++;
-                  });
-                  // Bonus for matching multiple keywords
-                  if (matchCount > 1) score += (matchCount * 500);
-                  // Huge bonus for exact full string match in title
-                  if (title.includes(normalizedSearch)) score += 1000;
-                } else {
-                  // Fallback
-                  if (title.includes(normalizedSearch)) score += 1000;
-                  if (role.includes(normalizedSearch)) score += 500;
-                  if (location.includes(normalizedSearch)) score += 300;
+                // 1. Text Search Relevance
+                if (normalizedSearch) {
+                  // Huge bonus for EXACT full string match in title or role
+                  if (title === normalizedSearch) score += 5000;
+                  else if (role === normalizedSearch) score += 3000;
+
+                  // Big bonus for full string INCLUSION in title or role
+                  if (title.includes(normalizedSearch)) score += 2000;
+                  else if (role.includes(normalizedSearch)) score += 1000;
+
+                  if (searchRolePart && searchLocPart) {
+                    // "Role in Location" Query
+                    if (title.includes(searchRolePart)) score += 1000;
+                    if (role.includes(searchRolePart)) score += 500;
+                    if (location.includes(searchLocPart)) score += 1000;
+                    if (description.includes(searchRolePart)) score += 50;
+                  } else if (searchKeywords.length > 0) {
+                    // Multi-keyword Search
+                    let matchCount = 0;
+                    let titleMatches = 0;
+                    let roleMatches = 0;
+
+                    searchKeywords.forEach(kw => {
+                      let kwMatch = false;
+                      if (title.includes(kw)) {
+                        score += 600;
+                        kwMatch = true;
+                        titleMatches++;
+                      }
+                      if (role.includes(kw)) {
+                        score += 400;
+                        kwMatch = true;
+                        roleMatches++;
+                      }
+                      if (company.includes(kw)) { score += 200; kwMatch = true; }
+                      if (location.includes(kw)) { score += 50; kwMatch = true; }
+                      if (description.includes(kw)) { score += 10; kwMatch = true; }
+
+                      if (kwMatch) matchCount++;
+                    });
+
+                    // Bonus for matching multiple keywords
+                    if (matchCount > 1) score += (matchCount * 400);
+                    // Critical bonus: if multiple keywords match specifically in title/role
+                    if (titleMatches + roleMatches > 1) score += 1000;
+                  }
                 }
+
+                // 2. Role Filter Relevance
+                if (roleFilters.length > 0) {
+                  roleFilters.forEach(rf => {
+                    if (title === rf) score += 4000;
+                    else if (title.includes(rf)) score += 2000;
+
+                    if (role === rf) score += 1500;
+                    else if (role.includes(rf)) score += 800;
+                  });
+                }
+
+                return score;
+              };
+
+              return { ...job, _score: getScore(job) };
+            })
+            .filter(item => {
+              if (normalizedSearch || roleFilters.length > 0) {
+                const title = (item.title || '').toLowerCase();
+                const role = (item.job_role_name || '').toLowerCase();
+                const company = (item.company || '').toLowerCase();
+                const location = (item.location || '').toLowerCase();
+
+
+                // 1. If ROLE filters are active, check BOTH title and role fields
+                if (roleFilters.length > 0) {
+                  const matchesRole = roleFilters.some(rf => {
+                    const rfKeywords = rf.toLowerCase().split(/\s+/).filter(k => k.length > 2);
+                    // Check full phrase in title or role
+                    const fullMatchTitle = title.includes(rf.toLowerCase());
+                    const fullMatchRole = role.includes(rf.toLowerCase());
+                    // Check if ALL keywords exist in title or role
+                    const allKeywordsInTitle = rfKeywords.length > 0 && rfKeywords.every(kw => title.includes(kw));
+                    const allKeywordsInRole = rfKeywords.length > 0 && rfKeywords.every(kw => role.includes(kw));
+
+                    return fullMatchTitle || fullMatchRole || allKeywordsInTitle || allKeywordsInRole;
+                  });
+                  if (!matchesRole) return false;
+                }
+
+
+                // 2. If SEARCH text is active, enforce strict matching
+                if (normalizedSearch) {
+                  // Special case: "Role in Location" format (e.g., "data engineer in troy")
+                  if (searchRolePart && searchLocPart) {
+                    // Role part must be in title or job_role_name
+                    const roleInTitle = title.includes(searchRolePart);
+                    const roleInJobRole = role.includes(searchRolePart);
+                    // Location part must be in location field
+                    const locationMatch = location.includes(searchLocPart);
+
+                    // Must match BOTH: role in title/role_name AND location in location
+                    if (!(roleInTitle || roleInJobRole) || !locationMatch) {
+                      return false;
+                    }
+                  }
+                  // For multi-word searches, keywords can be in title AND/OR role fields combined
+                  // else if (searchKeywords.length > 1) {
+                  //   // Check if full phrase exists in title or role (best match)
+                  //   const hasExactPhraseInTitle = title.includes(normalizedSearch);
+                  //   const hasExactPhraseInRole = role.includes(normalizedSearch);
+                  //   // Check if ALL keywords are present in title OR all in role
+                  //   const hasAllKeywordsInTitle = searchKeywords.every(kw => title.includes(kw));
+                  //   const hasAllKeywordsInRole = searchKeywords.every(kw => role.includes(kw));
+                  //   // NEW: Check if ALL keywords exist when combining title + role fields
+                  //   const hasAllKeywordsCombined = searchKeywords.every(kw =>
+                  //     title.includes(kw) || role.includes(kw)
+                  //   );
+                  //   // Allow company exact match as alternative
+                  //   const isCompanyMatch = company.includes(normalizedSearch);
+
+                  //   if (!hasExactPhraseInTitle && !hasExactPhraseInRole &&
+                  //     !hasAllKeywordsInTitle && !hasAllKeywordsInRole &&
+                  //     !hasAllKeywordsCombined && !isCompanyMatch) {
+                  //     return false;
+                  //   }
+                  // }
+                  // Note: SQL query already filtered correctly, no additional filtering needed
+                }
+
+                return item._score > 0;
               }
-
-              // 2. Role Filter Relevance
-              if (roleFilters.length > 0) {
-                // PRIORITIZE TITLE MATCHING THE FILTER
-                if (roleFilters.includes(title)) score += 300;
-                else if (roleFilters.some(r => title.startsWith(r))) score += 150;
-
-                // THEN CHECK ROLE MATCHING THE FILTER
-                if (roleFilters.includes(role)) score += 100;
-                else if (roleFilters.some(r => role.startsWith(r))) score += 50;
-              }
-
-              return score;
-            };
-
-            return getScore(b) - getScore(a); // Descending score
-          });
+              return true;
+            })
+            .sort((a, b) => b._score - a._score);
 
           // Handle client-side pagination
-          const total = sortedData.length;
-          setTotalJobs(total);
+          const totalSorted = sortedData.length;
+          setTotalJobs(totalSorted);
 
           const from = (activePage - 1) * JOBS_PER_PAGE;
           const to = from + JOBS_PER_PAGE;
@@ -413,7 +525,7 @@ const Homepage = () => {
           setJobs(paginatedData);
 
           sessionStorage.setItem('homepageJobs', JSON.stringify(paginatedData));
-          sessionStorage.setItem('homepageTotalJobs', total.toString());
+          sessionStorage.setItem('homepageTotalJobs', totalSorted.toString());
         }
 
       } else {
@@ -498,20 +610,16 @@ const Homepage = () => {
 
     setCurrentPage(1); // Reset to page 1 on search
     if (user && !subscriptionExpired) {
-      // Pass the current search input explicitly to avoid stale state issues, though normally handleSearchClick 
-      // is called well after input change.
       fetchJobs(1, searchInput);
       fetchSavedJobIds(); // Refresh saved status on search
-
-      // Scroll to search area on mobile/desktop
-      searchSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setShouldScrollToSearch(true); // Trigger scroll after jobs load
     }
   };
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
       setCurrentPage(newPage);
-      searchSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setShouldScrollToSearch(true); // Trigger scroll after new jobs load
     }
   };
 
@@ -531,7 +639,7 @@ const Homepage = () => {
         <main className="flex-1 w-full">
           <section className="bg-white">
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <div ref={searchSectionRef} className="text-center mb-6">
+              <div id="search-anchor" className="text-center mb-6">
                 <h3 className="text-3xl font-semibold text-gray-900">Search for your perfect role.</h3>
                 <p className="text-gray-500 mt-2">Data verified by the U.S. Government.</p>
               </div>
