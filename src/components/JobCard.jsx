@@ -230,12 +230,6 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                                 {job.years_exp_required}
                             </span>
                         )}
-                        {job.country && (
-                            <span className="flex items-center gap-1">
-                                <Globe className="w-4 h-4" />
-                                {job.country}
-                            </span>
-                        )}
                         <span className="flex items-center gap-1">
                             <Clock className="w-4 h-4" />
                             {formatDate(job.upload_date || job.date_posted)}
