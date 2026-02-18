@@ -685,7 +685,7 @@ const Login = () => {
                                 <span>Logging in...</span>
                             </>
                         ) : (
-                            <span>Continue to Dashboard</span>
+                            <span>Login</span>
                         )}
                     </button>
                 </form>

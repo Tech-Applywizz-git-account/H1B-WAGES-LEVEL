@@ -206,98 +206,104 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
     };
 
     return (
-        <div className="bg-white rounded-lg border border-gray-200 hover:border-yellow-400 hover:shadow-lg transition-all duration-300 p-6 group">
-            <div className="flex flex-col sm:flex-row gap-5">
+        <div className="bg-white rounded-2xl border-2 border-blue-100/80 hover:border-blue-500 hover:shadow-[0_25px_50px_-12px_rgba(59,130,246,0.15)] hover:-translate-y-2 hover:bg-blue-50/5 transition-all duration-500 p-6 group mb-6 relative hover:z-10 cursor-pointer">
+            <div className="flex flex-col lg:flex-row gap-6">
 
-                {/* LEFT CONTENT */}
+                {/* LEFT: LOGO & VERIFIED BADGE */}
+                <div className="flex flex-col items-center gap-3 shrink-0">
+                    <div className="w-24 h-24 bg-white border border-gray-100 rounded-xl flex items-center justify-center text-2xl font-bold text-gray-400 shadow-sm group-hover:scale-105 group-hover:border-blue-300 transition-all duration-500">
+                        {job.company ? job.company.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : 'RA'}
+                    </div>
+                    <div className="bg-[#059669] text-white text-[11px] font-bold px-3 py-1.5 rounded-md flex items-center gap-1.5 shadow-sm">
+                        <CheckCircle size={14} className="fill-white text-[#059669]" />
+                        Human Verified
+                    </div>
+                </div>
+
+                {/* CENTER: JOB INFO */}
                 <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-bold text-gray-900 group-hover:text-yellow-600 mb-1">
-                        {job.title}
+                    <h3 className="text-2xl font-extrabold text-[#111827] mb-4 group-hover:text-blue-700 transition-colors duration-300">
+                        {job.company || 'Retell AI'}
                     </h3>
-                    <div className="flex items-center gap-2 text-gray-600 mb-3">
-                        <Building2 className="w-4 h-4 text-gray-400" />
-                        {job.company}
+
+                    <div className="space-y-2 mb-6">
+                        <div className="flex gap-4 text-sm">
+                            <span className="w-24 font-bold text-gray-700">Job Role</span>
+                            <span className="text-gray-500">:</span>
+                            <span className="text-gray-600 font-medium truncate">{job.title || 'Senior Software Engineer, Infrastructure'}</span>
+                        </div>
+                        <div className="flex gap-4 text-sm">
+                            <span className="w-24 font-bold text-gray-700">Job Type</span>
+                            <span className="text-gray-500">:</span>
+                            <span className="text-gray-600 font-medium">{job.job_role_name || job.type || '.Net'}</span>
+                        </div>
+                        <div className="flex gap-4 text-sm">
+                            <span className="w-24 font-bold text-gray-700">Date Posted</span>
+                            <span className="text-gray-500">:</span>
+                            <span className="text-gray-600 font-medium">{formatDate(job.upload_date || job.date_posted)}</span>
+                        </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600 mb-4">
-                        <span className="flex items-center gap-1">
+                    <div className="flex flex-wrap gap-6 text-sm text-gray-400">
+                        <span className="flex items-center gap-2">
                             <MapPin className="w-4 h-4" />
                             {job.location || 'Remote'}
                         </span>
-                        {job.years_exp_required && (
-                            <span className="flex items-center gap-1">
-                                <Briefcase className="w-4 h-4" />
-                                {job.years_exp_required}
-                            </span>
-                        )}
-                        <span className="flex items-center gap-1">
+                        <span className="flex items-center gap-2">
                             <Clock className="w-4 h-4" />
-                            {formatDate(job.upload_date || job.date_posted)}
+                            {job.years_exp_required || '5-6 Years'}
                         </span>
                     </div>
                 </div>
 
-                {/* RIGHT ACTIONS */}
-                <div className="flex sm:flex-col gap-3 sm:min-w-[150px]">
+                {/* RIGHT: WAGE LEVEL & APPLY */}
+                <div className="flex flex-col gap-4 sm:w-48 shrink-0">
+                    {/* WAGE LEVEL BOX */}
+                    <div className="bg-[#1e3a8a] rounded-2xl p-4 text-center text-white flex flex-col items-center justify-center shadow-md">
+                        <div className="flex gap-1 mb-2">
+                            {[1, 2, 3, 4].map((star) => (
+                                <span key={star} className={star <= 3 ? "text-yellow-400" : "text-gray-400"}>
+                                    ★
+                                </span>
+                            ))}
+                        </div>
+                        <div className="text-4xl font-black mb-1">Lv 3</div>
+                        <div className="text-[10px] uppercase font-bold tracking-widest opacity-80">Wage Level</div>
+                    </div>
 
                     {/* APPLY NOW */}
                     {!user || subscriptionExpired ? (
                         <button
                             disabled
-                            className="w-full bg-gray-100 text-gray-400 px-4 py-2.5 rounded-lg cursor-not-allowed flex justify-center gap-2"
+                            className="w-full bg-gray-100 text-gray-400 px-6 py-3 rounded-xl cursor-not-allowed flex items-center justify-center gap-2 font-bold text-sm"
                         >
-                            {subscriptionExpired ? 'Renew to Apply' : 'Login to Apply'}
-                            <ExternalLink className="w-4 h-4 opacity-50" />
+                            {subscriptionExpired ? 'Renew' : 'Apply'}
+                            <ExternalLink size={16} />
                         </button>
                     ) : (
                         <a
                             href={job.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="w-full bg-yellow-400 hover:bg-yellow-500 px-4 py-2.5 rounded-lg text-center font-semibold flex justify-center gap-2"
+                            className="w-full bg-[#2563eb] hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-center font-bold flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-200 transition-all text-sm"
                         >
                             Apply Now
-                            <ExternalLink className="w-4 h-4" />
+                            <ExternalLink size={16} />
                         </a>
                     )}
-
-                    {/* MARK APPLIED */}
-                    <button
-                        onClick={handleApplyToggle}
-                        disabled={applying}
-                        className={`w-full px-4 py-2.5 rounded-lg border flex justify-center gap-2 ${applied ? 'bg-blue-50 text-blue-700' : 'bg-white text-gray-600'
-                            }`}
-                    >
-                        {applied ? <CheckCircle className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
-                        {applied ? 'Applied' : 'Mark Applied'}
-                    </button>
-
-                    {/* SAVE */}
-                    <button
-                        onClick={handleSaveToggle}
-                        disabled={saving}
-                        className={`w-full px-4 py-2.5 rounded-lg border flex justify-center gap-2 ${saved ? 'bg-green-50 text-green-700' : 'bg-white text-gray-600'
-                            }`}
-                    >
-                        {saved ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
-                        {saved ? 'Saved' : 'Save'}
-                    </button>
-
                 </div>
             </div>
 
             {/* RESUME HELP BUTTON - Bottom Center of Card */}
-            <div className="flex justify-center mt-4 pt-4 border-t border-gray-100">
+            <div className="flex justify-center mt-6 pt-6 border-t border-gray-100">
                 <button
                     onClick={handleResumeHelpClick}
-                    className="relative overflow-hidden bg-[#7C3AED] text-white text-sm px-6 py-3 rounded-full font-medium shadow-[0_8px_20px_-12px_rgba(124,58,237,0.6)] hover:bg-[#6D28D9] transition-all duration-200 group flex items-center gap-2"
+                    className="relative overflow-hidden bg-[#7C3AED] text-white text-sm px-8 py-3.5 rounded-full font-bold shadow-[0_10px_25px_-10px_rgba(124,58,237,0.5)] hover:bg-[#6D28D9] transition-all duration-300 group flex items-center gap-2"
                 >
-                    {/* Shimmer effect layer */}
                     <span className="absolute inset-0 overflow-hidden">
                         <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shine"></span>
                     </span>
 
-                    {/* Content layer */}
                     <span className="relative flex items-center gap-2">
                         <FileText className="w-4 h-4" />
                         Get Help with Resume
@@ -306,49 +312,42 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                 </button>
             </div>
 
-            {/* RESUME HELP MODAL */}
+            {/* RESUME HELP MODAL (Remains as is) */}
             {showResumeModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 relative animate-fadeIn">
-                        {/* Close button */}
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[999] p-4">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 relative animate-fadeIn">
                         <button
                             onClick={() => setShowResumeModal(false)}
-                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                            className="absolute top-6 right-6 text-gray-400 hover:text-gray-900 transition-colors"
                         >
                             <X className="w-6 h-6" />
                         </button>
 
-                        {/* Modal Header */}
-                        <div className="mb-6">
-                            <h3 className="text-2xl font-bold text-gray-900 mb-2">Get Help with Your Resume</h3>
-                            <p className="text-gray-600 text-sm">Fill in your details and we'll help you create the perfect resume</p>
+                        <div className="mb-8">
+                            <h3 className="text-2xl font-black text-gray-900 mb-2">Get Help with Your Resume</h3>
+                            <p className="text-gray-500 text-sm">Fill in your details and we'll help you create the perfect resume</p>
                         </div>
 
-                        {/* Form */}
-                        <form onSubmit={handleResumeFormSubmit} className="space-y-4">
+                        <form onSubmit={handleResumeFormSubmit} className="space-y-5">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        First Name <span className="text-red-500">*</span>
-                                    </label>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">First Name</label>
                                     <input
                                         type="text"
                                         value={resumeFormData.firstName}
                                         onChange={(e) => handleResumeFormChange('firstName', e.target.value)}
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all text-sm"
                                         placeholder="John"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        Last Name <span className="text-red-500">*</span>
-                                    </label>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Last Name</label>
                                     <input
                                         type="text"
                                         value={resumeFormData.lastName}
                                         onChange={(e) => handleResumeFormChange('lastName', e.target.value)}
-                                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all text-sm"
                                         placeholder="Doe"
                                         required
                                     />
@@ -356,74 +355,59 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Email Address <span className="text-red-500">*</span>
-                                </label>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Email Address</label>
                                 <input
                                     type="email"
                                     value={resumeFormData.email}
                                     onChange={(e) => handleResumeFormChange('email', e.target.value)}
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all text-sm"
                                     placeholder="john.doe@example.com"
                                     required
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Mobile Number <span className="text-red-500">*</span>
-                                </label>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Mobile Number</label>
                                 <PhoneInput
                                     defaultCountry="us"
                                     value={resumeFormData.phone}
                                     onChange={(phone) => handleResumeFormChange('phone', phone)}
-                                    style={{
-                                        width: '100%'
-                                    }}
                                     inputStyle={{
                                         width: '100%',
-                                        height: '42px',
+                                        height: '46px',
                                         fontSize: '14px',
-                                        border: '1px solid #d1d5db',
-                                        borderRadius: '0.5rem',
+                                        border: 'none',
+                                        backgroundColor: '#F9FAFB',
+                                        borderRadius: '0.75rem',
                                         paddingLeft: '52px'
                                     }}
-                                    countrySelectorStyleProps={{
-                                        buttonStyle: {
-                                            border: '1px solid #d1d5db',
-                                            borderRadius: '0.5rem 0 0 0.5rem',
-                                            padding: '0 8px',
-                                            height: '42px'
-                                        }
-                                    }}
+                                    className="phone-input-custom"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    Country <span className="text-red-500">*</span>
-                                </label>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Country</label>
                                 <input
                                     type="text"
                                     value={resumeFormData.country}
                                     onChange={(e) => handleResumeFormChange('country', e.target.value)}
-                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all text-sm"
                                     placeholder="United States"
                                     required
                                 />
                             </div>
 
-                            <div className="flex gap-3 pt-4">
+                            <div className="flex gap-4 pt-4">
                                 <button
                                     type="button"
                                     onClick={() => setShowResumeModal(false)}
-                                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                                    className="flex-1 py-4 text-gray-500 font-bold hover:text-gray-900 transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-4 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors"
+                                    className="flex-1 py-4 bg-purple-600 text-white rounded-xl font-bold shadow-lg shadow-purple-200 hover:bg-purple-700 transition-all"
                                 >
                                     Submit
                                 </button>

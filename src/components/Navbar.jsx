@@ -68,11 +68,13 @@ const Navbar = () => {
                     {/* CENTER Nav */}
                     <div className="flex items-center gap-1">
                         <Link
-                            to="/post-a-job"
+                            to="/signup"
                             className="text-gray-600 text-sm font-medium hover:text-gray-900 transition-colors px-3 py-2 rounded-md hover:bg-gray-50"
                         >
                             Post a job
                         </Link>
+
+
 
                         {/* Resources Dropdown */}
                         <div className="relative" ref={resourcesRef}>
@@ -198,7 +200,14 @@ const Navbar = () => {
             {/* -------- Mobile Dropdown -------- */}
             {isMenuOpen && (
                 <div className="md:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-1">
-                    <a href="#" className="block text-sm text-gray-700 font-medium hover:text-gray-900 py-2.5 border-b border-gray-50">Post a job</a>
+                    <Link
+                        to="/signup"
+                        className="block px-3 py-2 rounded-lg text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
+                        onClick={() => setIsMenuOpen(false)}
+                    >
+                        Post a job
+                    </Link>
+
                     <a href="#" className="block text-sm text-gray-700 font-medium hover:text-gray-900 py-2.5 border-b border-gray-50">Resources</a>
                     <Link
                         to="/pricing"

@@ -25,8 +25,8 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/search" element={<JobSearch />} />
-          <Route path="/jobs" element={<JobSearch />} />
+          <Route path="/search" element={<Homepage />} />
+          <Route path="/jobs" element={<Homepage />} />
           <Route path="/dashboard" element={<Dashboard />} />
         </Routes>
       </AuthProvider>

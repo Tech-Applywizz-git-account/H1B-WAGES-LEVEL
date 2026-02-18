@@ -188,11 +188,11 @@ const SearchFilters = ({ onFilterChange }) => {
     );
 
     return (
-        <div className="bg-white border-b border-gray-200">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="bg-white border-b border-gray-100 mb-6 font-display">
+            <div className="w-full py-2">
 
                 {/* Tabs */}
-                <div className="flex justify-center items-center space-x-1 border-b border-gray-200">
+                <div className="flex justify-start items-center space-x-2 max-w-[1400px] mx-auto px-4">
                     {tabs.map(tab => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
@@ -200,9 +200,9 @@ const SearchFilters = ({ onFilterChange }) => {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`inline-flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm transition-colors ${isActive
-                                    ? 'text-purple-600 border-purple-600'
-                                    : 'text-gray-500 hover:text-gray-700 border-transparent hover:border-gray-300'
+                                className={`inline-flex items-center gap-2.5 px-6 py-4 border-b-[3px] font-bold text-sm transition-all ${isActive
+                                    ? 'text-indigo-600 border-indigo-600'
+                                    : 'text-gray-400 hover:text-gray-600 border-transparent hover:border-gray-200'
                                     }`}
                             >
                                 <Icon size={18} />
@@ -226,7 +226,7 @@ const SearchFilters = ({ onFilterChange }) => {
                 {showFilters && (
                     <div className="py-4">
                         {/* 1️⃣ TOP OPTIONS (Pills) */}
-                        <div className="flex flex-wrap gap-2 justify-center mb-4">
+                        <div className="flex flex-wrap gap-2 justify-start max-w-[1400px] mx-auto px-4 mb-4">
                             {(activeTab === 'location' ? filterOptions.location.slice(0, 5)
                                 : activeTab === 'role' ? filterOptions.role
                                     : activeTab === 'company' ? filterOptions.company.slice(0, 8)
@@ -247,7 +247,7 @@ const SearchFilters = ({ onFilterChange }) => {
                         </div>
 
                         {/* 2️⃣ SEARCH INPUT (Separate Line, Last) */}
-                        <div className="flex justify-center w-full relative z-10">
+                        <div className="flex justify-start max-w-[1400px] mx-auto px-4 w-full relative z-10">
                             {/* Suggestion Dropdown Helper */}
                             {suggestions.length > 0 && (
                                 <div className="absolute bottom-full mb-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-20">

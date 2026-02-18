@@ -1,4 +1,4 @@
-﻿// import React, { useState } from 'react';
+// import React, { useState } from 'react';
 // import { useNavigate, useLocation } from 'react-router-dom';
 // import {
 //     Briefcase,
@@ -128,22 +128,19 @@ const Sidebar = ({ className = "", showHeader = true }) => {
 
     // Determine active tab based on path and state
     const getActiveTab = () => {
-        if (location.pathname === '/') return 'alljobs';
+        const path = location.pathname;
+        if (path === '/' || path === '/jobs' || path === '/search') return 'alljobs';
         if (location.state?.initialTab) return location.state.initialTab;
         return 'overview';
     };
 
-    const [activeTab, setActiveTab] = useState(() => {
-        if (!mounted) return 'overview';
-        return getActiveTab();
-    });
+    // Determine active tab based on path and state
+    const [activeTab, setActiveTab] = useState(() => getActiveTab());
 
     // Update active tab when location changes
     useEffect(() => {
-        if (mounted) {
-            setActiveTab(getActiveTab());
-        }
-    }, [location, mounted]);
+        setActiveTab(getActiveTab());
+    }, [location]);
 
     // Get admin status from multiple reliable sources
     const getAdminStatus = () => {
@@ -180,7 +177,7 @@ const Sidebar = ({ className = "", showHeader = true }) => {
     const handleTabClick = (tabId) => {
         setActiveTab(tabId);
         if (tabId === 'alljobs') {
-            navigate('/');
+            navigate('/jobs');
         } else {
             navigate('/dashboard', {
                 state: {

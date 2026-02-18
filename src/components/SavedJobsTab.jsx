@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import JobCard from './JobCard';
 import useAuth from '../hooks/useAuth';
@@ -6,6 +7,7 @@ import { Heart, Loader2, AlertCircle, Trash2 } from 'lucide-react';
 
 const SavedJobsTab = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [savedJobs, setSavedJobs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -137,17 +139,12 @@ const SavedJobsTab = () => {
                     <p className="text-gray-500 mb-4">
                         Start browsing jobs and click the heart icon to save them for later!
                     </p>
-                    <a
-                        href="#"
-                        onClick={(e) => {
-                            e.preventDefault();
-                            // This would ideally switch to the All Jobs tab
-                            // You can implement this through parent component state
-                        }}
+                    <button
+                        onClick={() => navigate('/jobs')}
                         className="inline-block px-6 py-3 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 font-semibold rounded-lg hover:from-yellow-500 hover:to-yellow-600 transition-all duration-200 shadow-sm hover:shadow-md"
                     >
                         Browse Jobs
-                    </a>
+                    </button>
                 </div>
             </div>
         );
