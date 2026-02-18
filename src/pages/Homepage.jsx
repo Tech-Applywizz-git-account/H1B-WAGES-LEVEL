@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Navbar from '../components/Navbar';
 import HeroSection from '../components/HeroSection';
-import FeaturesSection from '../components/FeaturesSection';
-import HowItWorks from '../components/HowItWorks';
 import Testimonials from '../components/Testimonials';
 import FAQ from '../components/FAQ';
 import Footer from '../components/Footer';
 import SearchFilters from '../components/SearchFilters';
 import JobCard from '../components/JobCard';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import useAuth from '../hooks/useAuth';
 import { Loader2, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
@@ -624,24 +622,24 @@ const Homepage = () => {
   };
 
   return (
-    <div>
+    <div className="bg-white">
       <Navbar />
       {!user && <HeroSection />}
 
-      <div className="flex bg-gray-50">
+      <div className="flex bg-white">
         {/* Sidebar for logged-in users, below Hero, beside Search */}
         {user && (
-          <div className="hidden md:block w-64 flex-shrink-0 border-r border-gray-200 bg-white">
+          <div className="hidden md:block w-64 flex-shrink-0 border-r border-gray-100 bg-white">
             <Sidebar className="h-[calc(100vh-80px)] sticky top-0" showHeader={false} />
           </div>
         )}
 
         <main className="flex-1 w-full">
           <section className="bg-white">
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-              <div id="search-anchor" className="text-center mb-6">
-                <h3 className="text-3xl font-semibold text-gray-900">Search for your perfect role.</h3>
-                <p className="text-gray-500 mt-2">Data verified by the U.S. Government.</p>
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+              <div id="search-anchor" className="text-center mb-8">
+                <h3 className="text-3xl font-bold text-gray-900">Search for your perfect role.</h3>
+                <p className="text-gray-500 mt-2 text-sm">Data verified by the U.S. Government.</p>
               </div>
 
               <SearchFilters onFilterChange={(newFilters) => {
@@ -672,7 +670,7 @@ const Homepage = () => {
                   />
                   <button
                     onClick={handleSearchClick}
-                    className="px-6 py-3 bg-primary-yellow text-primary-dark font-semibold hover:bg-yellow-500 transition"
+                    className="px-6 py-3 bg-gray-900 text-white font-semibold hover:bg-gray-700 transition rounded-r-full"
                   >
                     Search
                   </button>
@@ -917,31 +915,8 @@ const Homepage = () => {
         </main>
       </div>
 
-      <FeaturesSection />
-      <HowItWorks />
       <Testimonials />
       <FAQ />
-
-      {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600 text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">
-            Ready to Find Your Dream Job?
-          </h2>
-          <p className="text-xl mb-8 text-gray-100">
-            Join thousands of Telugu professionals who've found their perfect role
-          </p>
-          <Link
-            to="/signup"
-            className="inline-block bg-primary-yellow text-primary-dark font-bold px-10 py-4 rounded-lg text-lg hover:bg-yellow-500 transition shadow-lg"
-          >
-            Get Access
-          </Link>
-          <p className="mt-4 text-sm text-gray-200">
-            Instant access • Cancel anytime
-          </p>
-        </div>
-      </section>
 
       <Footer />
     </div>

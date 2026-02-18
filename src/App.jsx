@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import LandingPage from './pages/LandingPage';
 import Homepage from './pages/Homepage';
 import Pricing from './pages/Pricing';
 import Login from './pages/Login';
@@ -14,22 +15,23 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="min-h-screen bg-gray-50">
-          <Routes>
-            <Route path="/" element={<Homepage />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/search" element={<JobSearch />} />
-            <Route path="/jobs" element={<JobSearch />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-          </Routes>
-        </div>
+        <Routes>
+          {/* Landing page — public marketing page */}
+          <Route path="/" element={<LandingPage />} />
+
+          {/* App pages */}
+          <Route path="/app" element={<Homepage />} />
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/search" element={<JobSearch />} />
+          <Route path="/jobs" element={<JobSearch />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Routes>
       </AuthProvider>
     </Router>
   );
 }
 
 export default App;
-

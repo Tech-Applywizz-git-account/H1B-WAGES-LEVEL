@@ -1,73 +1,83 @@
-import React from 'react';
-import { Star, Quote } from 'lucide-react';
+﻿import React from 'react';
+import { Star } from 'lucide-react';
 
 const testimonials = [
     {
-        name: 'Priya Sharma',
-        role: 'Software Engineer',
-        company: 'Google',
-        content: 'Telugu Wala Links helped me find my dream job at Google! The verified contact information was a game-changer.',
+        content: "Definitely worth subscribing. I was a bit hesitant at first to subscribe but realised that I really had no other options out there to find currently open jobs that sponsor visas so I thought I'd give H1B Wage Level a try. I'm so happy I did because I've heard back from multiple job openings. This is by far the best job platform I've used.",
         rating: 5,
+        initials: 'A',
+        color: 'from-orange-400 to-red-500',
     },
     {
-        name: 'Rajesh Kumar',
-        role: 'Data Scientist',
-        company: 'Microsoft',
-        content: 'I landed my H-1B sponsored role within 2 months. The platform made everything so easy!',
+        content: "Perfect for international students. I'm an international student and have been looking for graduate jobs for a while at companies that'll sponsor me on an H-1B after my OPT ends. It's been really difficult to find this information so when I saw an ad on Instagram for H1B Wage Level I thought this could be perfect for me and it really was.",
         rating: 5,
+        initials: 'B',
+        color: 'from-blue-400 to-indigo-500',
     },
     {
-        name: 'Anitha Reddy',
-        role: 'Product Manager',
-        company: 'Amazon',
-        content: 'The best investment I made in my career. Access to 500K+ jobs with salary info is invaluable.',
+        content: "Have had a brilliant experience with H1B Wage Level, the team are very easy to get in touch with if need be, the website is very easy to direct and navigate through every step of the way. Not to mention it is very cheap to use their services. Things have genuinely changed and I am in a much better space to get sponsored.",
         rating: 5,
+        initials: 'C',
+        color: 'from-green-400 to-teal-500',
+    },
+    {
+        content: "This service is changing my life. It's sooo easy to find top jobs in the US & for a very decent price. Can't recommend enough!",
+        rating: 5,
+        initials: 'D',
+        color: 'from-purple-400 to-pink-500',
+    },
+    {
+        content: "The platform was incredibly affordable and made finding a high quality job in the US incredibly seamless. Affordable and stress free.",
+        rating: 5,
+        initials: 'E',
+        color: 'from-yellow-400 to-orange-500',
+    },
+    {
+        content: "As an Aussie Digital Nomad currently based in Bali I'm interested in working in the US. I find the service well thought out and affordable. A lot of thought has been put in to ensure the user feels comfortable and at ease. Deciding on a seachange is a daunting task and I'm glad this service exists.",
+        rating: 5,
+        initials: 'F',
+        color: 'from-cyan-400 to-blue-500',
     },
 ];
 
 const Testimonials = () => {
     return (
-        <section className="py-20 bg-white">
+        <section className="py-20 bg-gray-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Section Header */}
-                <div className="text-center mb-16">
-                    <h2 className="text-3xl md:text-4xl font-bold text-primary-dark mb-4">
-                        Success Stories
+                <div className="text-center mb-14">
+                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+                        Reviews
                     </h2>
-                    <p className="text-xl text-gray-600">
-                        Hear from Telugu professionals who landed their dream jobs
-                    </p>
+                    <div className="flex items-center justify-center gap-1 mb-2">
+                        {[...Array(5)].map((_, i) => (
+                            <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
+                        ))}
+                    </div>
                 </div>
 
                 {/* Testimonials Grid */}
-                <div className="grid md:grid-cols-3 gap-8">
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {testimonials.map((testimonial, index) => (
-                        <div key={index} className="card hover:shadow-lg transition-shadow duration-200">
-                            <div className="mb-4">
-                                <Quote className="w-10 h-10 text-primary-yellow opacity-50" />
-                            </div>
-
-                            {/* Rating */}
+                        <div key={index} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                            {/* Stars */}
                             <div className="flex mb-4">
                                 {[...Array(testimonial.rating)].map((_, i) => (
-                                    <Star key={i} className="w-5 h-5 text-primary-yellow fill-current" />
+                                    <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
                                 ))}
                             </div>
 
                             {/* Content */}
-                            <p className="text-gray-700 mb-6 italic">"{testimonial.content}"</p>
+                            <p className="text-gray-700 text-sm leading-relaxed mb-5">
+                                "{testimonial.content}"
+                            </p>
 
                             {/* Author */}
-                            <div className="flex items-center">
-                                <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
-                                    {testimonial.name.split(' ').map(n => n[0]).join('')}
+                            <div className="flex items-center gap-3">
+                                <div className={`w-9 h-9 bg-gradient-to-br ${testimonial.color} rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}>
+                                    {testimonial.initials}
                                 </div>
-                                <div className="ml-4">
-                                    <div className="font-semibold text-primary-dark">{testimonial.name}</div>
-                                    <div className="text-sm text-gray-600">
-                                        {testimonial.role} at {testimonial.company}
-                                    </div>
-                                </div>
+                                <div className="text-xs text-gray-400 font-medium">Verified User</div>
                             </div>
                         </div>
                     ))}
