@@ -710,9 +710,9 @@ function Footer() {
 function JobsSection({ onGetAccess }) {
     const { user } = useAuth();
     const jobs = [
-        { title: 'Data Engineer', company: 'hackajob', location: 'Philadelphia, PA', visas: ['Green Card', 'TN', 'OPT'], salary: '$140k - $190k', color: 'bg-blue-600' },
-        { title: 'Fullstack Engineer', company: 'Torch Dental', location: 'New York, NY', visas: ['H-1B', 'OPT'], salary: '$160k - $210k', color: 'bg-red-600' },
-        { title: 'Cloud Architect', company: 'Verisk', location: 'Jersey City, NJ', visas: ['H-1B', 'E-3'], salary: '$180k - $240k', color: 'bg-black' },
+        { title: 'Data Engineer', company: 'hackajob', location: 'Philadelphia, PA', visas: ['Green Card', 'TN', 'OPT'], salary: '$140k - $190k', color: 'bg-blue-600', wageLevel: 'Lv 3', stars: 3 },
+        { title: 'Fullstack Engineer', company: 'Torch Dental', location: 'New York, NY', visas: ['H-1B', 'OPT'], salary: '$160k - $210k', color: 'bg-red-600', wageLevel: 'Lv 2', stars: 2 },
+        { title: 'Cloud Architect', company: 'Verisk', location: 'Jersey City, NJ', visas: ['H-1B', 'E-3'], salary: '$180k - $240k', color: 'bg-black', wageLevel: 'Lv 4', stars: 4 },
     ];
 
     return (
@@ -732,10 +732,16 @@ function JobsSection({ onGetAccess }) {
                         <div
                             key={i}
                             onClick={onGetAccess}
-                            className="group bg-white border-2 border-transparent hover:border-indigo-600 rounded-[40px] p-10 shadow-xl shadow-gray-200/50 transition-all hover:-translate-y-2 cursor-pointer flex flex-col h-full"
+                            className="group bg-white border-2 border-transparent hover:border-indigo-600 rounded-[40px] p-10 shadow-xl shadow-gray-200/50 transition-all hover:-translate-y-2 cursor-pointer flex flex-col h-full relative overflow-hidden"
                         >
+                            {/* Verified Badge */}
+                            <div className="absolute top-6 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-[#059669] text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                                <Check size={12} strokeWidth={4} />
+                                HUMAN VERIFIED
+                            </div>
+
                             <div className="flex items-start justify-between mb-8">
-                                <div className={`w-16 h-16 ${job.color} rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg`}>
+                                <div className={`w-16 h-16 ${job.color} rounded-2xl flex items-center justify-center text-white font-black text-2xl shadow-lg ring-4 ring-white`}>
                                     {job.company[0].toUpperCase()}
                                 </div>
                                 <div className="px-5 py-2 bg-indigo-50 rounded-full text-indigo-600 font-black text-xs uppercase tracking-widest">
@@ -743,21 +749,38 @@ function JobsSection({ onGetAccess }) {
                                 </div>
                             </div>
 
-                            <h3 className="text-2xl font-black text-gray-900 mb-2 font-display">{job.title}</h3>
-                            <p className="text-gray-500 font-bold mb-8">{job.company} · {job.location}</p>
+                            <div className="flex-1">
+                                <h3 className="text-2xl font-black text-gray-900 mb-2 font-display">{job.title}</h3>
+                                <p className="text-gray-500 font-bold mb-8">{job.company} · {job.location}</p>
 
-                            <div className="flex flex-wrap gap-2 mb-8">
-                                {job.visas.map(v => (
-                                    <span key={v} className="px-4 py-1.5 bg-gray-50 text-gray-900 rounded-lg text-[10px] font-black uppercase tracking-tight group-hover:bg-indigo-600 group-hover:text-white transition-colors border border-gray-100">
-                                        {v}
-                                    </span>
-                                ))}
+                                <div className="flex flex-wrap gap-2 mb-8">
+                                    {job.visas.map(v => (
+                                        <span key={v} className="px-4 py-1.5 bg-gray-50 text-gray-900 rounded-lg text-[10px] font-black uppercase tracking-tight group-hover:bg-indigo-600 group-hover:text-white transition-colors border border-gray-100">
+                                            {v}
+                                        </span>
+                                    ))}
+                                </div>
                             </div>
 
-                            <div className="mt-auto pt-8 border-t border-gray-100 flex items-center justify-between">
-                                <span className="text-gray-900 font-black text-lg">{job.salary}</span>
-                                <div className="p-3 bg-gray-100 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                                    <ArrowRight size={20} className="stroke-[3]" />
+                            {/* Wage Level & Salary Strip */}
+                            <div className="flex items-center gap-4 mt-auto">
+                                <div className="bg-[#1e3a8a] rounded-2xl p-4 text-center text-white flex flex-col items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                                    <div className="flex gap-0.5 mb-1">
+                                        {[1, 2, 3, 4].map((star) => (
+                                            <span key={star} className={`text-[10px] ${star <= job.stars ? "text-yellow-400" : "text-white/20"}`}>
+                                                ★
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <div className="text-3xl font-black">{job.wageLevel}</div>
+                                    <div className="text-[8px] uppercase font-bold tracking-widest opacity-60">Wage Level</div>
+                                </div>
+
+                                <div className="flex-1 pt-4 pb-4 border-t border-gray-100 flex items-center justify-between">
+                                    <span className="text-gray-900 font-black text-lg">{job.salary}</span>
+                                    <div className="p-3 bg-gray-100 rounded-xl group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                        <ArrowRight size={20} className="stroke-[3]" />
+                                    </div>
                                 </div>
                             </div>
                         </div>
