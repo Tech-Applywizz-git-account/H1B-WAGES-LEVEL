@@ -1,6 +1,6 @@
-# Telugu Wala Links - Frontend Application
+﻿# H1B Wage Level - Frontend Application
 
-A complete React.js job portal application for connecting Telugu professionals with US visa-sponsored opportunities.
+A complete React.js job portal application for connecting international professionals with US visa-sponsored opportunities.
 
 ## 🚀 Features
 
@@ -13,7 +13,7 @@ A complete React.js job portal application for connecting Telugu professionals w
 
 ## 🎨 Design
 
-- **Brand Colors**: Telugu Wala Links yellow (#FDB913) with dark accents
+- **Brand Colors**: H1B Wage Level yellow (#FDB913) with dark accents
 - **Responsive Design**: Mobile-first approach with Tailwind CSS
 - **Modern UI**: Clean layouts with smooth transitions and hover effects
 - **Icons**: Lucide React icons throughout
@@ -92,7 +92,7 @@ frontend/
 ## 🎨 Color Palette
 
 ```css
---primary-yellow: #FDB913   /* Telugu Wala Links signature */
+--primary-yellow: #FDB913   /* H1B Wage Level signature */
 --primary-dark: #1A1A1A     /* Text and backgrounds */
 --accent-blue: #0066CC      /* Links and CTAs */
 --accent-green: #10B981     /* Success states */
@@ -131,8 +131,8 @@ npm install -D tailwindcss postcss autoprefixer
 
 ## 📖 Related Documentation
 
-- **PRD**: See `prd_telugu_wala_links.md` for complete product requirements
+- **PRD**: See `prd_h1b_wage_level.md` for complete product requirements
 
 ---
 
-**Built with ❤️ for the Telugu community**
+**Built with ❤️ for international job seekers worldwide**

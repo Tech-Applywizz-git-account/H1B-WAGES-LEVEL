@@ -1,7 +1,7 @@
-# Telugu Wala Links - Edge Functions Deployment Script
+﻿# H1B Wage Level - Edge Functions Deployment Script
 # Run this script to deploy all edge functions to Supabase
 
-Write-Host "🚀 Deploying Telugu Wala Links Edge Functions..." -ForegroundColor Cyan
+Write-Host "🚀 Deploying H1B Wage Level Edge Functions..." -ForegroundColor Cyan
 Write-Host ""
 
 # Step 1: Login to Supabase (if needed)
@@ -50,7 +50,7 @@ Write-Host "  - Setting RESEND_API_KEY (optional for now)..." -ForegroundColor G
 supabase secrets set RESEND_API_KEY="placeholder"
 
 Write-Host "  - Setting FROM_EMAIL..." -ForegroundColor Gray
-supabase secrets set FROM_EMAIL="noreply@teluguwalalinks.com"
+supabase secrets set FROM_EMAIL="noreply@h1bwagelevellinks.com"
 
 Write-Host "  - Setting APP_URL..." -ForegroundColor Gray
 supabase secrets set APP_URL="http://localhost:5174"

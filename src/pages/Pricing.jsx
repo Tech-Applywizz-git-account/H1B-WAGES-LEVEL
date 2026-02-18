@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { Link } from 'react-router-dom';
@@ -15,7 +15,7 @@ const Pricing = () => {
     const faqs = [
         {
             question: 'How does the subscription work?',
-            answer: 'Telugu Wala Links costs $30/month. You get immediate access to all 500,000+ verified jobs, direct company contact emails, and all premium features. Your subscription renews automatically each month until you cancel.'
+            answer: 'H1B Wage Level costs $30/month. You get immediate access to all 500,000+ verified jobs, direct company contact emails, and all premium features. Your subscription renews automatically each month until you cancel.'
         },
         {
             question: 'Can I cancel anytime?',
@@ -100,7 +100,7 @@ const Pricing = () => {
                                 Get Access →
                             </Link>
                             <p className="text-center text-sm text-gray-500">
-                                Join 10,000+ Telugu professionals finding their dream jobs
+                                Join 30,000+ H1B Wage Level members finding their dream jobs
                             </p>
                         </div>
                     </div>

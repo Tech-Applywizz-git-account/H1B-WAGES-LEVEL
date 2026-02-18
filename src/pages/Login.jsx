@@ -1,4 +1,4 @@
-// import React, { useState } from 'react';
+﻿// import React, { useState } from 'react';
 // import { Link, useNavigate } from 'react-router-dom';
 // import { Mail, Lock } from 'lucide-react';
 
@@ -27,13 +27,13 @@
 //                             <div className="w-12 h-12 bg-primary-yellow rounded-lg flex items-center justify-center">
 //                                 <span className="text-primary-dark font-bold text-2xl">TW</span>
 //                             </div>
-//                             <span className="font-bold text-xl text-primary-dark">Telugu Wala Links</span>
+//                             <span className="font-bold text-xl text-primary-dark">H1B Wage Level</span>
 //                         </Link>
 //                     </div>
 //                 </div>
 
 //                 <h1 className="text-2xl font-bold text-primary-dark mb-6 text-center">
-//                     Login to Telugu Wala Links
+//                     Login to H1B Wage Level
 //                 </h1>
 
 //                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -176,13 +176,13 @@
 //                             <div className="w-12 h-12 bg-primary-yellow rounded-lg flex items-center justify-center">
 //                                 <span className="text-primary-dark font-bold text-2xl">TW</span>
 //                             </div>
-//                             <span className="font-bold text-xl text-primary-dark">Telugu Wala Links</span>
+//                             <span className="font-bold text-xl text-primary-dark">H1B Wage Level</span>
 //                         </Link>
 //                     </div>
 //                 </div>
 
 //                 <h1 className="text-2xl font-bold text-primary-dark mb-6 text-center">
-//                     Login to Telugu Wala Links
+//                     Login to H1B Wage Level
 //                 </h1>
 
 //                 {error && (
@@ -399,13 +399,13 @@
 //                             <div className="w-12 h-12 bg-primary-yellow rounded-lg flex items-center justify-center">
 //                                 <span className="text-primary-dark font-bold text-2xl">TW</span>
 //                             </div>
-//                             <span className="font-bold text-xl text-primary-dark">Telugu Wala Links</span>
+//                             <span className="font-bold text-xl text-primary-dark">H1B Wage Level</span>
 //                         </Link>
 //                     </div>
 //                 </div>
 
 //                 <h1 className="text-2xl font-bold text-primary-dark mb-6 text-center">
-//                     Login to Telugu Wala Links
+//                     Login to H1B Wage Level
 //                 </h1>
 
 //                 {error && (
@@ -592,13 +592,13 @@ const Login = () => {
                             <div className="w-12 h-12 bg-primary-yellow rounded-lg flex items-center justify-center">
                                 <span className="text-primary-dark font-bold text-2xl">TW</span>
                             </div>
-                            <span className="font-bold text-xl text-primary-dark">Telugu Wala Links</span>
+                            <span className="font-bold text-xl text-primary-dark">H1B Wage Level</span>
                         </Link>
                     </div>
                 </div>
 
                 <h1 className="text-2xl font-bold text-primary-dark mb-6 text-center">
-                    Login to Telugu Wala Links
+                    Login to H1B Wage Level
                 </h1>
 
                 {error && (

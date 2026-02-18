@@ -1,4 +1,4 @@
-// import React, { useState } from 'react';
+﻿// import React, { useState } from 'react';
 // import { useNavigate, useLocation } from 'react-router-dom';
 // import {
 //     Briefcase,
@@ -54,7 +54,7 @@
 //             {showHeader && (
 //                 <div className="mb-8">
 //                     <h2 className="text-lg font-semibold text-gray-700 mb-2">
-//                         Telugu Wala Links
+//                         H1B Wage Level
 //                     </h2>
 //                     <div className="text-sm text-gray-500 flex items-center gap-2">
 //                         <div
@@ -200,7 +200,7 @@ const Sidebar = ({ className = "", showHeader = true }) => {
             {showHeader && (
                 <div className="mb-8">
                     <h2 className="text-lg font-semibold text-gray-700 mb-2">
-                        Telugu Wala Links
+                        H1B Wage Level
                     </h2>
                     <div className="text-sm text-gray-500 flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${isAdmin ? "bg-red-500" : "bg-green-500"}`}></div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Check, Star, CheckCircle } from 'lucide-react';
 
@@ -225,7 +225,7 @@ const Signup = () => {
                         <div className="w-12 h-12 bg-primary-yellow rounded-lg flex items-center justify-center">
                             <span className="text-primary-dark font-bold text-2xl">TW</span>
                         </div>
-                        <span className="font-bold text-xl text-primary-dark">Telugu Wala Links</span>
+                        <span className="font-bold text-xl text-primary-dark">H1B Wage Level</span>
                     </Link>
                 </div>
 

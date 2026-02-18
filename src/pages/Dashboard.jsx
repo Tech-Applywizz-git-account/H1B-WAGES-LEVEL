@@ -1,4 +1,4 @@
-// import React, { useState } from 'react';
+﻿// import React, { useState } from 'react';
 // import Navbar from '../components/Navbar';
 // import Footer from '../components/Footer';
 // import { Briefcase, Heart, User, Settings, CreditCard, Search, Shield } from 'lucide-react';
@@ -250,7 +250,7 @@
 //         <aside className="w-64 fixed top-[80px] left-0 h-[calc(100vh-80px)] bg-white border-r border-gray-200 p-6 overflow-y-auto shadow-sm">
 
 //           <h2 className="text-lg font-semibold text-gray-700 mb-8">
-//             Telugu Wala Links
+//             H1B Wage Level
 //           </h2>
 
 //           <nav className="space-y-2">
@@ -450,7 +450,7 @@
 //         <aside className="w-64 fixed top-[80px] left-0 h-[calc(100vh-80px)] bg-white border-r border-gray-200 p-6 overflow-y-auto shadow-sm">
 //           <div className="mb-8">
 //             <h2 className="text-lg font-semibold text-gray-700 mb-2">
-//               Telugu Wala Links
+//               H1B Wage Level
 //             </h2>
 //             <div className="text-sm text-gray-500 flex items-center gap-2">
 //               <div className={`w-2 h-2 rounded-full ${isAdmin ? 'bg-red-500' : 'bg-green-500'}`}></div>
@@ -844,7 +844,7 @@ const Dashboard = () => {
         <aside className="w-64 fixed top-[80px] left-0 h-[calc(100vh-80px)] bg-white border-r border-gray-200 p-6 overflow-y-auto shadow-sm">
           <div className="mb-8">
             <h2 className="text-lg font-semibold text-gray-700 mb-2">
-              Telugu Wala Links
+              H1B Wage Level
             </h2>
             <div className="text-sm text-gray-500 flex items-center gap-2">
               <div

@@ -1,4 +1,4 @@
-# Telugu Wala Links - Signup & Payment Flow
+﻿# H1B Wage Level - Signup & Payment Flow
 
 ## Overview
 
@@ -66,7 +66,7 @@ frontend/
 ### 1. Install Dependencies
 
 ```bash
-cd "c:\Users\G.Ganesh\OneDrive\Desktop\Telugu Wala Links\Telugu-Wala-Links\frontend"
+cd "c:\Users\G.Ganesh\OneDrive\Desktop\H1B Wage Level\h1b-wage-level\frontend"
 npm install @supabase/supabase-js
 ```
 
@@ -272,4 +272,4 @@ For questions or issues, refer to:
 
 **Created**: December 2025
 **Version**: 1.0.0
-**Author**: Telugu Wala Links Team
+**Author**: H1B Wage Level Team

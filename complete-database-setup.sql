@@ -1,5 +1,5 @@
--- =========================================
--- COMPLETE DATABASE SETUP FOR TELUGU WALA LINKS
+﻿-- =========================================
+-- COMPLETE DATABASE SETUP FOR H1B Wage Level
 -- =========================================
 -- Run this entire script in your Supabase SQL Editor
 -- This will create all necessary tables, indexes, and security policies

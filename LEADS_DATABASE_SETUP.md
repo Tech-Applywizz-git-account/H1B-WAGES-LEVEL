@@ -1,7 +1,7 @@
-# Resume Help Form - Leads Database Integration
+﻿# Resume Help Form - Leads Database Integration
 
 ## Overview
-When users click "Get Help with Resume" and submit the form, their information is automatically saved to a separate Supabase database in the `leads` table with the source automatically set to "teluguwala links".
+When users click "Get Help with Resume" and submit the form, their information is automatically saved to a separate Supabase database in the `leads` table with the source automatically set to "h1b-wage-level".
 
 ## Setup Instructions
 
@@ -31,7 +31,7 @@ When users click "Get Help with Resume" and submit the form, their information i
        email TEXT NOT NULL,
        phone TEXT NOT NULL,
        country TEXT NOT NULL,
-       source TEXT DEFAULT 'teluguwala links',
+       source TEXT DEFAULT 'h1b-wage-level',
        created_at TIMESTAMPTZ DEFAULT NOW()
    );
 
@@ -75,7 +75,7 @@ When users click "Get Help with Resume" and submit the form, their information i
 3. User fills form and clicks "Submit"
 4. Data is inserted into the **leads** database with:
    - All form fields
-   - `source` automatically set to **"teluguwala links"**
+   - `source` automatically set to **"h1b-wage-level"**
    - `created_at` timestamp
 5. Success message shown to user
 6. Form resets and modal closes
@@ -94,7 +94,7 @@ leads table:
 ├── email (TEXT)
 ├── phone (TEXT)
 ├── country (TEXT)
-├── source (TEXT, defaults to "teluguwala links")
+├── source (TEXT, defaults to "h1b-wage-level")
 └── created_at (TIMESTAMPTZ)
 ```
 

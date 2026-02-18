@@ -1,7 +1,7 @@
-# Billing Section Documentation
+﻿# Billing Section Documentation
 
 ## Overview
-The Billing section provides a comprehensive view of payment history, transaction details, and subscription information for Telugu Wala Links users.
+The Billing section provides a comprehensive view of payment history, transaction details, and subscription information for H1B Wage Level users.
 
 ## Features Implemented
 
@@ -339,4 +339,4 @@ All data is fetched from the `payment_details` table and filtered by the current
 
 ---
 
-**Built with ❤️ for Telugu Wala Links**
+**Built with ❤️ for H1B Wage Level**
