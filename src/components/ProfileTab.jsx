@@ -562,7 +562,7 @@ const ProfileTab = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-8 h-8 text-yellow-500 animate-spin" />
+                <Loader2 className="w-8 h-8 text-gray-900 animate-spin" />
             </div>
         );
     }
@@ -572,7 +572,7 @@ const ProfileTab = () => {
             {/* Header */}
             <div>
                 <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                    <User className="w-8 h-8 text-yellow-500" />
+                    <User className="w-8 h-8 text-gray-900" />
                     Profile Settings
                 </h2>
                 <p className="text-gray-600 mt-1">
@@ -653,7 +653,7 @@ const ProfileTab = () => {
                                 value={profileData.first_name}
                                 onChange={handleChange}
                                 placeholder="John"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400"
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
                                 required
                             />
                         </div>
@@ -669,7 +669,7 @@ const ProfileTab = () => {
                                 value={profileData.last_name}
                                 onChange={handleChange}
                                 placeholder="Doe"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400"
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
                                 required
                             />
                         </div>
@@ -685,7 +685,7 @@ const ProfileTab = () => {
                                 value={profileData.mobile_number}
                                 onChange={handleChange}
                                 placeholder="+1 (555) 123-4567"
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400"
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
                             />
                         </div>
 
@@ -698,7 +698,7 @@ const ProfileTab = () => {
                                 name="experience"
                                 value={profileData.experience}
                                 onChange={handleChange}
-                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400"
+                                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
                             >
                                 <option value="">Select experience...</option>
                                 <option value="0-4 years">0-4 years</option>
@@ -721,7 +721,7 @@ const ProfileTab = () => {
                                     value={profileData.location}
                                     onChange={handleChange}
                                     placeholder="San Francisco, CA"
-                                    className="w-full pl-10 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-400"
+                                    className="w-full pl-10 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900"
                                 />
                             </div>
                         </div>
@@ -756,7 +756,7 @@ const ProfileTab = () => {
                     <button
                         type="submit"
                         disabled={saving}
-                        className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 font-semibold rounded-lg hover:from-yellow-500 hover:to-yellow-600 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50"
+                        className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50"
                     >
                         {saving ? (
                             <>

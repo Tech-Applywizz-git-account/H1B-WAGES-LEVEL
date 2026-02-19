@@ -295,7 +295,7 @@ const AllJobsTab = () => {
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                        <Briefcase className="w-8 h-8 text-yellow-500" />
+                        <Briefcase className="w-8 h-8 text-gray-900" />
                         All Jobs
                     </h2>
                     <p className="text-gray-600 mt-1">
@@ -315,7 +315,7 @@ const AllJobsTab = () => {
                             placeholder="Search jobs..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                         />
                     </div>
 
@@ -327,7 +327,7 @@ const AllJobsTab = () => {
                             placeholder="Filter by company..."
                             value={filterCompany}
                             onChange={(e) => setFilterCompany(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                         />
                     </div>
 
@@ -339,7 +339,7 @@ const AllJobsTab = () => {
                             placeholder="Filter by location..."
                             value={filterLocation}
                             onChange={(e) => setFilterLocation(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                         />
                     </div>
 
@@ -351,7 +351,7 @@ const AllJobsTab = () => {
                             placeholder="Filter by role..."
                             value={filterRole}
                             onChange={(e) => setFilterRole(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-transparent"
+                            className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
                         />
                     </div>
                 </div>
@@ -371,7 +371,7 @@ const AllJobsTab = () => {
             {loading && (
                 <div className="flex items-center justify-center py-20">
                     <div className="text-center">
-                        <Loader2 className="w-12 h-12 text-yellow-500 animate-spin mx-auto mb-4" />
+                        <Loader2 className="w-12 h-12 text-gray-900 animate-spin mx-auto mb-4" />
                         <p className="text-gray-600 font-medium">Loading jobs...</p>
                     </div>
                 </div>
@@ -446,7 +446,7 @@ const AllJobsTab = () => {
                                             key={page}
                                             onClick={() => handlePageChange(page)}
                                             className={`px-4 py-2 rounded-lg font-medium transition-all ${currentPage === page
-                                                ? 'bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 shadow-sm'
+                                                ? 'bg-gray-900 text-white shadow-sm'
                                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                                 }`}
                                         >

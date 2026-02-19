@@ -93,7 +93,7 @@ const SavedJobsTab = () => {
         return (
             <div className="flex items-center justify-center py-20">
                 <div className="text-center">
-                    <Loader2 className="w-12 h-12 text-yellow-500 animate-spin mx-auto mb-4" />
+                    <Loader2 className="w-12 h-12 text-gray-900 animate-spin mx-auto mb-4" />
                     <p className="text-gray-600 font-medium">Loading saved jobs...</p>
                 </div>
             </div>
@@ -141,7 +141,7 @@ const SavedJobsTab = () => {
                     </p>
                     <button
                         onClick={() => navigate('/jobs')}
-                        className="inline-block px-6 py-3 bg-gradient-to-r from-yellow-400 to-yellow-500 text-gray-900 font-semibold rounded-lg hover:from-yellow-500 hover:to-yellow-600 transition-all duration-200 shadow-sm hover:shadow-md"
+                        className="inline-block px-6 py-3 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition-all duration-200 shadow-sm hover:shadow-md"
                     >
                         Browse Jobs
                     </button>

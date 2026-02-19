@@ -158,7 +158,7 @@ const BillingTab = () => {
         return (
             <div className="flex items-center justify-center py-20">
                 <div className="text-center">
-                    <Loader2 className="w-12 h-12 text-yellow-500 animate-spin mx-auto mb-4" />
+                    <Loader2 className="w-12 h-12 text-gray-900 animate-spin mx-auto mb-4" />
                     <p className="text-gray-600 font-medium">Loading billing information...</p>
                 </div>
             </div>
@@ -188,7 +188,7 @@ const BillingTab = () => {
             {/* Header */}
             <div>
                 <h2 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                    <CreditCard className="w-8 h-8 text-yellow-500" />
+                    <CreditCard className="w-8 h-8 text-gray-900" />
                     {isAdmin ? 'Platform Revenue & Billing' : 'Billing & Payments'}
                 </h2>
                 <p className="text-gray-600 mt-1">
@@ -242,17 +242,17 @@ const BillingTab = () => {
                     </div>
 
                     {/* Last Payment */}
-                    <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 rounded-xl border border-yellow-200">
+                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 rounded-xl border border-gray-200">
                         <div className="flex items-center justify-between">
                             <div>
-                                <p className="text-sm text-yellow-700 font-medium mb-1">Last Payment</p>
-                                <p className="text-sm font-bold text-yellow-900">
+                                <p className="text-sm text-gray-700 font-medium mb-1">Last Payment</p>
+                                <p className="text-sm font-bold text-gray-900">
                                     {stats.lastPaymentDate
                                         ? new Date(stats.lastPaymentDate).toLocaleDateString()
                                         : 'N/A'}
                                 </p>
                             </div>
-                            <Calendar className="w-10 h-10 text-yellow-600 opacity-50" />
+                            <Calendar className="w-10 h-10 text-gray-600 opacity-50" />
                         </div>
                     </div>
                 </div>

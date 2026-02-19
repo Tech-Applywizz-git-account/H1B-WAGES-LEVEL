@@ -219,7 +219,7 @@ const Sidebar = ({ className = "", showHeader = true }) => {
                             onClick={() => handleTabClick(tab.id)}
                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all 
                                 ${isActive
-                                    ? "bg-yellow-300 text-gray-900 font-semibold shadow-sm"
+                                    ? "bg-gray-900 text-white font-semibold shadow-sm"
                                     : "text-gray-600 hover:bg-gray-100"
                                 }`}
                         >
