@@ -112,7 +112,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-    Briefcase, Heart, User, Settings, CreditCard, Search, Shield, List,
+    Briefcase, Heart, User, Settings, CreditCard, Search, Shield, LayoutDashboard,
 } from "lucide-react";
 import useAuth from '../hooks/useAuth';
 
@@ -162,8 +162,8 @@ const Sidebar = ({ className = "", showHeader = true }) => {
 
     // Define tabs with admin tab conditionally
     const baseTabs = [
-        { id: "overview", label: "Overview", icon: Search },
-        { id: "alljobs", label: "All Jobs", icon: List },
+        { id: "overview", label: "Overview", icon: LayoutDashboard },
+        { id: "alljobs", label: "Find Jobs", icon: Search },
         { id: "saved", label: "Saved Jobs", icon: Heart },
         { id: "applied", label: "Applied Jobs", icon: Briefcase },
         { id: "profile", label: "Profile", icon: User },

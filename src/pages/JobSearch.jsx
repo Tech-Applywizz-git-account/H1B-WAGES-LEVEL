@@ -47,7 +47,7 @@ const filterOptions = {
     visa: ['H-1B', 'Green Card', '🍇 OPT', '📚 CPT', '🇨🇦🇲🇽 TN', '🇦🇺 E-3', '🍑 J-1', '🇦🇺 AU E-3', '🇨🇦🇲🇽 CA/MX TN', '🇸🇬 SG H-1B1', '🇨🇱 CL H-1B1'],
     location: ['New York, New York', 'Chicago, Illinois', 'San Francisco, California', 'Austin, Texas', 'Boston, Massachusetts'],
     education: ["High School", "Associate's", "Bachelor's", "Master's", "Doctorate", "Other"],
-    experience: ['Internship', '<1 year', '1–2 years', '3–4 years', '5–7 years', '8–14 years', '15+ years']
+    experience: ['0-4 years', '5-7 years', '8-11 years']
 };
 
 const JobSearch = () => {

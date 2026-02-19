@@ -165,12 +165,55 @@ function Navbar({ onGetAccess }) {
     const navigate = useNavigate();
     const [scrolled, setScrolled] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [showDropdown, setShowDropdown] = useState(false);
+    const profileRef = useRef(null);
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 10);
         window.addEventListener('scroll', onScroll);
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
+
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (profileRef.current && !profileRef.current.contains(e.target)) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleLogout = async () => {
+        setShowDropdown(false);
+        setMobileMenuOpen(false);
+        await signOut();
+        navigate('/', { replace: true });
+    };
+
+    const handleNavClick = (item) => {
+        setMobileMenuOpen(false);
+        switch (item) {
+            case 'Find Jobs':
+                if (user) {
+                    navigate('/jobs');
+                } else {
+                    document.getElementById('jobs-section')?.scrollIntoView({ behavior: 'smooth' });
+                }
+                break;
+            case 'Pricing':
+                navigate('/pricing');
+                break;
+            case 'Resources':
+                document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' });
+                break;
+            case 'About':
+                document.getElementById('about-anchor')?.scrollIntoView({ behavior: 'smooth' });
+                break;
+            default:
+                break;
+        }
+    };
 
     return (
         <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${scrolled ? 'bg-white/80 backdrop-blur-xl border-b border-gray-100 py-3 shadow-sm' : 'bg-transparent py-5'}`}>
@@ -189,7 +232,11 @@ function Navbar({ onGetAccess }) {
                 {/* Desktop Nav */}
                 <div className="hidden lg:flex items-center gap-12">
                     {['Find Jobs', 'Pricing', 'Resources', 'About'].map(item => (
-                        <button key={item} className={`text-sm font-bold tracking-tight transition-all hover:scale-105 active:scale-95 ${scrolled ? 'text-gray-600 hover:text-indigo-600' : 'text-white/80 hover:text-white'}`}>
+                        <button
+                            key={item}
+                            onClick={() => handleNavClick(item)}
+                            className={`text-sm font-bold tracking-tight transition-all hover:scale-105 active:scale-95 ${scrolled ? 'text-gray-600 hover:text-indigo-600' : 'text-white/80 hover:text-white'}`}
+                        >
                             {item}
                         </button>
                     ))}
@@ -198,22 +245,48 @@ function Navbar({ onGetAccess }) {
                 {/* CTAs */}
                 <div className="flex items-center gap-4">
                     {!user ? (
-                        <>
-                            <Link to="/login" className={`hidden sm:block text-sm font-bold transition-colors ${scrolled ? 'text-gray-900 hover:text-indigo-600' : 'text-white hover:text-indigo-200'}`}>Login</Link>
+                        <div className="flex items-center gap-2 md:gap-4">
+                            <Link to="/login" className={`text-sm font-bold transition-colors px-2 py-1 ${scrolled ? 'text-gray-900 hover:text-indigo-600' : 'text-white hover:text-indigo-200'}`}>Login</Link>
                             <button
                                 onClick={onGetAccess}
-                                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-sm transition-all shadow-xl shadow-indigo-100 hover:shadow-indigo-200 hover:-translate-y-0.5 active:scale-95"
+                                className="px-4 md:px-6 py-2.5 md:py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl md:rounded-2xl font-black text-xs md:text-sm transition-all shadow-xl shadow-indigo-100 hover:shadow-indigo-200 hover:-translate-y-0.5 active:scale-95"
                             >
                                 Get Access
                             </button>
-                        </>
+                        </div>
                     ) : (
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            className="px-6 py-3 bg-white text-gray-900 border border-gray-100 rounded-2xl font-black text-sm transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5"
-                        >
-                            Dashboard
-                        </button>
+                        <div className="relative" ref={profileRef}>
+                            <button
+                                onClick={() => setShowDropdown(!showDropdown)}
+                                className={`p-2.5 rounded-full transition-all hover:scale-105 active:scale-95 ${scrolled
+                                    ? 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                                    : 'bg-white/10 hover:bg-white/20 text-white'
+                                    }`}
+                            >
+                                <User size={20} />
+                            </button>
+
+                            {showDropdown && (
+                                <div className="absolute right-0 top-full mt-3 w-52 bg-white border border-gray-100 shadow-2xl rounded-2xl py-2 z-50 animate-fadeInUp">
+                                    <button
+                                        onClick={() => { setShowDropdown(false); navigate('/dashboard'); }}
+                                        className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 text-gray-700 transition-colors"
+                                    >
+                                        <LayoutDashboard size={16} className="text-gray-400" />
+                                        <span className="text-sm font-bold">{role === 'admin' ? 'Admin Dashboard' : 'My Dashboard'}</span>
+                                    </button>
+                                    <div className="mx-4 my-1 border-t border-gray-100"></div>
+                                    <button
+                                        onClick={handleLogout}
+                                        disabled={loggingOut}
+                                        className="w-full flex items-center gap-3 px-5 py-3 hover:bg-red-50 text-red-600 transition-colors disabled:opacity-50"
+                                    >
+                                        <LogOut size={16} />
+                                        <span className="text-sm font-bold">{loggingOut ? 'Logging out...' : 'Logout'}</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     )}
 
                     {/* Mobile Toggle */}
@@ -228,9 +301,35 @@ function Navbar({ onGetAccess }) {
                 <div className="absolute top-full left-0 right-0 bg-white border-b border-gray-100 p-6 lg:hidden animate-slideDown">
                     <div className="flex flex-col gap-6">
                         {['Find Jobs', 'Pricing', 'Resources', 'About'].map(item => (
-                            <button key={item} className="text-left text-lg font-black text-gray-900 tracking-tight">{item}</button>
+                            <button
+                                key={item}
+                                onClick={() => handleNavClick(item)}
+                                className="text-left text-lg font-black text-gray-900 tracking-tight"
+                            >
+                                {item}
+                            </button>
                         ))}
-                        <Link to="/login" className="text-lg font-black text-indigo-600 tracking-tight">Login</Link>
+                        {!user ? (
+                            <Link to="/login" onClick={() => setMobileMenuOpen(false)} className="text-lg font-black text-indigo-600 tracking-tight">Login</Link>
+                        ) : (
+                            <>
+                                <button
+                                    onClick={() => { setMobileMenuOpen(false); navigate('/dashboard'); }}
+                                    className="flex items-center gap-3 text-left text-lg font-black text-gray-900 tracking-tight"
+                                >
+                                    <LayoutDashboard size={18} className="text-gray-500" />
+                                    {role === 'admin' ? 'Admin Dashboard' : 'Dashboard'}
+                                </button>
+                                <button
+                                    onClick={handleLogout}
+                                    disabled={loggingOut}
+                                    className="flex items-center gap-3 text-left text-lg font-black text-red-600 tracking-tight disabled:opacity-50"
+                                >
+                                    <LogOut size={18} />
+                                    {loggingOut ? 'Logging out...' : 'Logout'}
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             )}
@@ -254,34 +353,34 @@ function HeroSection({ onGetAccess }) {
             </div>
 
             <div className="relative z-10 max-w-[1400px] mx-auto px-6 lg:px-12 text-center">
-                <div className="inline-flex items-center gap-3 px-6 py-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-full mb-10 animate-fadeInUp">
-                    <div className="flex gap-1">
-                        {[1, 2, 3, 4, 5].map(i => <Star key={i} size={14} className="text-amber-400 fill-current" />)}
+                <div className="inline-flex items-center gap-2 md:gap-3 px-4 md:px-6 py-2 bg-white/5 backdrop-blur-md border border-white/10 rounded-full mb-8 md:mb-10 animate-fadeInUp">
+                    <div className="flex gap-0.5 md:gap-1">
+                        {[1, 2, 3, 4, 5].map(i => <Star key={i} size={12} className="text-amber-400 fill-current" />)}
                     </div>
-                    <span className="text-white font-bold text-sm tracking-tight text-white/90">Trusted by 30,000+ Internationals</span>
+                    <span className="text-white font-bold text-xs md:text-sm tracking-tight text-white/90">Trusted by 30,000+ Internationals</span>
                 </div>
 
-                <h1 className="text-[56px] md:text-[88px] font-black text-white leading-[0.9] tracking-tighter mb-8 animate-fadeInUp delay-100 font-display">
+                <h1 className="text-[36px] sm:text-[56px] md:text-[88px] font-black text-white leading-[1.1] md:leading-[0.9] tracking-tighter mb-6 md:mb-8 animate-fadeInUp delay-100 font-display">
                     FIND A JOB. <br />
                     GET <span className="text-indigo-500 italic">SPONSORED.</span>
                 </h1>
 
-                <p className="text-xl md:text-2xl text-gray-400 font-bold max-w-2xl mx-auto mb-12 animate-fadeInUp delay-200">
+                <p className="text-lg md:text-2xl text-gray-400 font-bold max-w-2xl mx-auto mb-10 md:mb-12 animate-fadeInUp delay-200">
                     The #1 platform for finding active US job openings with verified visa sponsorship.
                 </p>
 
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-6 animate-fadeInUp delay-300">
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6 animate-fadeInUp delay-300">
                     <button
                         onClick={onGetAccess}
-                        className="group relative px-10 py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[28px] font-black text-lg transition-all shadow-2xl shadow-indigo-500/20 active:scale-95 overflow-hidden"
+                        className="w-full sm:w-auto group relative px-8 md:px-10 py-4 md:py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[20px] md:rounded-[28px] font-black text-base md:text-lg transition-all shadow-2xl shadow-indigo-500/20 active:scale-95 overflow-hidden"
                     >
-                        <span className="relative z-10 flex items-center gap-3">
+                        <span className="relative z-10 flex items-center justify-center gap-3">
                             Start Your Journey <ArrowRight className="group-hover:translate-x-1 transition-transform" />
                         </span>
                     </button>
 
-                    <button className="flex items-center gap-4 px-8 py-5 bg-white/5 backdrop-blur-md border border-white/10 text-white rounded-[28px] font-black text-lg hover:bg-white/10 transition-all active:scale-95">
-                        <Play fill="white" size={20} />
+                    <button className="w-full sm:w-auto flex items-center justify-center gap-4 px-8 py-4 md:py-5 bg-white/5 backdrop-blur-md border border-white/10 text-white rounded-[20px] md:rounded-[28px] font-black text-base md:text-lg hover:bg-white/10 transition-all active:scale-95">
+                        <Play fill="white" size={18} />
                         Watch Demo
                     </button>
                 </div>
@@ -314,19 +413,19 @@ function ProblemSection({ onGetAccess }) {
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
             <div className="max-w-[1400px] mx-auto px-6 lg:px-12 text-center">
-                <h2 className="text-[40px] md:text-[64px] font-black text-white leading-[1.1] tracking-tighter mb-16 font-display">
+                <h2 className="text-[32px] md:text-[64px] font-black text-white leading-[1.2] md:leading-[1.1] tracking-tighter mb-12 md:mb-16 font-display">
                     STOP GUESSING. <br />
                     <span className="text-gray-600 italic">START APPLYING.</span>
                 </h2>
 
                 <div className="grid md:grid-cols-3 gap-8">
                     {cards.map((card, i) => (
-                        <div key={i} className="group p-10 bg-white/5 border border-white/10 rounded-[40px] text-left hover:bg-white/[0.08] transition-all hover:border-indigo-500/30">
-                            <div className={`w-14 h-14 ${card.color} rounded-2xl flex items-center justify-center text-2xl mb-8 group-hover:scale-110 transition-transform`}>
+                        <div key={i} className="group p-8 md:p-10 bg-white/5 border border-white/10 rounded-[30px] md:rounded-[40px] text-left hover:bg-white/[0.08] transition-all hover:border-indigo-500/30">
+                            <div className={`w-12 h-12 md:w-14 md:h-14 ${card.color} rounded-2xl flex items-center justify-center text-xl md:text-2xl mb-6 md:mb-8 group-hover:scale-110 transition-transform`}>
                                 {card.icon}
                             </div>
-                            <h3 className="text-2xl font-black text-white mb-4 tracking-tight italic">{card.title}</h3>
-                            <p className="text-gray-400 font-bold leading-relaxed">{card.text}</p>
+                            <h3 className="text-xl md:text-2xl font-black text-white mb-3 md:mb-4 tracking-tight italic">{card.title}</h3>
+                            <p className="text-gray-400 font-bold text-sm md:text-base leading-relaxed">{card.text}</p>
                         </div>
                     ))}
                 </div>
@@ -346,7 +445,7 @@ function HowItWorksSection() {
             <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
                 <div className="flex flex-col lg:flex-row gap-20 items-center">
                     <div className="lg:w-1/2">
-                        <h2 className="text-[40px] md:text-[56px] font-black leading-[1] tracking-tighter mb-10 font-display">
+                        <h2 className="text-[32px] md:text-[56px] font-black leading-[1.2] md:leading-[1] tracking-tighter mb-8 md:mb-10 font-display">
                             Finding a US job should be <span className="text-indigo-600">automatic.</span>
                         </h2>
 
@@ -355,7 +454,7 @@ function HowItWorksSection() {
                                 <div
                                     key={idx}
                                     onMouseEnter={() => setActive(idx)}
-                                    className={`p-8 rounded-[32px] cursor-pointer transition-all duration-300 border ${active === idx ? 'bg-indigo-50 border-indigo-100 shadow-xl shadow-indigo-100/20 translate-x-2' : 'bg-transparent border-transparent hover:bg-gray-50'}`}
+                                    className={`p-6 md:p-8 rounded-[24px] md:rounded-[32px] cursor-pointer transition-all duration-300 border ${active === idx ? 'bg-indigo-50 border-indigo-100 shadow-xl shadow-indigo-100/20 translate-x-1 md:translate-x-2' : 'bg-transparent border-transparent hover:bg-gray-50'}`}
                                 >
                                     <div className="flex gap-6 items-start">
                                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-xl shrink-0 transition-colors ${active === idx ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
@@ -444,23 +543,23 @@ function MidCTASection({ onGetAccess }) {
     ];
 
     return (
-        <section id="pricing-anchor" className="py-32 bg-white">
-            <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-                <div className="bg-gray-950 rounded-[64px] p-12 md:p-24 relative overflow-hidden group">
+        <section id="pricing-anchor" className="py-20 md:py-32 bg-white">
+            <div className="max-w-[1400px] mx-auto px-4 md:px-6 lg:px-12">
+                <div className="bg-gray-950 rounded-[40px] md:rounded-[64px] p-8 md:p-24 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-1/2 h-full bg-indigo-600/10 skew-x-12 translate-x-32 group-hover:translate-x-24 transition-transform duration-700" />
                     <div className="relative z-10 flex flex-col lg:flex-row gap-20 items-center">
-                        <div className="lg:w-1/2 text-left">
-                            <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-5 py-2 mb-8 animate-fadeInUp">
-                                <span className="text-sm font-black text-indigo-400 tracking-tighter uppercase italic">Ready to start? 🇺🇸</span>
+                        <div className="lg:w-1/2 text-center lg:text-left">
+                            <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-5 py-2 mb-6 md:mb-8 animate-fadeInUp">
+                                <span className="text-xs md:text-sm font-black text-indigo-400 tracking-tighter uppercase italic">Ready to start? 🇺🇸</span>
                             </div>
-                            <h2 className="text-[48px] md:text-[64px] font-black text-white leading-[1] tracking-tighter mb-8 font-display">
+                            <h2 className="text-[32px] md:text-[64px] font-black text-white leading-[1.2] md:leading-[1] tracking-tighter mb-6 md:mb-8 font-display">
                                 YOUR FUTURE <br />
                                 <span className="text-gray-500 italic">STARTS HERE.</span>
                             </h2>
-                            <p className="text-xl text-gray-400 font-bold mb-12">Everything you need to secure a job and visa, all in one place.</p>
+                            <p className="text-lg md:text-xl text-gray-400 font-bold mb-10 md:mb-12">Everything you need to secure a job and visa, all in one place.</p>
                             <button
                                 onClick={onGetAccess}
-                                className="px-12 py-6 bg-white hover:bg-gray-100 text-gray-950 rounded-[28px] font-black text-xl transition-all shadow-2xl active:scale-95 flex items-center gap-4"
+                                className="w-full sm:w-auto px-8 md:px-12 py-5 md:py-6 bg-white hover:bg-gray-100 text-gray-950 rounded-[20px] md:rounded-[28px] font-black text-lg md:text-xl transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-4"
                             >
                                 Get Instant Access <ArrowRight className="stroke-[3]" />
                             </button>
@@ -553,9 +652,9 @@ function ReviewsSection() {
     return (
         <section className="py-32 bg-white">
             <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-                <div className="text-center mb-20">
-                    <h2 className="text-[40px] md:text-[56px] font-black leading-[1] tracking-tighter mb-8 font-display">
-                        REAL STORIES. <span className="text-indigo-600">REAL RESULTS.</span>
+                <div className="text-center mb-12 md:mb-20">
+                    <h2 className="text-[32px] md:text-[56px] font-black leading-[1.1] tracking-tighter mb-6 md:mb-8 font-display px-4">
+                        REAL STORIES. <span className="text-indigo-600 italic">REAL RESULTS.</span>
                     </h2>
                     <div className="flex items-center justify-center gap-3 mb-4">
                         <div className="flex gap-1">
@@ -568,21 +667,21 @@ function ReviewsSection() {
 
                 <div className="grid md:grid-cols-3 gap-8">
                     {REVIEWS.map((review, i) => (
-                        <div key={i} className="p-10 bg-gray-50 rounded-[40px] border border-transparent hover:border-indigo-100 hover:bg-white hover:shadow-2xl hover:shadow-indigo-100 transition-all group">
-                            <div className="flex gap-1 mb-8">
+                        <div key={i} className="p-8 md:p-10 bg-gray-50 rounded-[32px] md:rounded-[40px] border border-transparent hover:border-indigo-100 hover:bg-white hover:shadow-2xl hover:shadow-indigo-100 transition-all group">
+                            <div className="flex gap-1 mb-6 md:mb-8">
                                 {[1, 2, 3, 4, 5].map(i => <Star key={i} size={14} className="text-amber-400 fill-current" />)}
                             </div>
-                            <h4 className="text-2xl font-black text-gray-900 mb-6 tracking-tight italic">"{review.title}"</h4>
-                            <p className="text-lg text-gray-500 font-bold leading-relaxed mb-10 h-32 overflow-hidden italic truncate hover:whitespace-normal hover:h-auto">
+                            <h4 className="text-xl md:text-2xl font-black text-gray-900 mb-4 md:mb-6 tracking-tight italic">"{review.title}"</h4>
+                            <p className="text-base md:text-lg text-gray-500 font-bold leading-relaxed mb-8 md:mb-10 min-h-[100px] md:min-h-[128px] italic">
                                 {review.text}
                             </p>
                             <div className="flex items-center gap-4">
-                                <div className={`w-14 h-14 ${review.color} rounded-2xl flex items-center justify-center text-white font-black text-xl shadow-lg`}>
+                                <div className={`w-12 h-12 md:w-14 md:h-14 ${review.color} rounded-2xl flex items-center justify-center text-white font-black text-lg md:text-xl shadow-lg`}>
                                     {review.avatar}
                                 </div>
                                 <div>
-                                    <div className="font-black text-gray-900 text-lg tracking-tight">{review.name}</div>
-                                    <div className="text-gray-400 font-bold text-sm">{review.country}</div>
+                                    <div className="font-black text-gray-900 text-base md:text-lg tracking-tight">{review.name}</div>
+                                    <div className="text-gray-400 font-bold text-xs md:text-sm">{review.country}</div>
                                 </div>
                             </div>
                         </div>

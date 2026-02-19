@@ -25,7 +25,7 @@
 //                     <div className="inline-block">
 //                         <Link to="/" className="flex items-center space-x-2">
 //                             <div className="w-12 h-12 bg-primary-yellow rounded-lg flex items-center justify-center">
-//                                 <span className="text-primary-dark font-bold text-2xl">TW</span>
+//                                 <span className="text-primary-dark font-bold text-2xl">H1B</span>
 //                             </div>
 //                             <span className="font-bold text-xl text-primary-dark">H1B Wage Level</span>
 //                         </Link>
@@ -174,7 +174,7 @@
 //                     <div className="inline-block">
 //                         <Link to="/" className="flex items-center space-x-2">
 //                             <div className="w-12 h-12 bg-primary-yellow rounded-lg flex items-center justify-center">
-//                                 <span className="text-primary-dark font-bold text-2xl">TW</span>
+//                                 <span className="text-primary-dark font-bold text-2xl">H1B</span>
 //                             </div>
 //                             <span className="font-bold text-xl text-primary-dark">H1B Wage Level</span>
 //                         </Link>
@@ -397,7 +397,7 @@
 //                     <div className="inline-block">
 //                         <Link to="/" className="flex items-center space-x-2">
 //                             <div className="w-12 h-12 bg-primary-yellow rounded-lg flex items-center justify-center">
-//                                 <span className="text-primary-dark font-bold text-2xl">TW</span>
+//                                 <span className="text-primary-dark font-bold text-2xl">H1B</span>
 //                             </div>
 //                             <span className="font-bold text-xl text-primary-dark">H1B Wage Level</span>
 //                         </Link>
@@ -589,10 +589,10 @@ const Login = () => {
                 <div className="text-center mb-8">
                     <div className="inline-block">
                         <Link to="/" className="flex items-center space-x-2">
-                            <div className="w-12 h-12 bg-primary-yellow rounded-lg flex items-center justify-center">
-                                <span className="text-primary-dark font-bold text-2xl">TW</span>
+                            <div className="w-12 h-12 bg-primary-dark rounded-lg flex items-center justify-center">
+                                <span className="text-primary-white font-bold text-2xl">H1B</span>
                             </div>
-                            <span className="font-bold text-xl text-primary-dark">H1B Wage Level</span>
+                            <span className="font-bold text-xl text-primary-dark">Wage Level</span>
                         </Link>
                     </div>
                 </div>

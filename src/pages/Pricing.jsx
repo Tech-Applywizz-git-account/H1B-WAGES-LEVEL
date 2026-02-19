@@ -41,13 +41,16 @@ const Pricing = () => {
 
             <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
                 {/* Hero Section */}
-                <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-16">
-                    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                        <h1 className="text-4xl md:text-5xl font-bold mb-4">
+                <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-12 md:py-16">
+                    <div className="max-w-4xl mx-auto px-6 md:px-8 text-center">
+                        <div className="flex justify-center mb-4">
+                            <Sparkles className="text-yellow-300 w-8 h-8 md:w-10 md:h-10" />
+                        </div>
+                        <h1 className="text-3xl md:text-5xl font-extrabold mb-4 tracking-tight">
                             Simple, Transparent Pricing
                         </h1>
-                        <p className="text-xl text-gray-100 max-w-2xl mx-auto">
-                            Get unlimited access to 500,000+ visa-sponsored jobs for $30/month. Cancel anytime.
+                        <p className="text-lg md:text-xl text-blue-50/90 max-w-2xl mx-auto font-medium">
+                            Unlimited access to 500,000+ visa-sponsored jobs for just $30/month.
                         </p>
                     </div>
                 </div>
@@ -60,7 +63,7 @@ const Pricing = () => {
                             MOST POPULAR PLAN
                         </div>
 
-                        <div className="p-8 md:p-12">
+                        <div className="p-6 md:p-12">
                             {/* Price */}
                             <div className="text-center mb-8">
                                 <div className="text-6xl md:text-7xl font-bold text-primary-dark mb-2">
@@ -74,20 +77,22 @@ const Pricing = () => {
                             </div>
 
                             {/* Features Grid */}
-                            <div className="grid md:grid-cols-2 gap-4 mb-10">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 mb-10">
                                 {[
                                     '500,000+ verified open roles',
-                                    'All visa types (H-1B, OPT, Green Card, etc.)',
+                                    'All visa types (H-1B, TN, etc.)',
                                     'Daily job updates',
-                                    'Salary information for every role',
+                                    'Full salary information',
                                     'Advanced search & filters',
                                     'Save unlimited jobs',
                                     'Email job alerts',
-                                    'Cancel anytime - no contracts'
+                                    'Cancel anytime'
                                 ].map((feature, index) => (
-                                    <div key={index} className="flex items-start space-x-3">
-                                        <Check className="w-5 h-5 text-accent-green flex-shrink-0 mt-0.5" />
-                                        <span className="text-gray-700">{feature}</span>
+                                    <div key={index} className="flex items-start space-x-3 group">
+                                        <div className="bg-green-100 rounded-full p-0.5 mt-0.5 group-hover:bg-green-200 transition-colors">
+                                            <Check className="w-4 h-4 text-green-600 flex-shrink-0" />
+                                        </div>
+                                        <span className="text-gray-600 font-medium text-sm md:text-base">{feature}</span>
                                     </div>
                                 ))}
                             </div>
@@ -106,18 +111,18 @@ const Pricing = () => {
                     </div>
 
                     {/* Trust Badges */}
-                    <div className="grid grid-cols-3 gap-4 mt-8 mb-16">
-                        <div className="text-center p-4">
-                            <div className="text-3xl font-bold text-primary-dark">500K+</div>
-                            <div className="text-sm text-gray-600">Active Jobs</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8 mt-12 mb-20 md:mb-24">
+                        <div className="text-center p-6 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                            <div className="text-3xl md:text-4xl font-black text-primary-dark mb-1">500K+</div>
+                            <div className="text-xs md:text-sm font-bold text-gray-400 uppercase tracking-widest">Active Jobs</div>
                         </div>
-                        <div className="text-center p-4">
-                            <div className="text-3xl font-bold text-primary-dark">10K+</div>
-                            <div className="text-sm text-gray-600">Happy Users</div>
+                        <div className="text-center p-6 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                            <div className="text-3xl md:text-4xl font-black text-primary-dark mb-1">30,000+</div>
+                            <div className="text-xs md:text-sm font-bold text-gray-400 uppercase tracking-widest">Active Users</div>
                         </div>
-                        <div className="text-center p-4">
-                            <div className="text-3xl font-bold text-primary-dark">6</div>
-                            <div className="text-sm text-gray-600">Visa Types</div>
+                        <div className="text-center p-6 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                            <div className="text-3xl md:text-4xl font-black text-primary-dark mb-1">8</div>
+                            <div className="text-xs md:text-sm font-bold text-gray-400 uppercase tracking-widest">Visa Types</div>
                         </div>
                     </div>
 

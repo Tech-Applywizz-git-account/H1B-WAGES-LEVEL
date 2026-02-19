@@ -31,9 +31,9 @@ const Footer = () => {
                     <div className="md:col-span-2">
                         <div className="flex items-center gap-2 mb-4">
                             <div className="w-8 h-8 bg-black rounded-md flex items-center justify-center">
-                                <span className="text-white font-bold text-sm">M</span>
+                                <span className="text-white font-bold text-sm">H</span>
                             </div>
-                            <span className="font-bold text-lg text-gray-900">H1B Wage Level</span>
+                            <span className="font-bold text-lg text-gray-900">Wage Level</span>
                         </div>
                         <p className="text-gray-500 text-sm leading-relaxed max-w-xs">
                             Access 500,000+ verified U.S. jobs with visa sponsorship. Find H-1B, Green Card, E-3, TN, CPT/OPT, H-1B1, and J-1 friendly roles.

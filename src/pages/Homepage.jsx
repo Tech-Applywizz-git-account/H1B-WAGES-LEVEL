@@ -636,9 +636,9 @@ const Homepage = () => {
         <main className="flex-1 w-full">
           <section className="bg-white">
             <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-10">
-              <div id="search-anchor" className="text-center mb-8">
-                <h3 className="text-3xl font-bold text-gray-900">Search for your perfect role.</h3>
-                <p className="text-gray-500 mt-2 text-sm">Data verified by the U.S. Government.</p>
+              <div id="search-anchor" className="text-center mb-6 md:mb-8">
+                <h3 className="text-2xl md:text-3xl font-bold text-gray-900">Search for your perfect role.</h3>
+                <p className="text-gray-500 mt-2 text-xs md:text-sm">Data verified by the U.S. Government.</p>
               </div>
 
               <SearchFilters onFilterChange={(newFilters) => {
@@ -647,7 +647,7 @@ const Homepage = () => {
               }} />
 
               {/* Search Bar Wrapper */}
-              <div className="relative max-w-[1400px] mx-auto mb-10 mt-12 z-20 px-4">
+              <div className="relative max-w-[1400px] mx-auto mb-6 mt-6 z-20 px-4">
                 <div className="flex items-center bg-white rounded-full shadow-[0_15px_50px_-15px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden ring-1 ring-gray-900/5 hover:ring-indigo-500/30 transition-all duration-300">
                   <div className="pl-6 pr-2 text-gray-400">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -664,12 +664,12 @@ const Homepage = () => {
                         handleSearchClick();
                       }
                     }}
-                    placeholder="Search for jobs, companies, or titles..."
-                    className="flex-1 px-4 py-5 text-gray-900 text-lg placeholder-gray-400 focus:outline-none bg-transparent font-medium"
+                    placeholder="Search jobs..."
+                    className="flex-1 px-3 md:px-4 py-4 md:py-5 text-gray-900 text-base md:text-lg placeholder-gray-400 focus:outline-none bg-transparent font-medium"
                   />
                   <button
                     onClick={handleSearchClick}
-                    className="mr-2 px-10 py-3.5 bg-[#111827] text-white font-bold hover:bg-black transition-all rounded-full shadow-lg hover:shadow-gray-200 active:scale-[0.98]"
+                    className="mr-1.5 md:mr-2 px-5 md:px-10 py-3 md:py-3.5 bg-[#111827] text-white font-bold hover:bg-black transition-all rounded-full shadow-lg hover:shadow-gray-200 active:scale-[0.98] text-sm md:text-base"
                   >
                     Search
                   </button>
@@ -695,7 +695,7 @@ const Homepage = () => {
               </div>
 
               {/* Job Cards List */}
-              <div className="mt-8 max-w-[1400px] mx-auto space-y-4">
+              <div className="mt-6 max-w-[1400px] mx-auto space-y-4">
                 {loading || (user && checkingSub) ? (
                   <div className="flex justify-center py-10">
                     <Loader2 className="w-10 h-10 text-yellow-500 animate-spin" />

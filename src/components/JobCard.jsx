@@ -206,8 +206,8 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
     };
 
     return (
-        <div className="bg-white rounded-2xl border-2 border-blue-100/80 hover:border-blue-500 hover:shadow-[0_25px_50px_-12px_rgba(59,130,246,0.15)] hover:-translate-y-2 hover:bg-blue-50/5 transition-all duration-500 p-6 group mb-6 relative hover:z-10 cursor-pointer">
-            <div className="flex flex-col lg:flex-row gap-6">
+        <div className="bg-white rounded-2xl border-2 border-blue-100/80 hover:border-blue-500 hover:shadow-[0_25px_50px_-12px_rgba(59,130,246,0.15)] hover:-translate-y-2 hover:bg-blue-50/5 transition-all duration-500 p-4 md:p-6 group mb-6 relative hover:z-10 cursor-pointer">
+            <div className="flex flex-col sm:flex-row gap-4 md:gap-6">
 
                 {/* LEFT: LOGO & VERIFIED BADGE */}
                 <div className="flex flex-col items-center gap-3 shrink-0">
@@ -222,75 +222,77 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
 
                 {/* CENTER: JOB INFO */}
                 <div className="flex-1 min-w-0">
-                    <h3 className="text-2xl font-extrabold text-[#111827] mb-4 group-hover:text-blue-700 transition-colors duration-300">
+                    <h3 className="text-xl md:text-2xl font-black text-[#111827] mb-3 md:mb-4 group-hover:text-blue-700 transition-colors duration-300">
                         {job.company || 'Retell AI'}
                     </h3>
 
-                    <div className="space-y-2 mb-6">
-                        <div className="flex gap-4 text-sm">
-                            <span className="w-24 font-bold text-gray-700">Job Role</span>
-                            <span className="text-gray-500">:</span>
-                            <span className="text-gray-600 font-medium truncate">{job.title || 'Senior Software Engineer, Infrastructure'}</span>
+                    <div className="space-y-2 mb-4 md:mb-6">
+                        <div className="flex gap-3 text-sm">
+                            <span className="w-20 md:w-24 shrink-0 font-bold text-gray-700">Job Role</span>
+                            <span className="text-gray-400">:</span>
+                            <span className="text-gray-600 font-medium truncate">{job.title || 'Senior Software Engineer'}</span>
                         </div>
-                        <div className="flex gap-4 text-sm">
-                            <span className="w-24 font-bold text-gray-700">Job Type</span>
-                            <span className="text-gray-500">:</span>
+                        <div className="flex gap-3 text-sm">
+                            <span className="w-20 md:w-24 shrink-0 font-bold text-gray-700">Job Type</span>
+                            <span className="text-gray-400">:</span>
                             <span className="text-gray-600 font-medium">{job.job_role_name || job.type || '.Net'}</span>
                         </div>
-                        <div className="flex gap-4 text-sm">
-                            <span className="w-24 font-bold text-gray-700">Date Posted</span>
-                            <span className="text-gray-500">:</span>
+                        <div className="flex gap-3 text-sm">
+                            <span className="w-20 md:w-24 shrink-0 font-bold text-gray-700">Posted</span>
+                            <span className="text-gray-400">:</span>
                             <span className="text-gray-600 font-medium">{formatDate(job.upload_date || job.date_posted)}</span>
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-6 text-sm text-gray-400">
-                        <span className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4" />
+                    <div className="flex flex-wrap gap-4 md:gap-6 text-xs md:text-sm text-gray-400">
+                        <span className="flex items-center gap-1.5 md:gap-2">
+                            <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500" />
                             {job.location || 'Remote'}
                         </span>
-                        <span className="flex items-center gap-2">
-                            <Clock className="w-4 h-4" />
+                        <span className="flex items-center gap-1.5 md:gap-2">
+                            <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500" />
                             {job.years_exp_required || '5-6 Years'}
                         </span>
                     </div>
                 </div>
 
                 {/* RIGHT: WAGE LEVEL & APPLY */}
-                <div className="flex flex-col gap-4 sm:w-48 shrink-0">
+                <div className="flex flex-col sm:flex-row md:flex-col gap-3 shrink-0 sm:w-full md:w-44 lg:w-48">
                     {/* WAGE LEVEL BOX */}
-                    <div className="bg-[#1e3a8a] rounded-2xl p-4 text-center text-white flex flex-col items-center justify-center shadow-md">
-                        <div className="flex gap-1 mb-2">
+                    <div className="flex-1 sm:flex-none bg-[#1e3a8a] rounded-2xl p-3 md:p-4 text-center text-white flex flex-col items-center justify-center shadow-md">
+                        <div className="flex gap-0.5 md:gap-1 mb-1 md:mb-2">
                             {[1, 2, 3, 4].map((star) => (
-                                <span key={star} className={star <= 3 ? "text-yellow-400" : "text-gray-400"}>
+                                <span key={star} className={`text-[10px] md:text-sm ${star <= 3 ? "text-yellow-400" : "text-gray-400"}`}>
                                     ★
                                 </span>
                             ))}
                         </div>
-                        <div className="text-4xl font-black mb-1">Lv 3</div>
-                        <div className="text-[10px] uppercase font-bold tracking-widest opacity-80">Wage Level</div>
+                        <div className="text-2xl md:text-4xl font-black mb-0.5 md:mb-1">Lv 3</div>
+                        <div className="text-[8px] md:text-[10px] uppercase font-bold tracking-widest opacity-80">Wage Level</div>
                     </div>
 
                     {/* APPLY NOW */}
-                    {!user || subscriptionExpired ? (
-                        <button
-                            disabled
-                            className="w-full bg-gray-100 text-gray-400 px-6 py-3 rounded-xl cursor-not-allowed flex items-center justify-center gap-2 font-bold text-sm"
-                        >
-                            {subscriptionExpired ? 'Renew' : 'Apply'}
-                            <ExternalLink size={16} />
-                        </button>
-                    ) : (
-                        <a
-                            href={job.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-full bg-[#2563eb] hover:bg-blue-700 text-white px-6 py-3 rounded-xl text-center font-bold flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-200 transition-all text-sm"
-                        >
-                            Apply Now
-                            <ExternalLink size={16} />
-                        </a>
-                    )}
+                    <div className="flex-1 sm:flex-none flex items-center">
+                        {!user || subscriptionExpired ? (
+                            <button
+                                disabled
+                                className="w-full h-full sm:h-auto bg-gray-100 text-gray-400 px-4 md:px-6 py-3 rounded-xl cursor-not-allowed flex items-center justify-center gap-2 font-bold text-xs md:text-sm"
+                            >
+                                {subscriptionExpired ? 'Renew' : 'Apply'}
+                                <ExternalLink size={14} className="md:w-4 md:h-4" />
+                            </button>
+                        ) : (
+                            <a
+                                href={job.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full h-full sm:h-auto bg-[#2563eb] hover:bg-blue-700 text-white px-4 md:px-6 py-3 rounded-xl text-center font-bold flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-200 transition-all text-xs md:text-sm"
+                            >
+                                Apply Now
+                                <ExternalLink size={14} className="md:w-4 md:h-4" />
+                            </a>
+                        )}
+                    </div>
                 </div>
             </div>
 

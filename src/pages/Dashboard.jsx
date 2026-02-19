@@ -663,7 +663,8 @@ import {
     CreditCard,
     Search,
     Shield,
-    List,
+    LayoutDashboard,
+    CheckCircle,
 } from "lucide-react";
 import AdminControls from "../components/AdminControls";
 import AdminOverview from "../components/AdminOverview";
@@ -675,7 +676,6 @@ import RenewalPayment from "../components/RenewalPayment";
 import useAuth from "../hooks/useAuth";
 import { supabase } from "../supabaseClient";
 import Sidebar from "../components/Sidebar";
-import { CheckCircle, LayoutDashboard } from "lucide-react";
 
 const Dashboard = () => {
     const location = useLocation();
@@ -684,6 +684,7 @@ const Dashboard = () => {
     const navigate = useNavigate();
 
     const [savedJobsCount, setSavedJobsCount] = useState(0);
+    const [appliedJobsCount, setAppliedJobsCount] = useState(0);
     const [showRenewalFlow, setShowRenewalFlow] = useState(false);
     const [renewalStep, setRenewalStep] = useState(1);
     const [renewProfile, setRenewProfile] = useState({
@@ -698,7 +699,7 @@ const Dashboard = () => {
     const [renewLoading, setRenewLoading] = useState(false);
 
     // Sync activeTab with location state visually to avoid flicker
-    const currentTab = location.state?.initialTab || activeTab;
+    const currentTab = activeTab;
 
     // Sync state in background when location changes
     useEffect(() => {
@@ -766,12 +767,28 @@ const Dashboard = () => {
         }
     }, [loading, user, navigate]);
 
-    // Fetch saved jobs count
+    // Fetch dashboard stats
     useEffect(() => {
         if (user) {
             fetchSavedJobsCount();
+            fetchAppliedJobsCount();
         }
     }, [user]);
+
+    const fetchAppliedJobsCount = async () => {
+        try {
+            const { count, error } = await supabase
+                .from('applied_jobs')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', user.id);
+
+            if (error) throw error;
+            setAppliedJobsCount(count || 0);
+        } catch (err) {
+            console.error('Error fetching applied jobs count:', err);
+            setAppliedJobsCount(0);
+        }
+    };
 
     const fetchSavedJobsCount = async () => {
         try {
@@ -835,12 +852,43 @@ const Dashboard = () => {
                 </div>
 
                 {/* Main */}
-                <main className="flex-1 p-10 overflow-y-auto">
-                    <div className="mb-10 bg-white p-8 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden group">
+                <main className="flex-1 p-4 md:p-10 overflow-y-auto w-full">
+                    {/* Mobile Tab Navigation (Only visible on mobile) */}
+                    <div className="md:hidden flex overflow-x-auto pb-4 mb-6 gap-2 no-scrollbar">
+                        {[
+                            { id: "all-jobs", label: "Find Jobs", icon: Search, type: "link", path: "/jobs" },
+                            { id: "overview", label: "Overview", icon: LayoutDashboard },
+                            { id: "saved", label: "Saved", icon: Heart },
+                            { id: "applied", label: "Applied", icon: Briefcase },
+                            { id: "profile", label: "Profile", icon: User },
+                            { id: "billing", label: "Billing", icon: CreditCard },
+                            ...(isAdmin ? [{ id: "admin", label: "Admin", icon: Shield }] : []),
+                        ].map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => {
+                                    if (tab.type === "link") {
+                                        navigate(tab.path);
+                                    } else {
+                                        setActiveTab(tab.id);
+                                    }
+                                }}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold whitespace-nowrap transition-all ${activeTab === tab.id
+                                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100"
+                                    : "bg-white text-gray-500 border border-gray-100"
+                                    }`}
+                            >
+                                <tab.icon size={16} className={tab.id === "all-jobs" ? "text-indigo-600" : ""} />
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="mb-6 md:mb-10 bg-white p-6 md:p-8 rounded-2xl md:rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden group">
                         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/50 rounded-full -mr-32 -mt-32 transition-transform group-hover:scale-110 duration-700"></div>
                         <div className="relative z-10">
-                            <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">
-                                Welcome back, <span className="text-indigo-600 font-black">{user?.email?.split("@")[0] || "User"}</span>!
+                            <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight leading-tight">
+                                Welcome back, <span className="text-indigo-600 italic">{user?.email?.split("@")[0] || "User"}</span>!
                             </h1>
                             <p className="text-gray-500 mt-2 text-lg font-medium max-w-2xl">
                                 {isAdmin
@@ -983,59 +1031,59 @@ const Dashboard = () => {
                                         {/* STATS GRID */}
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                             <div
-                                                onClick={() => setActiveTab("saved")}
-                                                className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 cursor-pointer hover:border-emerald-200 hover:shadow-[0_20px_40px_-15px_rgba(16,185,129,0.1)] transition-all duration-300 relative group overflow-hidden"
+                                                onClick={() => navigate('/dashboard', { state: { initialTab: "saved" } })}
+                                                className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 cursor-pointer hover:border-emerald-200 hover:shadow-[0_20px_40px_-15px_rgba(16,185,129,0.1)] transition-all duration-300 relative group overflow-hidden"
                                             >
                                                 <div className="flex items-center justify-between relative z-10">
                                                     <div>
-                                                        <p className="text-emerald-600 text-xs font-black uppercase tracking-widest mb-1">Saved Jobs</p>
-                                                        <p className="text-4xl font-black text-gray-900 tracking-tighter">{savedJobsCount}</p>
+                                                        <p className="text-emerald-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-1">Saved Jobs</p>
+                                                        <p className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter">{savedJobsCount}</p>
                                                     </div>
-                                                    <div className="p-4 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
-                                                        <Heart className="h-7 w-7 fill-current" />
+                                                    <div className="p-3 md:p-4 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:bg-emerald-600 group-hover:text-white transition-all duration-300">
+                                                        <Heart className="h-6 w-6 md:h-7 md:w-7 fill-current" />
                                                     </div>
                                                 </div>
-                                                <div className="mt-4 text-xs font-bold text-gray-400 group-hover:text-emerald-500 transition-colors">Click to view list →</div>
+                                                <div className="mt-4 text-[10px] md:text-xs font-bold text-gray-400 group-hover:text-emerald-500 transition-colors">Click to view list →</div>
                                             </div>
 
                                             <div
-                                                onClick={() => setActiveTab("applied")}
-                                                className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 cursor-pointer hover:border-blue-200 hover:shadow-[0_20px_40px_-15px_rgba(59,130,246,0.1)] transition-all duration-300 relative group overflow-hidden"
+                                                onClick={() => navigate('/dashboard', { state: { initialTab: "applied" } })}
+                                                className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 cursor-pointer hover:border-blue-200 hover:shadow-[0_20px_40px_-15px_rgba(59,130,246,0.1)] transition-all duration-300 relative group overflow-hidden"
                                             >
                                                 <div className="flex items-center justify-between relative z-10">
                                                     <div>
-                                                        <p className="text-blue-600 text-xs font-black uppercase tracking-widest mb-1">Applied Jobs</p>
-                                                        <p className="text-4xl font-black text-gray-900 tracking-tighter">0</p>
+                                                        <p className="text-blue-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-1">Applied Jobs</p>
+                                                        <p className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter">{appliedJobsCount}</p>
                                                     </div>
-                                                    <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
-                                                        <Briefcase className="h-7 w-7" />
+                                                    <div className="p-3 md:p-4 bg-blue-50 text-blue-600 rounded-2xl group-hover:bg-blue-600 group-hover:text-white transition-all duration-300">
+                                                        <Briefcase className="h-6 w-6 md:h-7 md:w-7" />
                                                     </div>
                                                 </div>
-                                                <div className="mt-4 text-xs font-bold text-gray-400 group-hover:text-blue-500 transition-colors">Check your progress →</div>
+                                                <div className="mt-4 text-[10px] md:text-xs font-bold text-gray-400 group-hover:text-blue-500 transition-colors">Check your progress →</div>
                                             </div>
 
                                             <div
-                                                onClick={() => setActiveTab("profile")}
-                                                className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 cursor-pointer hover:border-purple-200 hover:shadow-[0_20px_40px_-15px_rgba(139,92,246,0.1)] transition-all duration-300 relative group overflow-hidden"
+                                                onClick={() => navigate('/dashboard', { state: { initialTab: "billing" } })}
+                                                className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100 cursor-pointer hover:border-purple-200 hover:shadow-[0_20px_40px_-15px_rgba(139,92,246,0.1)] transition-all duration-300 relative group overflow-hidden"
                                             >
                                                 <div className="flex items-center justify-between relative z-10">
                                                     <div>
-                                                        <p className="text-purple-600 text-xs font-black uppercase tracking-widest mb-1">Account</p>
-                                                        <p className="text-3xl font-black text-gray-900 tracking-tighter">Standard</p>
+                                                        <p className="text-purple-600 text-[10px] md:text-xs font-black uppercase tracking-widest mb-1">Account</p>
+                                                        <p className="text-2xl md:text-3xl font-black text-gray-900 tracking-tighter">Standard</p>
                                                     </div>
-                                                    <div className="p-4 bg-purple-50 text-purple-600 rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-all duration-300">
-                                                        <User className="h-7 w-7" />
+                                                    <div className="p-3 md:p-4 bg-purple-50 text-purple-600 rounded-2xl group-hover:bg-purple-600 group-hover:text-white transition-all duration-300">
+                                                        <User className="h-6 w-6 md:h-7 md:w-7" />
                                                     </div>
                                                 </div>
-                                                <div className="mt-4 text-xs font-bold text-gray-400 group-hover:text-purple-500 transition-colors">Manage profile details →</div>
+                                                <div className="mt-4 text-[10px] md:text-xs font-bold text-gray-400 group-hover:text-purple-500 transition-colors">View subscription details →</div>
                                             </div>
                                         </div>
 
                                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                             {/* RECENT ACTIVITY */}
-                                            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm flex flex-col min-h-[350px]">
-                                                <div className="flex items-center justify-between mb-8">
-                                                    <h3 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                                            <div className="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm flex flex-col min-h-[350px]">
+                                                <div className="flex items-center justify-between mb-6 md:mb-8">
+                                                    <h3 className="text-lg md:text-xl font-black text-gray-900 flex items-center gap-2">
                                                         <span className="w-1.5 h-6 bg-indigo-600 rounded-full"></span>
                                                         Recent Activity
                                                     </h3>
@@ -1058,21 +1106,21 @@ const Dashboard = () => {
                                             </div>
 
                                             {/* QUICK ACTIONS */}
-                                            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
-                                                <h3 className="text-xl font-black text-gray-900 flex items-center gap-2 mb-8">
+                                            <div className="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm">
+                                                <h3 className="text-lg md:text-xl font-black text-gray-900 flex items-center gap-2 mb-6 md:mb-8">
                                                     <span className="w-1.5 h-6 bg-indigo-600 rounded-full"></span>
                                                     Quick Actions
                                                 </h3>
-                                                <div className="grid grid-cols-2 gap-4">
+                                                <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
                                                     <button
                                                         onClick={() => navigate('/jobs')}
-                                                        className="p-6 bg-indigo-50/40 rounded-2xl text-left hover:bg-indigo-50 transition-all border border-transparent hover:border-indigo-100 group"
+                                                        className="p-4 md:p-6 bg-indigo-50/40 rounded-2xl text-left hover:bg-indigo-50 transition-all border border-transparent hover:border-indigo-100 group"
                                                     >
-                                                        <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                                                            <Search size={20} />
+                                                        <div className="w-8 h-8 md:w-10 md:h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 mb-3 md:mb-4 group-hover:bg-indigo-600 group-hover:text-white transition-all">
+                                                            <Search size={18} />
                                                         </div>
-                                                        <span className="block font-bold text-gray-900">Find Jobs</span>
-                                                        <span className="text-xs text-gray-500 mt-1 block">Browse latest H1B roles</span>
+                                                        <span className="block font-black text-xs md:text-sm text-gray-900 tracking-tight">Find Jobs</span>
+                                                        <span className="text-[10px] text-gray-400 mt-1 block">Browse H1B roles</span>
                                                     </button>
 
                                                     <button

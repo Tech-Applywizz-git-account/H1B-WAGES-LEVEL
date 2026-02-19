@@ -6,7 +6,7 @@ const defaultOptions = {
     role: ['Software Engineer', 'Software Developer', 'Data Engineer', 'Data Analyst', 'Data Scientist', 'GenAI', 'AI Engineer', 'DevOps', 'Supply Chain', 'Healthcare'],
     location: ['Seattle, WA', 'San Francisco, CA', 'Austin, TX', 'New York, NY', 'Chicago, IL', 'Cincinnati, OH'],
     company: ['Microsoft', 'Amazon', 'Apple', 'Nvidia', 'JP Morgan', 'US Bank', 'Oracle', 'Meta'],
-    experience: ['Internship', '<1 year', '1-2 years', '3-4 years', '5-7 years', '8-14 years', '15+ years'],
+    experience: ['0-4 years', '5-7 years', '8-11 years'],
 };
 
 const tabs = [
@@ -38,32 +38,13 @@ const SearchFilters = ({ onFilterChange }) => {
 
                 if (error) throw error;
 
-                if (data && data.length > 0) {
-                    const getTopItems = (items) => {
-                        const counts = {};
-                        items.forEach(item => {
-                            if (item) {
-                                const cleanItem = item.trim();
-                                counts[cleanItem] = (counts[cleanItem] || 0) + 1;
-                            }
-                        });
-                        return Object.entries(counts)
-                            .sort((a, b) => b[1] - a[1])
-                            .slice(0, 30)
-                            .map(entry => entry[0]);
-                    };
+                // For experience, we only want the requested three hardcoded ones
+                const standardExperiences = ['0-4 years', '5-7 years', '8-11 years'];
+                setFilterOptions(prev => ({
+                    ...prev,
+                    experience: standardExperiences,
+                }));
 
-                    // Only fetching dynamic experience options now
-                    const experiences = getTopItems(data.map(d => d.years_exp_required));
-
-                    setFilterOptions(prev => ({
-                        ...prev,
-                        // location: Keep default hardcoded US locations
-                        // company: Keep default hardcoded companies
-                        // role: Keep default hardcoded roles
-                        experience: experiences.length > 0 ? experiences : prev.experience,
-                    }));
-                }
             } catch (err) {
                 console.error("Error fetching filter options:", err);
             }
@@ -188,11 +169,11 @@ const SearchFilters = ({ onFilterChange }) => {
     );
 
     return (
-        <div className="bg-white border-b border-gray-100 mb-6 font-display">
+        <div className="bg-white border-b border-gray-100 mb-4 font-display">
             <div className="w-full py-2">
 
                 {/* Tabs */}
-                <div className="flex justify-start items-center space-x-2 max-w-[1400px] mx-auto px-4">
+                <div className="flex justify-start items-center space-x-1 md:space-x-2 max-w-[1400px] mx-auto px-4 overflow-x-auto no-scrollbar">
                     {tabs.map(tab => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
@@ -200,7 +181,7 @@ const SearchFilters = ({ onFilterChange }) => {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`inline-flex items-center gap-2.5 px-6 py-4 border-b-[3px] font-bold text-sm transition-all ${isActive
+                                className={`inline-flex items-center gap-2 px-4 md:px-6 py-3 md:py-4 border-b-[3px] font-bold text-xs md:text-sm whitespace-nowrap transition-all ${isActive
                                     ? 'text-indigo-600 border-indigo-600'
                                     : 'text-gray-400 hover:text-gray-600 border-transparent hover:border-gray-200'
                                     }`}
@@ -224,9 +205,9 @@ const SearchFilters = ({ onFilterChange }) => {
 
                 {/* Pills */}
                 {showFilters && (
-                    <div className="py-4">
+                    <div className="py-3">
                         {/* 1️⃣ TOP OPTIONS (Pills) */}
-                        <div className="flex flex-wrap gap-2 justify-start max-w-[1400px] mx-auto px-4 mb-4">
+                        <div className="flex flex-wrap gap-2 justify-start max-w-[1400px] mx-auto px-4 mb-2">
                             {(activeTab === 'location' ? filterOptions.location.slice(0, 5)
                                 : activeTab === 'role' ? filterOptions.role
                                     : activeTab === 'company' ? filterOptions.company.slice(0, 8)
