@@ -65,59 +65,59 @@ const Navbar = () => {
                         </div>
                     </Link>
 
-                    {/* CENTER Nav — only show for guests */}
-                    {!user && (
-                        <div className="flex items-center gap-1">
+                    {/* CENTER Nav — always show links for better navigation */}
+                    <div className="flex items-center gap-1">
+                        <Link
+                            to="/jobs"
+                            className={`text-sm font-medium transition-colors px-3 py-2 rounded-md hover:bg-gray-50 ${location.pathname === '/jobs' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-600 hover:text-gray-900'}`}
+                        >
+                            Find Jobs
+                        </Link>
+
+                        {!user && (
                             <Link
                                 to="/signup"
                                 className="text-gray-600 text-sm font-medium hover:text-gray-900 transition-colors px-3 py-2 rounded-md hover:bg-gray-50"
                             >
                                 Post a job
                             </Link>
+                        )}
 
-                            {/* Resources Dropdown */}
-                            <div className="relative" ref={resourcesRef}>
-                                <button
-                                    onClick={() => setShowResourcesMenu(!showResourcesMenu)}
-                                    className="flex items-center gap-1 text-gray-600 text-sm font-medium hover:text-gray-900 transition-colors px-3 py-2 rounded-md hover:bg-gray-50"
-                                >
-                                    Resources
-                                    <ChevronDown size={14} className={`transition-transform ${showResourcesMenu ? 'rotate-180' : ''}`} />
-                                </button>
-                                {showResourcesMenu && (
-                                    <div className="absolute left-0 top-full mt-1 w-72 bg-white border border-gray-100 shadow-xl rounded-xl py-2 z-50">
-                                        <div className="px-4 py-2">
-                                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">About Us</p>
-                                            <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">About Us</a>
-                                            <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">Is H1B Wage Level Legit?</a>
-                                            <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">How to Use H1B Wage Level</a>
-                                        </div>
-                                        <div className="border-t border-gray-100 mx-2 my-1"></div>
-                                        <div className="px-4 py-2">
-                                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Application & Career Strategy</p>
-                                            <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">Visa Sponsorship Jobs in New York City</a>
-                                            <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">H-1B Visa Sponsorship Jobs in 2026</a>
-                                            <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">E-3 Visa: Complete Guide for Australians</a>
-                                        </div>
-                                        <div className="border-t border-gray-100 mx-2 my-1"></div>
-                                        <div className="px-4 py-2">
-                                            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Policy Updates</p>
-                                            <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">Trump's $100,000 H-1B visa fee</a>
-                                            <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">H-1B Visa Lottery 2026</a>
-                                            <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">Work Authorization for International Students</a>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            <Link
-                                to="/pricing"
-                                className="text-gray-600 text-sm font-medium hover:text-gray-900 transition-colors px-3 py-2 rounded-md hover:bg-gray-50"
+                        {/* Resources Dropdown */}
+                        <div className="relative" ref={resourcesRef}>
+                            <button
+                                onClick={() => setShowResourcesMenu(!showResourcesMenu)}
+                                className="flex items-center gap-1 text-gray-600 text-sm font-medium hover:text-gray-900 transition-colors px-3 py-2 rounded-md hover:bg-gray-50"
                             >
-                                Pricing
-                            </Link>
+                                Resources
+                                <ChevronDown size={14} className={`transition-transform ${showResourcesMenu ? 'rotate-180' : ''}`} />
+                            </button>
+                            {showResourcesMenu && (
+                                <div className="absolute left-0 top-full mt-1 w-72 bg-white border border-gray-100 shadow-xl rounded-xl py-2 z-50">
+                                    <div className="px-4 py-2">
+                                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">About Us</p>
+                                        <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">About Us</a>
+                                        <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">Is H1B Wage Level Legit?</a>
+                                        <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">How to Use H1B Wage Level</a>
+                                    </div>
+                                    <div className="border-t border-gray-100 mx-2 my-1"></div>
+                                    <div className="px-4 py-2">
+                                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Application & Career Strategy</p>
+                                        <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">Visa Sponsorship Jobs in New York City</a>
+                                        <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">H-1B Visa Sponsorship Jobs in 2026</a>
+                                        <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">E-3 Visa: Complete Guide for Australians</a>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                    )}
+
+                        <Link
+                            to="/pricing"
+                            className="text-gray-600 text-sm font-medium hover:text-gray-900 transition-colors px-3 py-2 rounded-md hover:bg-gray-50"
+                        >
+                            Pricing
+                        </Link>
+                    </div>
 
                     {/* RIGHT — Login / Profile */}
                     <div className="relative flex items-center gap-3">

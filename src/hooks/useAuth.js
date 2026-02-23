@@ -352,6 +352,8 @@ export function AuthProvider({ children }) {
   const [subscriptionEndDate, setSubscriptionEndDate] = useState(null);
   const [checkingSub, setCheckingSub] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
   const isInitialLoad = useRef(true);
   const hasProfileQueryRun = useRef(false);
@@ -369,10 +371,11 @@ export function AuthProvider({ children }) {
     // Check cache first
     const cachedData = roleCache.get(userId);
     if (cachedData && (Date.now() - cachedData.timestamp) < CACHE_DURATION) {
-      console.log("✅ Using cached role & sub status:", cachedData.role);
       setRole(cachedData.role);
       setSubscriptionExpired(cachedData.subscriptionExpired);
       setSubscriptionEndDate(cachedData.subscriptionEndDate);
+      setFirstName(cachedData.firstName || "");
+      setLastName(cachedData.lastName || "");
       setCheckingSub(false);
       localStorage.setItem("userRole", cachedData.role);
       return;
@@ -381,34 +384,26 @@ export function AuthProvider({ children }) {
     // Check localStorage as fallback (but still verify with DB)
     const storedRole = localStorage.getItem("userRole");
     if (storedRole && isInitialLoad.current) {
-      console.log("📝 Using localStorage role temporarily:", storedRole);
       setRole(storedRole);
     }
 
     // Prevent duplicate queries
     if (hasProfileQueryRun.current && userId === user?.id) {
-      console.log("⏭️ Skipping duplicate profile query");
       return;
     }
 
     hasProfileQueryRun.current = true;
 
     try {
-      console.log("📡 Querying profiles table for user:", userId);
-
-      // Remove timeout - let Supabase handle its own timeout
       const { data: profile, error } = await supabase
         .from("profiles")
-        .select("role, updated_at, created_at, subscription_end_date")
+        .select("role, updated_at, created_at, subscription_end_date, first_name, last_name")
         .eq("id", userId)
-        .maybeSingle(); // Use maybeSingle instead of single to avoid PGRST116 error
+        .maybeSingle();
 
       if (error) {
         console.error("❌ Error loading profile role:", error.message);
-
-        // Only default to 'user' if we don't have a stored role
         if (!storedRole) {
-          console.warn("⚠️ Defaulting to 'user' role due to error");
           setRole("user");
           setSubscriptionExpired(false);
           localStorage.setItem("userRole", "user");
@@ -417,89 +412,98 @@ export function AuthProvider({ children }) {
       } else if (profile) {
         const userRole = profile?.role || "user";
         const isAdmin = userRole === "admin";
-
-        // Calculate subscription status
         let isExpired = false;
         let endDate = null;
 
-        console.log("🔍 RAW DB DATA:", {
-          subscription_end_date: profile.subscription_end_date,
-          created_at: profile.created_at,
-          role: userRole,
-          isAdmin: isAdmin
-        });
-
         if (!isAdmin) {
+          const now = new Date();
           if (profile.subscription_end_date) {
             endDate = new Date(profile.subscription_end_date);
-            const now = new Date();
-            isExpired = now > endDate;
-
-            console.log("⏰ DATE COMPARISON:", {
-              dbDate: profile.subscription_end_date,
-              parsedEndDate: endDate.toISOString(),
-              currentTime: now.toISOString(),
-              isNowGreaterThanEnd: now > endDate,
-              millisecondsDiff: now.getTime() - endDate.getTime()
-            });
-          } else {
-            // If no subscription date exists, user is considered expired/no-access
-            isExpired = true;
-            console.log("❌ NO SUBSCRIPTION DATE - User marked as EXPIRED");
+          } else if (profile.created_at) {
+            endDate = new Date(profile.created_at);
+            endDate.setMonth(endDate.getMonth() + 1);
           }
-        } else {
-          console.log("👑 ADMIN USER - Bypassing expiry check");
+
+          if (endDate) {
+            isExpired = now > endDate;
+          } else {
+            isExpired = true;
+          }
         }
 
-        console.log("📊 FINAL ACCESS DECISION:", {
-          user: profile.email || userId,
-          role: userRole,
-          isAdmin: isAdmin,
-          expiryDate: endDate ? endDate.toISOString() : "None",
-          isExpired: isExpired,
-          willSeeLinks: !isExpired || isAdmin
-        });
-
-        // Update state and cache
         setRole(userRole);
         setSubscriptionExpired(isExpired);
         setSubscriptionEndDate(endDate);
+        setFirstName(profile.first_name || "");
+        setLastName(profile.last_name || "");
         localStorage.setItem("userRole", userRole);
         roleCache.set(userId, {
           role: userRole,
           subscriptionExpired: isExpired,
           subscriptionEndDate: endDate,
+          firstName: profile.first_name,
+          lastName: profile.last_name,
           timestamp: Date.now(),
           updatedAt: profile.updated_at
         });
       } else {
-        // No profile found - USER SHOULD BE BLOCKED
-        console.warn("📭 No profile found for user - MARKING AS EXPIRED");
-        const defaultRole = "user";
-        setRole(defaultRole);
-        setSubscriptionExpired(true);  // ✅ FIX: No profile = No access
+        // FALLBACK: Email lookup
+        const { data: emailProfile, error: emailError } = await supabase
+          .from("profiles")
+          .select("role, updated_at, created_at, subscription_end_date, first_name, last_name, id")
+          .eq("email", userObj.email)
+          .maybeSingle();
+
+        if (!emailError && emailProfile) {
+          await supabase.from("profiles").update({ id: userId }).eq("email", userObj.email);
+
+          const userRole = emailProfile.role || "user";
+          const isAdmin = userRole === "admin";
+          let isExpired = false;
+          let endDate = null;
+
+          if (!isAdmin) {
+            const now = new Date();
+            if (emailProfile.subscription_end_date) {
+              endDate = new Date(emailProfile.subscription_end_date);
+            } else if (emailProfile.created_at) {
+              endDate = new Date(emailProfile.created_at);
+              endDate.setMonth(endDate.getMonth() + 1);
+            }
+            isExpired = endDate ? (now > endDate) : true;
+          }
+
+          setRole(userRole);
+          setSubscriptionExpired(isExpired);
+          setSubscriptionEndDate(endDate);
+          setFirstName(emailProfile.first_name || "");
+          setLastName(emailProfile.last_name || "");
+          localStorage.setItem("userRole", userRole);
+          roleCache.set(userId, {
+            role: userRole,
+            subscriptionExpired: isExpired,
+            subscriptionEndDate: endDate,
+            firstName: emailProfile.first_name,
+            lastName: emailProfile.last_name,
+            timestamp: Date.now()
+          });
+          return;
+        }
+
+        setRole("user");
+        setSubscriptionExpired(true);
         setSubscriptionEndDate(null);
-        localStorage.setItem("userRole", defaultRole);
-        roleCache.set(userId, {
-          role: defaultRole,
-          subscriptionExpired: true,  // ✅ FIX: Block access
-          subscriptionEndDate: null,
-          timestamp: Date.now()
-        });
+        localStorage.setItem("userRole", "user");
+        roleCache.set(userId, { role: "user", subscriptionExpired: true, subscriptionEndDate: null, timestamp: Date.now() });
       }
     } catch (err) {
       console.error("💥 Unexpected error loading profile role:", err);
       if (!storedRole) {
         setRole("user");
-        setSubscriptionExpired(true);  // ✅ FIX: Error = No access
+        setSubscriptionExpired(true);
         setSubscriptionEndDate(null);
         localStorage.setItem("userRole", "user");
-        roleCache.set(userId, {
-          role: "user",
-          subscriptionExpired: true,  // ✅ FIX: Block access on error
-          subscriptionEndDate: null,
-          timestamp: Date.now()
-        });
+        roleCache.set(userId, { role: "user", subscriptionExpired: true, subscriptionEndDate: null, timestamp: Date.now() });
       }
     } finally {
       isInitialLoad.current = false;
@@ -514,7 +518,7 @@ export function AuthProvider({ children }) {
 
     const init = async () => {
       try {
-        console.log("🚀 Auth initialization started");
+
 
         // Set a loading timeout to prevent infinite loading
         initTimeout = setTimeout(() => {
@@ -544,7 +548,7 @@ export function AuthProvider({ children }) {
         }
 
         if (currentUser && isMounted) {
-          console.log("👤 User found:", currentUser.email);
+
           setUser(currentUser);
 
           // Load role but don't wait for it to finish before setting loading to false
@@ -555,7 +559,7 @@ export function AuthProvider({ children }) {
             }
           });
         } else {
-          console.log("🚫 No user found");
+
           if (isMounted) {
             clearTimeout(initTimeout);
             setUser(null);
@@ -581,7 +585,7 @@ export function AuthProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
 
-      console.log("🔔 Auth change event:", event);
+
 
       switch (event) {
         case 'SIGNED_OUT':
@@ -644,7 +648,7 @@ export function AuthProvider({ children }) {
         console.error("❌ Supabase signOut error:", err);
       });
 
-      console.log("✅ Signed out successfully");
+
     } catch (err) {
       console.error("💥 SignOut exception:", err);
     } finally {
@@ -660,6 +664,8 @@ export function AuthProvider({ children }) {
     subscriptionEndDate,
     checkingSub,
     loading,
+    firstName,
+    lastName,
     loggingOut,
     refresh,
     signOut,

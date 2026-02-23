@@ -63,9 +63,9 @@ const AllJobsTab = () => {
 
             // Create base query
             let query = supabase
-                .from('job_jobrole_all')
+                .from('job_jobrole_sponsored_sync')
                 .select('*', { count: 'exact' })
-                .order('upload_date', { ascending: false });
+                .order('date_posted', { ascending: false });
 
             // APPLY FILTERS
             const hasActiveSearch = !!(searchTerm || filterRole || filterCompany || filterLocation);
@@ -196,7 +196,7 @@ const AllJobsTab = () => {
                 {
                     event: 'INSERT',
                     schema: 'public',
-                    table: 'job_jobrole_all'
+                    table: 'job_jobrole_sponsored_sync'
                 },
                 (payload) => {
                     console.log('🆕 New job inserted:', payload.new);

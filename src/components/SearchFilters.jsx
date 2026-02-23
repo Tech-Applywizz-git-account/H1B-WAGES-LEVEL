@@ -33,7 +33,7 @@ const SearchFilters = ({ onFilterChange }) => {
         const fetchFilterOptions = async () => {
             try {
                 const { data, error } = await supabase
-                    .from('job_jobrole_all')
+                    .from('job_jobrole_sponsored_sync')
                     .select('years_exp_required');
 
                 if (error) throw error;
@@ -88,7 +88,7 @@ const SearchFilters = ({ onFilterChange }) => {
 
             try {
                 const { data, error } = await supabase
-                    .from('job_jobrole_all')
+                    .from('job_jobrole_sponsored_sync')
                     .select(column)
                     .ilike(column, `%${value}%`)
                     .limit(50);

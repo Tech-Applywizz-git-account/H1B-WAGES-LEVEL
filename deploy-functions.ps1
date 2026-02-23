@@ -17,8 +17,8 @@ Write-Host "✅ Logged in to Supabase" -ForegroundColor Green
 Write-Host ""
 
 # Step 2: Link project
-Write-Host "Step 2: Linking to project lcoudctoaizjmrcvgjvk..." -ForegroundColor Yellow
-supabase link --project-ref lcoudctoaizjmrcvgjvk
+Write-Host "Step 2: Linking to project nngkmekxgljtnouazdql..." -ForegroundColor Yellow
+supabase link --project-ref nngkmekxgljtnouazdql
 if ($LASTEXITCODE -ne 0) {
     Write-Host "⚠️  Failed to link project" -ForegroundColor Red
     exit 1
@@ -39,21 +39,29 @@ supabase secrets set PAYPAL_CLIENT_SECRET="ENewD9DCs9P52sQG2HcRoAuM-Fe1YY_vrFSvH
 Write-Host "  - Setting PAYPAL_MODE..." -ForegroundColor Gray  
 supabase secrets set PAYPAL_MODE="sandbox"
 
-Write-Host "  - Setting SUPABASE_URL..." -ForegroundColor Gray
-supabase secrets set SUPABASE_URL="https://lcoudctoaizjmrcvgjvk.supabase.co"
+Write-Host "  - Setting DB_URL..." -ForegroundColor Gray
+supabase secrets set DB_URL="https://nngkmekxgljtnouazdql.supabase.co"
 
-Write-Host "  - Setting SUPABASE_SERVICE_ROLE_KEY..." -ForegroundColor Gray
-Write-Host "    ⚠️  You need to get this from Supabase Dashboard → Settings → API → service_role key" -ForegroundColor Yellow
-Write-Host "    Please run manually: supabase secrets set SUPABASE_SERVICE_ROLE_KEY=YOUR_SERVICE_ROLE_KEY" -ForegroundColor White
+Write-Host "  - Setting DB_ANON_KEY..." -ForegroundColor Gray
+supabase secrets set DB_ANON_KEY="your-anon-key-here"
+
+Write-Host "  - Setting DB_SERVICE_ROLE_KEY..." -ForegroundColor Gray
+supabase secrets set DB_SERVICE_ROLE_KEY="your-service-role-key-here"
 
 Write-Host "  - Setting RESEND_API_KEY (optional for now)..." -ForegroundColor Gray  
 supabase secrets set RESEND_API_KEY="placeholder"
+
+Write-Host "  - Setting MS Graph Secrets..." -ForegroundColor Gray
+supabase secrets set AZURE_TENANT_ID="your-tenant-id"
+supabase secrets set AZURE_CLIENT_ID="your-client-id"
+supabase secrets set AZURE_CLIENT_SECRET="your-client-secret"
+supabase secrets set SENDER_EMAIL_ADDRESS="Support@teluguwalajobs.com"
 
 Write-Host "  - Setting FROM_EMAIL..." -ForegroundColor Gray
 supabase secrets set FROM_EMAIL="noreply@h1bwagelevellinks.com"
 
 Write-Host "  - Setting APP_URL..." -ForegroundColor Gray
-supabase secrets set APP_URL="http://localhost:5174"
+supabase secrets set APP_URL="your-app-url"
 
 Write-Host "✅ Secrets set (except SERVICE_ROLE_KEY - set this manually)" -ForegroundColor Green
 Write-Host ""
@@ -69,6 +77,9 @@ supabase functions deploy capture-paypal-order
 
 Write-Host "  - Deploying send-email..." -ForegroundColor Gray
 supabase functions deploy send-email
+
+Write-Host "  - Deploying renew-subscription..." -ForegroundColor Gray
+supabase functions deploy renew-subscription
 
 Write-Host ""
 Write-Host "✅ All functions deployed successfully!" -ForegroundColor Green

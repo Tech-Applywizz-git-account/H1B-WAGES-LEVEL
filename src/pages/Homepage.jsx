@@ -12,6 +12,7 @@ import useAuth from '../hooks/useAuth';
 import { Loader2, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import Sidebar from '../components/Sidebar';
 import RenewalPayment from '../components/RenewalPayment';
+import { getWageLevel } from '../dataSyncService';
 
 const JOBS_PER_PAGE = 10;
 
@@ -130,7 +131,7 @@ const Homepage = () => {
 
       const ids = new Set(data.map(item => item.job_id));
       setAppliedJobIds(ids);
-      console.log('✅ Fetched applied job IDs:', Array.from(ids));
+
     } catch (err) {
       console.error('Error fetching applied jobs:', err);
     }
@@ -149,7 +150,7 @@ const Homepage = () => {
 
       try {
         const { data, error } = await supabase
-          .from('job_jobrole_all')
+          .from('job_jobrole_sponsored_sync')
           .select('title, company')
           .or(`title.ilike.%${value}%,company.ilike.%${value}%`)
           .limit(10);
@@ -218,10 +219,15 @@ const Homepage = () => {
   const totalPages = Math.ceil(totalJobs / JOBS_PER_PAGE);
 
   useEffect(() => {
+    // Only fetch real data if logged in AND sub is NOT expired
     if (user && !subscriptionExpired) {
       fetchJobs();
-    } else if (!user) {
-      setLoading(false); // If not user, just show dummy data
+      fetchSavedJobIds();
+      fetchAppliedJobIds();
+    } else if (!user || subscriptionExpired) {
+      // For guest or expired, clear real results and stop spinner
+      setJobs([]);
+      setLoading(false);
     }
   }, [filters, currentPage, user?.id, subscriptionExpired]);
 
@@ -256,9 +262,9 @@ const Homepage = () => {
 
     try {
       let query = supabase
-        .from('job_jobrole_all')
-        .select('*', { count: 'exact' })
-        .order('upload_date', { ascending: false }); // Always get latest jobs first
+        .from('job_jobrole_sponsored_sync')
+        .select('*', { count: 'exact' });
+      // Sorting will be applied later based on mode
 
       // --- Apply Filters to SQL Query ---
 
@@ -367,8 +373,8 @@ const Homepage = () => {
           const normalizedSearch = activeSearch ? activeSearch.trim().toLowerCase() : '';
           const roleFilters = filters.role.map(r => r.toLowerCase());
 
-          // Sort by Relevance and Filter
-          const sortedData = data
+          // 1. Calculate relevance scores
+          let scoredData = data
             .map(job => {
               const getScore = (item) => {
                 let score = 0;
@@ -378,62 +384,28 @@ const Homepage = () => {
                 const company = (item.company || '').trim().toLowerCase();
                 const description = (item.description || '').toLowerCase();
 
-                // 1. Text Search Relevance
                 if (normalizedSearch) {
-                  // Huge bonus for EXACT full string match in title or role
                   if (title === normalizedSearch) score += 5000;
                   else if (role === normalizedSearch) score += 3000;
-
-                  // Big bonus for full string INCLUSION in title or role
                   if (title.includes(normalizedSearch)) score += 2000;
                   else if (role.includes(normalizedSearch)) score += 1000;
 
                   if (searchRolePart && searchLocPart) {
-                    // "Role in Location" Query
                     if (title.includes(searchRolePart)) score += 1000;
                     if (role.includes(searchRolePart)) score += 500;
                     if (location.includes(searchLocPart)) score += 1000;
-                    if (description.includes(searchRolePart)) score += 50;
                   } else if (searchKeywords.length > 0) {
-                    // Multi-keyword Search
-                    let matchCount = 0;
-                    let titleMatches = 0;
-                    let roleMatches = 0;
-
                     searchKeywords.forEach(kw => {
-                      let kwMatch = false;
-                      if (title.includes(kw)) {
-                        score += 600;
-                        kwMatch = true;
-                        titleMatches++;
-                      }
-                      if (role.includes(kw)) {
-                        score += 400;
-                        kwMatch = true;
-                        roleMatches++;
-                      }
-                      if (company.includes(kw)) { score += 200; kwMatch = true; }
-                      if (location.includes(kw)) { score += 50; kwMatch = true; }
-                      if (description.includes(kw)) { score += 10; kwMatch = true; }
-
-                      if (kwMatch) matchCount++;
+                      if (title.includes(kw)) score += 600;
+                      if (role.includes(kw)) score += 400;
+                      if (company.includes(kw)) score += 200;
                     });
-
-                    // Bonus for matching multiple keywords
-                    if (matchCount > 1) score += (matchCount * 400);
-                    // Critical bonus: if multiple keywords match specifically in title/role
-                    if (titleMatches + roleMatches > 1) score += 1000;
                   }
                 }
 
-                // 2. Role Filter Relevance
                 if (roleFilters.length > 0) {
                   roleFilters.forEach(rf => {
-                    if (title === rf) score += 4000;
-                    else if (title.includes(rf)) score += 2000;
-
-                    if (role === rf) score += 1500;
-                    else if (role.includes(rf)) score += 800;
+                    if (title.includes(rf) || role.includes(rf)) score += 2000;
                   });
                 }
 
@@ -443,82 +415,50 @@ const Homepage = () => {
               return { ...job, _score: getScore(job) };
             })
             .filter(item => {
-              if (normalizedSearch || roleFilters.length > 0) {
-                const title = (item.title || '').toLowerCase();
-                const role = (item.job_role_name || '').toLowerCase();
-                const company = (item.company || '').toLowerCase();
-                const location = (item.location || '').toLowerCase();
-
-
-                // 1. If ROLE filters are active, check BOTH title and role fields
-                if (roleFilters.length > 0) {
-                  const matchesRole = roleFilters.some(rf => {
-                    const rfKeywords = rf.toLowerCase().split(/\s+/).filter(k => k.length > 2);
-                    // Check full phrase in title or role
-                    const fullMatchTitle = title.includes(rf.toLowerCase());
-                    const fullMatchRole = role.includes(rf.toLowerCase());
-                    // Check if ALL keywords exist in title or role
-                    const allKeywordsInTitle = rfKeywords.length > 0 && rfKeywords.every(kw => title.includes(kw));
-                    const allKeywordsInRole = rfKeywords.length > 0 && rfKeywords.every(kw => role.includes(kw));
-
-                    return fullMatchTitle || fullMatchRole || allKeywordsInTitle || allKeywordsInRole;
-                  });
-                  if (!matchesRole) return false;
-                }
-
-
-                // 2. If SEARCH text is active, enforce strict matching
-                if (normalizedSearch) {
-                  // Special case: "Role in Location" format (e.g., "data engineer in troy")
-                  if (searchRolePart && searchLocPart) {
-                    // Role part must be in title or job_role_name
-                    const roleInTitle = title.includes(searchRolePart);
-                    const roleInJobRole = role.includes(searchRolePart);
-                    // Location part must be in location field
-                    const locationMatch = location.includes(searchLocPart);
-
-                    // Must match BOTH: role in title/role_name AND location in location
-                    if (!(roleInTitle || roleInJobRole) || !locationMatch) {
-                      return false;
-                    }
-                  }
-                  // For multi-word searches, keywords can be in title AND/OR role fields combined
-                  // else if (searchKeywords.length > 1) {
-                  //   // Check if full phrase exists in title or role (best match)
-                  //   const hasExactPhraseInTitle = title.includes(normalizedSearch);
-                  //   const hasExactPhraseInRole = role.includes(normalizedSearch);
-                  //   // Check if ALL keywords are present in title OR all in role
-                  //   const hasAllKeywordsInTitle = searchKeywords.every(kw => title.includes(kw));
-                  //   const hasAllKeywordsInRole = searchKeywords.every(kw => role.includes(kw));
-                  //   // NEW: Check if ALL keywords exist when combining title + role fields
-                  //   const hasAllKeywordsCombined = searchKeywords.every(kw =>
-                  //     title.includes(kw) || role.includes(kw)
-                  //   );
-                  //   // Allow company exact match as alternative
-                  //   const isCompanyMatch = company.includes(normalizedSearch);
-
-                  //   if (!hasExactPhraseInTitle && !hasExactPhraseInRole &&
-                  //     !hasAllKeywordsInTitle && !hasAllKeywordsInRole &&
-                  //     !hasAllKeywordsCombined && !isCompanyMatch) {
-                  //     return false;
-                  //   }
-                  // }
-                  // Note: SQL query already filtered correctly, no additional filtering needed
-                }
-
+              // If there's a typed search, only show jobs that match the keywords
+              if (normalizedSearch) {
                 return item._score > 0;
               }
+              // If only dropdown filters are used, keep everything returned by SQL
               return true;
             })
-            .sort((a, b) => b._score - a._score);
+            .sort((a, b) => b._score - a._score)
+            .slice(0, 200); // Increased limit to 200 for better wage sorting coverage
 
-          // Handle client-side pagination
-          const totalSorted = sortedData.length;
+          // 2. Fetch/Verify Wage Levels for these top 200 jobs to ensure 100% accurate ranking
+          const dataWithWages = await Promise.all(
+            scoredData.map(async (job) => {
+              // Priority: If DB already has a high wage_num (3 or 4), use it immediately!
+              if (job.wage_num && job.wage_num >= 3) {
+                return { ...job, _wageNum: job.wage_num };
+              }
+
+              try {
+                // Otherwise, verify dynamically (handles unsynced records)
+                const results = await getWageLevel(job.title || job.job_role_name, job.location);
+                const wageLevelStr = (results && results.length > 0) ? results[0]['Wage Level'] : 'Lv 2';
+                const wageNum = parseInt(wageLevelStr.match(/\d/)?.[0] || '2');
+                return { ...job, _wageLevel: wageLevelStr, _wageNum: wageNum };
+              } catch (err) {
+                return { ...job, _wageLevel: 'Lv 2', _wageNum: 2 };
+              }
+            })
+          );
+
+          // 3. Final Sort: 100% Priority to Wage Level (Descending), then Relevance
+          const finalSorted = dataWithWages.sort((a, b) => {
+            const wageA = b._wageNum || 2;
+            const wageB = a._wageNum || 2;
+            if (wageA !== wageB) return wageA - wageB; // Highest Wage Level First (4 > 3 > 2 > 1)
+            return b._score - a._score; // Then by Relevance Score
+          });
+
+          const totalSorted = finalSorted.length;
           setTotalJobs(totalSorted);
 
           const from = (activePage - 1) * JOBS_PER_PAGE;
           const to = from + JOBS_PER_PAGE;
-          const paginatedData = sortedData.slice(from, to);
+          const paginatedData = finalSorted.slice(from, to);
 
           setJobs(paginatedData);
 
@@ -527,11 +467,15 @@ const Homepage = () => {
         }
 
       } else {
-        // --- DEFAULT MODE: Server-Side Pagination (Date Sorted) ---
-        // Query is already ordered by upload_date above
+        // --- DEFAULT MODE: Global Database Sorting (Highest Wage First) ---
         const from = (activePage - 1) * JOBS_PER_PAGE;
         const to = from + JOBS_PER_PAGE - 1;
-        query = query.range(from, to);
+
+        // Use SQL for global sorting across all jobs in the database
+        query = query
+          .order('wage_num', { ascending: false, nullsFirst: false })
+          .order('date_posted', { ascending: false })
+          .range(from, to);
 
         const { data, error, count } = await query;
         if (error) throw error;
@@ -834,13 +778,7 @@ const Homepage = () => {
                           const jobId = job.job_id || job.id;
                           const jobIdString = String(jobId); // Convert to string for consistency
 
-                          console.log('📋 Homepage Rendering Job:', {
-                            jobId: jobIdString,
-                            title: job.title,
-                            company: job.company,
-                            isSaved: savedJobIds.has(jobIdString),
-                            isApplied: appliedJobIds.has(jobIdString)
-                          });
+
 
                           return (
                             <JobCard
@@ -893,7 +831,6 @@ const Homepage = () => {
                         key={job.id}
                         job={job}
                         isSaved={false}
-                        onSaveToggle={handleSaveToggle}
                       />
                     ))}
 

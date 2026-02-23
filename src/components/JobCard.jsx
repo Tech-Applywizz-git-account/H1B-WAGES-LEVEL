@@ -18,9 +18,11 @@ import { leadsSupabase } from '../leadsSupabaseClient';
 import useAuth from '../hooks/useAuth';
 import { PhoneInput } from 'react-international-phone';
 import 'react-international-phone/style.css';
+import { getWageLevel } from '../dataSyncService';
 
 const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onApplyToggle }) => {
     const { user, subscriptionExpired } = useAuth();
+    const [wageInfo, setWageInfo] = useState({ level: 'Lv 2', hourly: null, yearly: null, loading: true });
 
     // DEBUG: Track what's being rendered
     console.log("🎫 JobCard DEBUG:", {
@@ -47,6 +49,48 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
 
     useEffect(() => setSaved(isSaved), [isSaved]);
     useEffect(() => setApplied(isApplied), [isApplied]);
+
+    // Fetch Wage Level dynamically
+    useEffect(() => {
+        // If wage level is already provided (pre-calculated during sync), use it!
+        if (job.wage_level) {
+            setWageInfo({
+                level: job.wage_level,
+                yearly: (job.salary || '').replace(/[^0-9]/g, ''), // Clean salary to digits
+                loading: false
+            });
+            return;
+        }
+
+        const fetchWage = async () => {
+            const occupation = job.title || job.job_role_name || '';
+            const location = job.location || '';
+
+            if (!occupation) return;
+
+            try {
+                // Try to find a match (Level 2 is the most common fallback)
+                const results = await getWageLevel(occupation, location);
+
+                if (results && results.length > 0) {
+                    const match = results[0];
+                    setWageInfo({
+                        level: match['Wage Level'] || 'Lv 2',
+                        hourly: match['Hourly'],
+                        yearly: match['Yearly'],
+                        loading: false
+                    });
+                } else {
+                    setWageInfo(prev => ({ ...prev, loading: false }));
+                }
+            } catch (err) {
+                console.error("Wage fetch error:", err);
+                setWageInfo(prev => ({ ...prev, loading: false }));
+            }
+        };
+
+        fetchWage();
+    }, [job.title, job.location]);
 
     const formatDate = (dateString) => {
         if (!dateString) return 'Recently';
@@ -259,16 +303,28 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                 {/* RIGHT: WAGE LEVEL & APPLY */}
                 <div className="flex flex-col sm:flex-row md:flex-col gap-3 shrink-0 sm:w-full md:w-44 lg:w-48">
                     {/* WAGE LEVEL BOX */}
-                    <div className="flex-1 sm:flex-none bg-[#1e3a8a] rounded-2xl p-3 md:p-4 text-center text-white flex flex-col items-center justify-center shadow-md">
+                    <div className="flex-1 sm:flex-none bg-[#1e3a8a] rounded-2xl p-3 md:p-4 text-center text-white flex flex-col items-center justify-center shadow-md group/wage relative overflow-hidden">
                         <div className="flex gap-0.5 md:gap-1 mb-1 md:mb-2">
-                            {[1, 2, 3, 4].map((star) => (
-                                <span key={star} className={`text-[10px] md:text-sm ${star <= 3 ? "text-yellow-400" : "text-gray-400"}`}>
-                                    ★
-                                </span>
-                            ))}
+                            {[1, 2, 3, 4].map((star) => {
+                                const levelNum = parseInt(wageInfo.level.match(/\d/)?.[0] || '2');
+                                return (
+                                    <span key={star} className={`text-[10px] md:text-sm ${star <= levelNum ? "text-yellow-400" : "text-gray-400"}`}>
+                                        ★
+                                    </span>
+                                );
+                            })}
                         </div>
-                        <div className="text-2xl md:text-4xl font-black mb-0.5 md:mb-1">Lv 3</div>
-                        <div className="text-[8px] md:text-[10px] uppercase font-bold tracking-widest opacity-80">Wage Level</div>
+                        <div className="text-2xl md:text-4xl font-black mb-0.5 md:mb-1 animate-fadeIn">
+                            {wageInfo.loading ? '...' : wageInfo.level}
+                        </div>
+                        <div className="text-[8px] md:text-[10px] uppercase font-bold tracking-widest opacity-80 mb-1">Wage Level</div>
+
+                        {/* Hover detail info */}
+                        {wageInfo.yearly && (
+                            <div className="text-[9px] font-medium bg-blue-900/50 px-2 py-0.5 rounded-full mt-1">
+                                Avg: ${Number(wageInfo.yearly).toLocaleString()}/yr
+                            </div>
+                        )}
                     </div>
 
                     {/* APPLY NOW */}

@@ -36,7 +36,7 @@ const AdminOverview = () => {
 
             // 2. Fetch Active Jobs Count
             const { count: jobCount } = await supabase
-                .from('job_jobrole_all')
+                .from('job_jobrole_sponsored_sync')
                 .select('*', { count: 'exact', head: true });
 
             // 3. Fetch Revenue

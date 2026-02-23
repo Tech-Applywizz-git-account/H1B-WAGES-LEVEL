@@ -680,7 +680,7 @@ import Sidebar from "../components/Sidebar";
 const Dashboard = () => {
     const location = useLocation();
     const [activeTab, setActiveTab] = useState(location.state?.initialTab || "overview");
-    const { role, loading, user, signOut, isAdmin, subscriptionExpired, subscriptionEndDate, checkingSub } = useAuth();
+    const { role, loading, user, signOut, isAdmin, subscriptionExpired, subscriptionEndDate, checkingSub, firstName } = useAuth();
     const navigate = useNavigate();
 
     const [savedJobsCount, setSavedJobsCount] = useState(0);
@@ -888,7 +888,7 @@ const Dashboard = () => {
                         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/50 rounded-full -mr-32 -mt-32 transition-transform group-hover:scale-110 duration-700"></div>
                         <div className="relative z-10">
                             <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tight leading-tight">
-                                Welcome back, <span className="text-indigo-600 italic">{user?.email?.split("@")[0] || "User"}</span>!
+                                Welcome back, <span className="text-indigo-600 italic">{firstName ? (firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase()) : (user?.email?.split("@")[0] || "User")}</span>!
                             </h1>
                             <p className="text-gray-500 mt-2 text-lg font-medium max-w-2xl">
                                 {isAdmin
