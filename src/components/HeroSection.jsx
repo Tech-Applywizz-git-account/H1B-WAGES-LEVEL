@@ -148,6 +148,58 @@ const HeroSection = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* Company Marquee */}
+                    <div className="mt-20">
+                        <p className="text-center text-[13px] font-medium text-[#c49b5d]/60 uppercase tracking-[0.3em] mb-10">
+                            Top Companies Where Our Clients Landed Interviews
+                        </p>
+                        <div className="relative overflow-hidden bg-[#0a0a0a]/80 backdrop-blur-xl py-12 rounded-[50px] border border-white/5 shadow-[0_20px_80px_rgba(0,0,0,0.5)] mx-4">
+                            <div className="flex flex-col gap-8">
+                                {/* Row 1: Scrolling Left */}
+                                <div className="flex animate-marquee whitespace-nowrap">
+                                    {[
+                                        'Walmart', 'ORACLE', 'UNITED', 'Goldman Sachs', 'TikTok',
+                                        'Walmart', 'ORACLE', 'UNITED', 'Goldman Sachs', 'TikTok'
+                                    ].map((company, i) => (
+                                        <div key={`r1-${i}`} className="flex items-center justify-center mx-14">
+                                            <span className="text-2xl md:text-3xl font-black text-white/40 tracking-tighter hover:text-white transition-opacity cursor-default">
+                                                {company === 'Walmart' ? (
+                                                    <span className="flex items-center gap-1">Walmart<span className="text-[#FDB913]">✻</span></span>
+                                                ) : company === 'Goldman Sachs' ? (
+                                                    <span className="text-lg leading-tight text-center block">Goldman<br /><span className="text-xs -mt-1 block">Sachs</span></span>
+                                                ) : company}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Row 2: Scrolling Right (or different offset) */}
+                                <div className="flex animate-marquee-reverse whitespace-nowrap">
+                                    {[
+                                        'Uber', 'American Airlines', 'hp', 'DELL', 'Google', 'Apple', 'Deloitte',
+                                        'Uber', 'American Airlines', 'hp', 'DELL', 'Google', 'Apple', 'Deloitte'
+                                    ].map((company, i) => (
+                                        <div key={`r2-${i}`} className="flex items-center justify-center mx-14">
+                                            <span className="text-2xl md:text-3xl font-black text-white/40 tracking-tighter hover:text-white transition-opacity cursor-default">
+                                                {company === 'hp' ? (
+                                                    <span className="italic lowercase border-2 border-white/20 rounded-full w-10 h-10 flex items-center justify-center text-xl">hp</span>
+                                                ) : company === 'Apple' ? (
+                                                    <span className="text-3xl"></span>
+                                                ) : company === 'Deloitte' ? (
+                                                    <span>Deloitte<span className="text-[#FDB913]">.</span></span>
+                                                ) : company}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Fading Edges */}
+                            <div className="absolute inset-y-0 left-0 w-40 bg-gradient-to-r from-[#0a0a0a] to-transparent z-10 pointer-events-none"></div>
+                            <div className="absolute inset-y-0 right-0 w-40 bg-gradient-to-l from-[#0a0a0a] to-transparent z-10 pointer-events-none"></div>
+                        </div>
+                    </div>
                 </div>
             </section>
         </div>
