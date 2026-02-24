@@ -1,118 +1,17 @@
-// import React, { useState } from 'react';
-// import { useNavigate, useLocation } from 'react-router-dom';
-// import {
-//     Briefcase,
-//     Heart,
-//     User,
-//     Settings,
-//     CreditCard,
-//     Search,
-//     Shield,
-//     List,
-// } from "lucide-react";
-// import useAuth from '../hooks/useAuth';
-
-// const Sidebar = ({ className = "", showHeader = true }) => {
-//     const { role, user, signOut } = useAuth();
-//     const navigate = useNavigate();
-//     const location = useLocation();
-
-//     // Determine active tab based on path and state
-//     const getActiveTab = () => {
-//         if (location.pathname === '/') return 'alljobs';
-//         if (location.state?.initialTab) return location.state.initialTab;
-//         return 'overview';
-//     };
-
-//     const [activeTab, setActiveTab] = useState(getActiveTab());
-
-//     const isAdmin = role === "admin";
-
-//     const tabs = [
-//         { id: "overview", label: "Overview", icon: Search },
-//         { id: "alljobs", label: "All Jobs", icon: List },
-//         { id: "saved", label: "Saved Jobs", icon: Heart },
-//         { id: "applied", label: "Applied Jobs", icon: Briefcase },
-//         { id: "profile", label: "Profile", icon: User },
-//         { id: "settings", label: "Settings", icon: Settings },
-//         { id: "billing", label: "Billing", icon: CreditCard },
-//         ...(isAdmin ? [{ id: "admin", label: "Admin Controls", icon: Shield }] : []),
-//     ];
-
-//     const handleTabClick = (tabId) => {
-//         setActiveTab(tabId);
-//         if (tabId === 'alljobs') {
-//             navigate('/');
-//         } else {
-//             // Navigate to dashboard with specific tab
-//             navigate('/dashboard', { state: { initialTab: tabId } });
-//         }
-//     };
-
-//     return (
-//         <aside className={`w-64 bg-white border-r border-gray-200 p-6 overflow-y-auto ${className}`}>
-//             {showHeader && (
-//                 <div className="mb-8">
-//                     <h2 className="text-lg font-semibold text-gray-700 mb-2">
-//                         H1B Wage Level
-//                     </h2>
-//                     <div className="text-sm text-gray-500 flex items-center gap-2">
-//                         <div
-//                             className={`w-2 h-2 rounded-full ${isAdmin ? "bg-red-500" : "bg-green-500"}`}
-//                         ></div>
-//                         <span>{isAdmin ? "Admin" : "User"} Account</span>
-//                     </div>
-//                 </div>
-//             )}
-
-//             <nav className="space-y-2">
-//                 {tabs.map((tab) => {
-//                     const isActive = activeTab === tab.id;
-//                     return (
-//                         <button
-//                             key={tab.id}
-//                             onClick={() => handleTabClick(tab.id)}
-//                             className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all 
-//                 ${isActive
-//                                     ? "bg-yellow-300 text-gray-900 font-semibold shadow-sm"
-//                                     : "text-gray-600 hover:bg-gray-100"
-//                                 }`}
-//                         >
-//                             <tab.icon size={20} />
-//                             {tab.label}
-//                         </button>
-//                     );
-//                 })}
-
-//                 {/* Logout Button */}
-//                 <button
-//                     onClick={async () => {
-//                         localStorage.removeItem('userRole');
-//                         localStorage.removeItem('userId');
-//                         await signOut();
-//                         navigate('/login');
-//                     }}
-//                     className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all mt-8"
-//                 >
-//                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-//                         <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
-//                     </svg>
-//                     Logout
-//                 </button>
-//             </nav>
-//         </aside>
-//     );
-// };
-
-// export default Sidebar;
-
-
-
-// components/Sidebar.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-    Briefcase, Heart, User, Settings, CreditCard, Search, Shield, LayoutDashboard,
+    Briefcase,
+    Settings,
+    LayoutDashboard,
+    Zap,
+    Heart,
+    User,
+    CreditCard,
+    Shield,
+    PlayCircle,
+    HelpCircle,
+    LogOut
 } from "lucide-react";
 import useAuth from '../hooks/useAuth';
 
@@ -126,129 +25,137 @@ const Sidebar = ({ className = "", showHeader = true }) => {
         setMounted(true);
     }, []);
 
-    // Determine active tab based on path and state
     const getActiveTab = () => {
         const path = location.pathname;
-        if (path === '/' || path === '/jobs' || path === '/search') return 'alljobs';
+        if (path === '/' || path === '/jobs' || path === '/search' || path === '/app') return 'jobs';
         if (location.state?.initialTab) return location.state.initialTab;
         return 'overview';
     };
 
-    // Determine active tab based on path and state
     const [activeTab, setActiveTab] = useState(() => getActiveTab());
 
-    // Update active tab when location changes
     useEffect(() => {
         setActiveTab(getActiveTab());
     }, [location]);
 
-    // Get admin status from multiple reliable sources
-    const getAdminStatus = () => {
-        // Check in order of reliability
-        if (role === "admin") return true;
+    const isAdmin = role === "admin" || localStorage.getItem("userRole") === "admin";
 
-        // Check localStorage as fallback
-        const storedRole = localStorage.getItem("userRole");
-        if (storedRole === "admin") return true;
-
-        // Check URL parameters as last resort
-        const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('role') === 'admin') return true;
-
-        return false;
-    };
-
-    const isAdmin = getAdminStatus();
-
-    // Define tabs with admin tab conditionally
-    const baseTabs = [
+    const tabs = [
         { id: "overview", label: "Overview", icon: LayoutDashboard },
-        { id: "alljobs", label: "Find Jobs", icon: Search },
         { id: "saved", label: "Saved Jobs", icon: Heart },
         { id: "applied", label: "Applied Jobs", icon: Briefcase },
         { id: "profile", label: "Profile", icon: User },
-        // { id: "settings", label: "Settings", icon: Settings },
         { id: "billing", label: "Billing", icon: CreditCard },
+        ...(isAdmin ? [{ id: "admin", label: "Admin Controls", icon: Shield }] : []),
     ];
-
-    const adminTab = { id: "admin", label: "Admin Controls", icon: Shield };
-    const tabs = isAdmin ? [...baseTabs, adminTab] : baseTabs;
 
     const handleTabClick = (tabId) => {
         setActiveTab(tabId);
-        if (tabId === 'alljobs') {
-            navigate('/jobs');
-        } else {
-            navigate('/dashboard', {
-                state: {
-                    initialTab: tabId,
-                    preserveRole: true // Pass flag to preserve role
-                }
-            });
-        }
+        navigate('/dashboard', { state: { initialTab: tabId } });
     };
 
-    if (!mounted) {
-        return null; // or a loading skeleton
-    }
+    const handleLogout = async () => {
+        await signOut();
+        navigate('/login');
+    };
+
+    if (!mounted) return null;
 
     return (
-        <aside className={`w-64 bg-white border-r border-gray-200 p-6 overflow-y-auto ${className}`}>
-            {showHeader && (
-                <div className="mb-8">
-                    <h2 className="text-lg font-semibold text-gray-700 mb-2">
-                        H1B Wage Level
-                    </h2>
-                    <div className="text-sm text-gray-500 flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${isAdmin ? "bg-red-500" : "bg-green-500"}`}></div>
-                        <span>{isAdmin ? "Admin" : "User"} Account</span>
-                        <span className="text-xs text-gray-400 ml-2">
-                            {role || localStorage.getItem('userRole') || 'unknown'}
-                        </span>
+        <aside className={`flex h-full flex-col bg-white w-56 border-r border-[#f0f0f0] transition-all duration-300 ${className}`}>
+            {/* Logo Section */}
+            <div className="p-6 mb-2">
+                <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate('/')}>
+                    <div className="relative">
+                        <div className="w-10 h-10 bg-[#24385E] rounded-xl flex items-center justify-center transform rotate-12 transition-transform hover:rotate-0">
+                            <span className="text-white font-black text-xl italic tracking-tighter">W</span>
+                        </div>
+                        <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white"></div>
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-xl font-bold text-[#24385E] tracking-tight leading-none">Wage</span>
+                        <span className="text-xl font-bold text-yellow-500 tracking-tight leading-none">Level</span>
                     </div>
                 </div>
-            )}
+            </div>
 
-            <nav className="space-y-2">
+            {/* Navigation Section */}
+            <nav className="flex-1 px-4 space-y-1">
+                {/* Find Jobs Tab */}
+                <button
+                    onClick={() => navigate('/jobs')}
+                    className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 
+                        ${location.pathname === '/jobs' || location.pathname === '/app' || location.pathname === '/search'
+                            ? "bg-[#fafafa] text-[#24385E] font-bold"
+                            : "text-[#666666] hover:bg-[#fafafa] hover:text-[#24385E]"
+                        }`}
+                >
+                    <div className={`p-1.5 rounded-lg transition-colors duration-200 ${location.pathname === '/jobs' || location.pathname === '/app' || location.pathname === '/search' ? "bg-white shadow-sm" : ""}`}>
+                        <Briefcase
+                            size={18}
+                            className={`${location.pathname === '/jobs' || location.pathname === '/app' || location.pathname === '/search' ? "text-yellow-500" : "text-[#999999] group-hover:text-[#24385E]"} transition-colors`}
+                        />
+                    </div>
+                    <span className="text-[14px]">Find Jobs</span>
+                </button>
+
+                {/* Restored Functional Tabs */}
                 {tabs.map((tab) => {
-                    const isActive = activeTab === tab.id;
+                    const isActive = activeTab === tab.id && location.pathname === '/dashboard';
                     const Icon = tab.icon;
+
                     return (
                         <button
                             key={tab.id}
                             onClick={() => handleTabClick(tab.id)}
-                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all 
+                            className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 
                                 ${isActive
-                                    ? "bg-gray-900 text-white font-semibold shadow-sm"
-                                    : "text-gray-600 hover:bg-gray-100"
+                                    ? "bg-[#fafafa] text-[#24385E] font-bold"
+                                    : "text-[#666666] hover:bg-[#fafafa] hover:text-[#24385E]"
                                 }`}
                         >
-                            <Icon size={20} />
-                            {tab.label}
+                            <div className={`p-1.5 rounded-lg transition-colors duration-200 ${isActive ? "bg-white shadow-sm" : ""}`}>
+                                <Icon
+                                    size={18}
+                                    className={`${isActive ? "text-yellow-500" : "text-[#999999] group-hover:text-[#24385E]"} transition-colors`}
+                                />
+                            </div>
+                            <span className="text-[14px]">{tab.label}</span>
                         </button>
                     );
                 })}
-
-                {/* Logout Button */}
-                <button
-                    onClick={async () => {
-                        // Clear all possible role storages
-                        localStorage.removeItem('userRole');
-                        localStorage.removeItem('userId');
-                        sessionStorage.removeItem('userRole');
-                        await signOut();
-                        navigate('/login');
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all mt-8"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1V4a1 1 0 00-1-1H3zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
-                    </svg>
-                    Logout
-                </button>
             </nav>
+
+            {/* Footer Section */}
+            <div className="px-4 pb-6 space-y-4">
+                <div className="bg-[#fffbeb] border border-[#fef3c7] rounded-xl p-4 cursor-pointer hover:shadow-sm transition-shadow group">
+                    <div className="flex items-center gap-2 mb-1.5">
+                        <div className="p-1.5 bg-yellow-400 rounded-lg">
+                            <Zap size={14} className="text-[#24385E] fill-current" />
+                        </div>
+                        <span className="text-[13px] font-bold text-[#24385E]">Tired of applying?</span>
+                    </div>
+                    <div className="text-[11px] text-[#92400e] font-medium leading-relaxed">
+                        Get automated applications and double your interview rate.
+                    </div>
+                </div>
+
+                <div className="pt-2 space-y-1">
+                    <button className="w-full flex items-center gap-3 px-3 py-2 text-[#666666] hover:text-[#24385E] transition-colors rounded-lg group">
+                        <PlayCircle size={18} className="text-[#999999] group-hover:text-[#24385E]" />
+                        <span className="text-[13px] font-medium">Start Tour</span>
+                    </button>
+                    <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 px-3 py-2 text-[#666666] hover:text-red-600 transition-colors rounded-lg group"
+                    >
+                        <LogOut size={18} className="text-[#999999] group-hover:text-red-500" />
+                        <span className="text-[13px] font-medium">Logout</span>
+                    </button>
+                </div>
+            </div>
         </aside>
     );
 };
 
-export default React.memo(Sidebar); // Memoize to prevent unnecessary re-renders
+export default React.memo(Sidebar);

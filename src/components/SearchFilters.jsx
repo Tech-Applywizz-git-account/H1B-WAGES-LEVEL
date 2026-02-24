@@ -169,9 +169,8 @@ const SearchFilters = ({ onFilterChange }) => {
     );
 
     return (
-        <div className="bg-white border-b border-gray-100 mb-4 font-display">
+        <div className="bg-white border-b border-gray-50 mb-6 font-display">
             <div className="w-full py-2">
-
                 {/* Tabs */}
                 <div className="flex justify-start items-center space-x-1 md:space-x-2 max-w-[1400px] mx-auto px-4 overflow-x-auto no-scrollbar">
                     {tabs.map(tab => {
@@ -181,12 +180,12 @@ const SearchFilters = ({ onFilterChange }) => {
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
-                                className={`inline-flex items-center gap-2 px-4 md:px-6 py-3 md:py-4 border-b-[3px] font-bold text-xs md:text-sm whitespace-nowrap transition-all ${isActive
-                                    ? 'text-indigo-600 border-indigo-600'
-                                    : 'text-gray-400 hover:text-gray-600 border-transparent hover:border-gray-200'
+                                className={`inline-flex items-center gap-2 px-4 md:px-6 py-3 md:py-4 border-b-[3px] font-black text-[11px] md:text-xs uppercase tracking-wider whitespace-nowrap transition-all ${isActive
+                                    ? 'text-[#24385E] border-[#24385E]'
+                                    : 'text-gray-300 hover:text-gray-500 border-transparent hover:border-gray-100'
                                     }`}
                             >
-                                <Icon size={18} />
+                                <Icon size={16} />
                                 <span>{tab.label}</span>
                             </button>
                         );
@@ -194,20 +193,20 @@ const SearchFilters = ({ onFilterChange }) => {
 
                     <button
                         onClick={() => setShowFilters(!showFilters)}
-                        className="ml-2 p-2 rounded-full hover:bg-gray-100 transition-colors"
+                        className="ml-2 p-2 rounded-lg hover:bg-gray-50 transition-colors"
                     >
                         <ChevronDown
-                            size={20}
-                            className={`text-gray-500 transition-transform ${showFilters ? 'rotate-180' : ''}`}
+                            size={18}
+                            className={`text-gray-400 transition-transform ${showFilters ? 'rotate-180' : ''}`}
                         />
                     </button>
                 </div>
 
                 {/* Pills */}
                 {showFilters && (
-                    <div className="py-3">
+                    <div className="py-5 bg-gray-50/50 animate-in fade-in slide-in-from-top-2 duration-300">
                         {/* 1️⃣ TOP OPTIONS (Pills) */}
-                        <div className="flex flex-wrap gap-2 justify-start max-w-[1400px] mx-auto px-4 mb-2">
+                        <div className="flex flex-wrap gap-2 justify-start max-w-[1400px] mx-auto px-4 mb-4">
                             {(activeTab === 'location' ? filterOptions.location.slice(0, 5)
                                 : activeTab === 'role' ? filterOptions.role
                                     : activeTab === 'company' ? filterOptions.company.slice(0, 8)
@@ -216,10 +215,10 @@ const SearchFilters = ({ onFilterChange }) => {
                                 <button
                                     key={option}
                                     onClick={() => toggleFilter(activeTab, option)}
-                                    className={`inline-flex items-center gap-1 px-4 py-2 rounded-full text-sm font-medium shadow-sm border transition-all 
+                                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold border transition-all 
                                     ${isFilterActive(activeTab, option)
-                                            ? 'bg-purple-50 border-purple-200 text-gray-800'
-                                            : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200'
+                                            ? 'bg-[#24385E] border-[#24385E] text-white shadow-md'
+                                            : 'bg-white hover:bg-gray-100 text-gray-600 border-gray-200'
                                         }`}
                                 >
                                     {option}
@@ -231,7 +230,7 @@ const SearchFilters = ({ onFilterChange }) => {
                         <div className="flex justify-start max-w-[1400px] mx-auto px-4 w-full relative z-10">
                             {/* Suggestion Dropdown Helper */}
                             {suggestions.length > 0 && (
-                                <div className="absolute bottom-full mb-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-20">
+                                <div className="absolute bottom-full mb-2 w-64 bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden z-20">
                                     {suggestions.map((suggestion, idx) => (
                                         <button
                                             key={idx}
@@ -244,7 +243,7 @@ const SearchFilters = ({ onFilterChange }) => {
                                                 if (activeTab === 'company') { setCustomCompany(''); setShowCompanyInput(false); }
                                                 if (activeTab === 'experience') { setCustomExperience(''); setShowExperienceInput(false); }
                                             }}
-                                            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 transition-colors"
+                                            className="w-full text-left px-4 py-2.5 text-xs text-gray-700 hover:bg-gray-50 hover:text-[#24385E] font-medium transition-colors"
                                         >
                                             {suggestion}
                                         </button>
@@ -254,7 +253,7 @@ const SearchFilters = ({ onFilterChange }) => {
 
                             {activeTab === 'location' && (
                                 showLocationInput ? (
-                                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-purple-500 rounded-full shadow-sm w-64">
+                                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#24385E] rounded-lg shadow-sm w-64">
                                         <input
                                             type="text"
                                             autoFocus
@@ -267,23 +266,23 @@ const SearchFilters = ({ onFilterChange }) => {
                                             onKeyDown={handleCustomLocationSubmit}
                                             onBlur={() => setTimeout(() => setShowLocationInput(false), 200)} // Delay for click
                                             placeholder="Type location..."
-                                            className="outline-none text-sm text-gray-700 w-full"
+                                            className="outline-none text-xs text-gray-700 w-full font-medium"
                                         />
                                     </div>
                                 ) : (
                                     <button
                                         onClick={() => setShowLocationInput(true)}
-                                        className="inline-flex items-center gap-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-sm font-medium shadow-sm border border-gray-200"
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-500 rounded-lg text-xs font-bold border border-gray-200 transition-all"
                                     >
-                                        <Search size={14} />
-                                        <span>Search for all other locations</span>
+                                        <Search size={14} className="text-gray-400" />
+                                        <span>Other locations</span>
                                     </button>
                                 )
                             )}
 
                             {activeTab === 'role' && (
                                 showRoleInput ? (
-                                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-purple-500 rounded-full shadow-sm w-64">
+                                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#24385E] rounded-lg shadow-sm w-64">
                                         <input
                                             type="text"
                                             autoFocus
@@ -296,23 +295,23 @@ const SearchFilters = ({ onFilterChange }) => {
                                             onKeyDown={handleCustomRoleSubmit}
                                             onBlur={() => setTimeout(() => setShowRoleInput(false), 200)}
                                             placeholder="Type role..."
-                                            className="outline-none text-sm text-gray-700 w-full"
+                                            className="outline-none text-xs text-gray-700 w-full font-medium"
                                         />
                                     </div>
                                 ) : (
                                     <button
                                         onClick={() => setShowRoleInput(true)}
-                                        className="inline-flex items-center gap-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-sm font-medium shadow-sm border border-gray-200"
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-500 rounded-lg text-xs font-bold border border-gray-200 transition-all"
                                     >
-                                        <Search size={14} />
-                                        <span>Search for all other roles</span>
+                                        <Search size={14} className="text-gray-400" />
+                                        <span>Other roles</span>
                                     </button>
                                 )
                             )}
 
                             {activeTab === 'company' && (
                                 showCompanyInput ? (
-                                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-purple-500 rounded-full shadow-sm w-64">
+                                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#24385E] rounded-lg shadow-sm w-64">
                                         <input
                                             type="text"
                                             autoFocus
@@ -325,23 +324,23 @@ const SearchFilters = ({ onFilterChange }) => {
                                             onKeyDown={handleCustomCompanySubmit}
                                             onBlur={() => setTimeout(() => setShowCompanyInput(false), 200)}
                                             placeholder="Type company..."
-                                            className="outline-none text-sm text-gray-700 w-full"
+                                            className="outline-none text-xs text-gray-700 w-full font-medium"
                                         />
                                     </div>
                                 ) : (
                                     <button
                                         onClick={() => setShowCompanyInput(true)}
-                                        className="inline-flex items-center gap-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-sm font-medium shadow-sm border border-gray-200"
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-500 rounded-lg text-xs font-bold border border-gray-200 transition-all"
                                     >
-                                        <Search size={14} />
-                                        <span>Search for all other companies</span>
+                                        <Search size={14} className="text-gray-400" />
+                                        <span>Other companies</span>
                                     </button>
                                 )
                             )}
 
                             {activeTab === 'experience' && (
                                 showExperienceInput ? (
-                                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-purple-500 rounded-full shadow-sm w-64">
+                                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-[#24385E] rounded-lg shadow-sm w-64">
                                         <input
                                             type="text"
                                             autoFocus
@@ -354,16 +353,16 @@ const SearchFilters = ({ onFilterChange }) => {
                                             onKeyDown={handleCustomExperienceSubmit}
                                             onBlur={() => setTimeout(() => setShowExperienceInput(false), 200)}
                                             placeholder="Type experience..."
-                                            className="outline-none text-sm text-gray-700 w-full"
+                                            className="outline-none text-xs text-gray-700 w-full font-medium"
                                         />
                                     </div>
                                 ) : (
                                     <button
                                         onClick={() => setShowExperienceInput(true)}
-                                        className="inline-flex items-center gap-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-sm font-medium shadow-sm border border-gray-200"
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-gray-50 text-gray-500 rounded-lg text-xs font-bold border border-gray-200 transition-all"
                                     >
-                                        <Search size={14} />
-                                        <span>Search for all other experience levels</span>
+                                        <Search size={14} className="text-gray-400" />
+                                        <span>Other experience</span>
                                     </button>
                                 )
                             )}
@@ -373,30 +372,39 @@ const SearchFilters = ({ onFilterChange }) => {
 
                 {/* Active Filters */}
                 {allActiveFilters.length > 0 && (
-                    <div className="py-3 border-t border-gray-100">
-                        <div className="flex items-center gap-3 flex-wrap justify-center">
-                            <span className="text-sm font-semibold text-gray-700">Active Filters:</span>
+                    <div className="py-4 border-t border-gray-50 bg-white">
+                        <div className="flex items-center gap-3 flex-wrap justify-start max-w-[1400px] mx-auto px-4">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-[#24385E]">Active Filters:</span>
 
                             {allActiveFilters.map(({ category, value }) => (
                                 <span
                                     key={`${category}-${value}`}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-full text-sm font-medium text-gray-800"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 border border-indigo-100 rounded-lg text-xs font-bold text-indigo-700 shadow-sm"
                                 >
-                                    {category === 'role' && <Briefcase size={12} className="text-blue-500" />}
-                                    {category === 'location' && <MapPin size={12} className="text-pink-500" />}
-                                    {category === 'company' && <FileText size={12} className="text-orange-500" />}
-                                    {category === 'experience' && <Briefcase size={12} className="text-indigo-500" />}
+                                    {category === 'role' && <Briefcase size={12} />}
+                                    {category === 'location' && <MapPin size={12} />}
+                                    {category === 'company' && <FileText size={12} />}
+                                    {category === 'experience' && <Briefcase size={12} />}
 
                                     <span>{value}</span>
 
                                     <button
                                         onClick={() => removeFilter(category, value)}
-                                        className="hover:text-red-600 transition-colors cursor-pointer ml-1"
+                                        className="hover:text-red-500 transition-colors cursor-pointer ml-1"
                                     >
                                         <X size={14} />
                                     </button>
                                 </span>
                             ))}
+                            <button
+                                onClick={() => {
+                                    setActiveFilters({ role: [], location: [], company: [], experience: [] });
+                                    if (onFilterChange) onFilterChange({ role: [], location: [], company: [], experience: [] });
+                                }}
+                                className="text-[10px] font-black uppercase tracking-widest text-red-500 hover:text-red-700 ml-2"
+                            >
+                                Clear All
+                            </button>
                         </div>
                     </div>
                 )}

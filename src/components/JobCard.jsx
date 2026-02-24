@@ -4,14 +4,15 @@ import {
     Clock,
     Briefcase,
     ExternalLink,
-    Building2,
     Bookmark,
     BookmarkCheck,
-    Globe,
     CheckCircle,
     Circle,
     FileText,
-    X
+    X,
+    ArrowUpRight,
+    Search,
+    Building2
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { leadsSupabase } from '../leadsSupabaseClient';
@@ -23,14 +24,6 @@ import { getWageLevel } from '../dataSyncService';
 const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onApplyToggle }) => {
     const { user, subscriptionExpired } = useAuth();
     const [wageInfo, setWageInfo] = useState({ level: 'Lv 2', hourly: null, yearly: null, loading: true });
-
-    // DEBUG: Track what's being rendered
-    console.log("🎫 JobCard DEBUG:", {
-        title: job.title,
-        userEmail: user?.email,
-        subscriptionExpired: subscriptionExpired,
-        willShowActiveLink: user && !subscriptionExpired
-    });
 
     const [saved, setSaved] = useState(isSaved);
     const [applied, setApplied] = useState(isApplied);
@@ -52,11 +45,10 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
 
     // Fetch Wage Level dynamically
     useEffect(() => {
-        // If wage level is already provided (pre-calculated during sync), use it!
         if (job.wage_level) {
             setWageInfo({
                 level: job.wage_level,
-                yearly: (job.salary || '').replace(/[^0-9]/g, ''), // Clean salary to digits
+                yearly: (job.salary || '').replace(/[^0-9]/g, ''),
                 loading: false
             });
             return;
@@ -65,13 +57,10 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
         const fetchWage = async () => {
             const occupation = job.title || job.job_role_name || '';
             const location = job.location || '';
-
             if (!occupation) return;
 
             try {
-                // Try to find a match (Level 2 is the most common fallback)
                 const results = await getWageLevel(occupation, location);
-
                 if (results && results.length > 0) {
                     const match = results[0];
                     setWageInfo({
@@ -84,7 +73,6 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                     setWageInfo(prev => ({ ...prev, loading: false }));
                 }
             } catch (err) {
-                console.error("Wage fetch error:", err);
                 setWageInfo(prev => ({ ...prev, loading: false }));
             }
         };
@@ -92,48 +80,22 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
         fetchWage();
     }, [job.title, job.location]);
 
-    const formatDate = (dateString) => {
-        if (!dateString) return 'Recently';
-        const date = new Date(dateString);
-        const now = new Date();
-        const diffDays = Math.floor(Math.abs(now - date) / (1000 * 60 * 60 * 24));
-        if (diffDays === 0) return 'Today';
-        if (diffDays === 1) return 'Yesterday';
-        if (diffDays < 30) return `${diffDays}d ago`;
-        return date.toLocaleDateString();
-    };
-
-    /* =========================
-       SAVE JOB
-    ========================= */
     const handleSaveToggle = async (e) => {
         e.preventDefault();
-
-        if (!user || subscriptionExpired) {
-            alert('Your subscription has expired. Please renew to save jobs.');
-            return;
-        }
+        e.stopPropagation();
+        if (!user || subscriptionExpired) return;
 
         const jobId = job.job_id || job.id;
-        const newSavedState = !saved;
-
         setSaving(true);
         try {
             if (saved) {
-                await supabase
-                    .from('saved_jobs')
-                    .delete()
-                    .eq('user_id', user.id)
-                    .eq('job_id', jobId);
+                await supabase.from('saved_jobs').delete().eq('user_id', user.id).eq('job_id', jobId);
                 setSaved(false);
             } else {
-                await supabase
-                    .from('saved_jobs')
-                    .insert([{ user_id: user.id, job_id: jobId, job_data: job }]);
+                await supabase.from('saved_jobs').insert([{ user_id: user.id, job_id: jobId, job_data: job }]);
                 setSaved(true);
             }
-
-            onSaveToggle?.(jobId, newSavedState);
+            onSaveToggle?.(jobId, !saved);
         } catch (err) {
             console.error('Save error:', err);
         } finally {
@@ -141,54 +103,9 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
         }
     };
 
-    /* =========================
-       MARK APPLIED
-    ========================= */
-    const handleApplyToggle = async (e) => {
-        e.preventDefault();
-
-        if (!user || subscriptionExpired) {
-            alert('Your subscription has expired. Please renew to apply.');
-            return;
-        }
-
-        const jobId = String(job.job_id || job.id);
-        const newAppliedState = !applied;
-
-        setApplying(true);
-        try {
-            if (applied) {
-                await supabase
-                    .from('applied_jobs')
-                    .delete()
-                    .eq('user_id', user.id)
-                    .eq('job_id', jobId);
-                setApplied(false);
-            } else {
-                await supabase
-                    .from('applied_jobs')
-                    .insert([{
-                        user_id: user.id,
-                        job_id: jobId,
-                        job_data: job,
-                        application_status: 'applied'
-                    }]);
-                setApplied(true);
-            }
-
-            onApplyToggle?.(jobId, newAppliedState);
-        } catch (err) {
-            console.error('Apply error:', err);
-        } finally {
-            setApplying(false);
-        }
-    };
-
-    /* =========================
-       RESUME HELP HANDLERS
-    ========================= */
     const handleResumeHelpClick = (e) => {
         e.preventDefault();
+        e.stopPropagation();
         setShowResumeModal(true);
     };
 
@@ -201,19 +118,14 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
 
     const handleResumeFormSubmit = async (e) => {
         e.preventDefault();
-
-        // Basic validation
         if (!resumeFormData.firstName || !resumeFormData.lastName || !resumeFormData.email || !resumeFormData.phone || !resumeFormData.country) {
             alert('Please fill in all fields');
             return;
         }
 
         try {
-            // Combine first name and last name for the 'name' field
             const fullName = `${resumeFormData.firstName} ${resumeFormData.lastName}`.trim();
-
-            // Insert data into the leads database
-            const { data, error } = await leadsSupabase
+            const { error } = await leadsSupabase
                 .from('leads')
                 .insert([
                     {
@@ -225,250 +137,216 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                     }
                 ]);
 
-            if (error) {
-                console.error('Error submitting lead:', error);
-                alert('There was an error submitting your information. Please try again.');
-                return;
-            }
-
-            console.log('Lead submitted successfully:', data);
-            alert('Thank you! We will contact you soon to help with your resume.');
-
-            // Reset form and close modal
-            setResumeFormData({
-                firstName: '',
-                lastName: '',
-                email: '',
-                phone: '',
-                country: ''
-            });
+            if (error) throw error;
+            alert('Thank you! We will contact you soon.');
+            setResumeFormData({ firstName: '', lastName: '', email: '', phone: '', country: '' });
             setShowResumeModal(false);
         } catch (err) {
-            console.error('Unexpected error:', err);
-            alert('An unexpected error occurred. Please try again later.');
+            console.error('Lead error:', err);
+            alert('An error occurred. Please try again.');
         }
     };
 
     return (
-        <div className="bg-white rounded-2xl border-2 border-blue-100/80 hover:border-blue-500 hover:shadow-[0_25px_50px_-12px_rgba(59,130,246,0.15)] hover:-translate-y-2 hover:bg-blue-50/5 transition-all duration-500 p-4 md:p-6 group mb-6 relative hover:z-10 cursor-pointer">
-            <div className="flex flex-col sm:flex-row gap-4 md:gap-6">
-
-                {/* LEFT: LOGO & VERIFIED BADGE */}
-                <div className="flex flex-col items-center gap-3 shrink-0">
-                    <div className="w-24 h-24 bg-white border border-gray-100 rounded-xl flex items-center justify-center text-2xl font-bold text-gray-400 shadow-sm group-hover:scale-105 group-hover:border-blue-300 transition-all duration-500">
-                        {job.company ? job.company.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : 'RA'}
-                    </div>
-                    <div className="bg-[#059669] text-white text-[11px] font-bold px-3 py-1.5 rounded-md flex items-center gap-1.5 shadow-sm">
-                        <CheckCircle size={14} className="fill-white text-[#059669]" />
-                        Human Verified
+        <div className="bg-white rounded-2xl border border-yellow-400/50 hover:border-yellow-400 transition-all duration-300 mb-4 overflow-hidden group flex shadow-[0_2px_15px_-3px_rgba(252,211,77,0.1)] hover:shadow-[0_10px_30px_-5px_rgba(252,211,77,0.2)]">
+            {/* Left Content Area */}
+            <div className="flex-1 p-6 flex gap-6">
+                {/* Logo Placeholder */}
+                <div className="shrink-0 pt-1">
+                    <div className="w-12 h-12 bg-[#fafafa] border border-yellow-400/30 rounded-xl flex items-center justify-center text-xl font-bold text-[#24385E]">
+                        {job.company ? job.company[0].toUpperCase() : 'C'}
                     </div>
                 </div>
 
-                {/* CENTER: JOB INFO */}
+                {/* Main Info */}
                 <div className="flex-1 min-w-0">
-                    <h3 className="text-xl md:text-2xl font-black text-[#111827] mb-3 md:mb-4 group-hover:text-blue-700 transition-colors duration-300">
-                        {job.company || 'Retell AI'}
-                    </h3>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <h3 className="text-[18px] font-bold text-[#24385E] leading-snug mb-0.5">
+                                {job.title || 'Job Title'}
+                            </h3>
+                            <p className="text-[14px] text-gray-400 font-medium mb-4">
+                                {job.company || 'Company Name'}
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleSaveToggle}
+                            className={`p-1.5 transition-colors ${saved ? 'text-blue-600' : 'text-gray-300 hover:text-gray-900'}`}
+                        >
+                            {saved ? <BookmarkCheck size={20} /> : <Bookmark size={20} />}
+                        </button>
+                    </div>
 
-                    <div className="space-y-2 mb-4 md:mb-6">
-                        <div className="flex gap-3 text-sm">
-                            <span className="w-20 md:w-24 shrink-0 font-bold text-gray-700">Job Role</span>
-                            <span className="text-gray-400">:</span>
-                            <span className="text-gray-600 font-medium truncate">{job.title || 'Senior Software Engineer'}</span>
+                    {/* Meta Row (Icons) */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-4 mb-5">
+                        <div className="flex items-center gap-2 text-[13px] text-gray-500 font-medium">
+                            <MapPin size={14} className="text-gray-300" />
+                            <span className="truncate">{job.location || 'Location'}</span>
                         </div>
-                        <div className="flex gap-3 text-sm">
-                            <span className="w-20 md:w-24 shrink-0 font-bold text-gray-700">Job Type</span>
-                            <span className="text-gray-400">:</span>
-                            <span className="text-gray-600 font-medium">{job.job_role_name || job.type || '.Net'}</span>
+                        <div className="flex items-center gap-2 text-[13px] text-gray-500 font-medium">
+                            <Briefcase size={14} className="text-gray-300" />
+                            <span>{job.type || 'Full Time'}</span>
                         </div>
-                        <div className="flex gap-3 text-sm">
-                            <span className="w-20 md:w-24 shrink-0 font-bold text-gray-700">Posted</span>
-                            <span className="text-gray-400">:</span>
-                            <span className="text-gray-600 font-medium">{formatDate(job.upload_date || job.date_posted)}</span>
+                        <div className="flex items-center gap-2 text-[13px] text-gray-500 font-medium">
+                            <Circle size={14} className="text-gray-300" />
+                            <span>{job.salary || 'Competitive'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[13px] text-gray-400 font-medium">
+                            <Briefcase size={14} className="text-gray-300" />
+                            <span>{job.job_role_name || 'Role'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[13px] text-gray-400 font-medium">
+                            <Clock size={14} className="text-gray-300" />
+                            <span>{job.years_exp_required || 'Exp Required'}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[13px] text-gray-400 font-medium">
+                            <Search size={14} className="text-gray-300" />
+                            <span>Recently</span>
                         </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-4 md:gap-6 text-xs md:text-sm text-gray-400">
-                        <span className="flex items-center gap-1.5 md:gap-2">
-                            <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500" />
-                            {job.location || 'Remote'}
-                        </span>
-                        <span className="flex items-center gap-1.5 md:gap-2">
-                            <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-blue-500" />
-                            {job.years_exp_required || '5-6 Years'}
-                        </span>
-                    </div>
-                </div>
-
-                {/* RIGHT: WAGE LEVEL & APPLY */}
-                <div className="flex flex-col sm:flex-row md:flex-col gap-3 shrink-0 sm:w-full md:w-44 lg:w-48">
-                    {/* WAGE LEVEL BOX */}
-                    <div className="flex-1 sm:flex-none bg-[#1e3a8a] rounded-2xl p-3 md:p-4 text-center text-white flex flex-col items-center justify-center shadow-md group/wage relative overflow-hidden">
-                        <div className="flex gap-0.5 md:gap-1 mb-1 md:mb-2">
-                            {[1, 2, 3, 4].map((star) => {
-                                const levelNum = parseInt(wageInfo.level.match(/\d/)?.[0] || '2');
-                                return (
-                                    <span key={star} className={`text-[10px] md:text-sm ${star <= levelNum ? "text-yellow-400" : "text-gray-400"}`}>
-                                        ★
-                                    </span>
-                                );
-                            })}
-                        </div>
-                        <div className="text-2xl md:text-4xl font-black mb-0.5 md:mb-1 animate-fadeIn">
-                            {wageInfo.loading ? '...' : wageInfo.level}
-                        </div>
-                        <div className="text-[8px] md:text-[10px] uppercase font-bold tracking-widest opacity-80 mb-1">Wage Level</div>
-
-                        {/* Hover detail info */}
-                        {wageInfo.yearly && (
-                            <div className="text-[9px] font-medium bg-blue-900/50 px-2 py-0.5 rounded-full mt-1">
-                                Avg: ${Number(wageInfo.yearly).toLocaleString()}/yr
+                    {/* Tags & Time */}
+                    <div className="flex items-center justify-between pt-4 border-t border-[#fafafa]">
+                        <div className="flex items-center gap-3">
+                            {/* Human Verified Badge */}
+                            <div className="bg-emerald-50 text-emerald-600 text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1.5 border border-emerald-100 shadow-sm whitespace-nowrap">
+                                <CheckCircle size={12} className="fill-emerald-600 text-white" />
+                                Human Verified
                             </div>
-                        )}
-                    </div>
+                            <span className="text-[12px] text-gray-400 font-medium ml-1">
+                                • Posted {job.upload_date ? new Date(job.upload_date).toLocaleDateString() : 'Recently'}
+                            </span>
+                        </div>
 
-                    {/* APPLY NOW */}
-                    <div className="flex-1 sm:flex-none flex items-center">
-                        {!user || subscriptionExpired ? (
+                        <div className="flex items-center gap-4">
                             <button
-                                disabled
-                                className="w-full h-full sm:h-auto bg-gray-100 text-gray-400 px-4 md:px-6 py-3 rounded-xl cursor-not-allowed flex items-center justify-center gap-2 font-bold text-xs md:text-sm"
+                                onClick={handleResumeHelpClick}
+                                className="text-[12px] font-bold text-emerald-600 hover:text-emerald-700 flex items-center gap-1"
                             >
-                                {subscriptionExpired ? 'Renew' : 'Apply'}
-                                <ExternalLink size={14} className="md:w-4 md:h-4" />
+                                <FileText size={14} />
+                                Resume help?
                             </button>
-                        ) : (
                             <a
                                 href={job.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="w-full h-full sm:h-auto bg-[#2563eb] hover:bg-blue-700 text-white px-4 md:px-6 py-3 rounded-xl text-center font-bold flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-200 transition-all text-xs md:text-sm"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-2 px-6 py-2 bg-white border border-[#24385E] text-[#24385E] text-[14px] font-bold rounded-xl hover:bg-[#24385E] hover:text-white transition-all shadow-sm"
                             >
+                                <ArrowUpRight size={16} />
                                 Apply Now
-                                <ExternalLink size={14} className="md:w-4 md:h-4" />
                             </a>
-                        )}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* RESUME HELP BUTTON - Bottom Center of Card */}
-            <div className="flex justify-center mt-6 pt-6 border-t border-gray-100">
-                <button
-                    onClick={handleResumeHelpClick}
-                    className="relative overflow-hidden bg-[#7C3AED] text-white text-sm px-8 py-3.5 rounded-full font-bold shadow-[0_10px_25px_-10px_rgba(124,58,237,0.5)] hover:bg-[#6D28D9] transition-all duration-300 group flex items-center gap-2"
-                >
-                    <span className="absolute inset-0 overflow-hidden">
-                        <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shine"></span>
-                    </span>
+            {/* Right Side: Extra-Wide Premium Wage Level Badge with Stars */}
+            <div className="w-[140px] bg-[#0a0a0a] flex flex-col items-center justify-center shrink-0 relative overflow-hidden group/wage py-4">
+                {/* Background Glow Effect */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black via-black to-[#24385E]/30"></div>
+                <div className="absolute bottom-[-20%] left-1/2 -translate-x-1/2 w-32 h-32 bg-yellow-500/10 blur-[40px] rounded-full"></div>
 
-                    <span className="relative flex items-center gap-2">
-                        <FileText className="w-4 h-4" />
-                        Get Help with Resume
-                        <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
-                    </span>
-                </button>
+                {/* The Circular Badge with Number */}
+                <div className="relative z-10 mb-2">
+                    <div className="w-16 h-16 rounded-full border-[2.5px] border-white/20 flex flex-col items-center justify-center bg-white/5 backdrop-blur-sm shadow-2xl transition-all duration-500 group-hover/wage:border-white/40 group-hover/wage:scale-110">
+                        <span className="text-[9px] font-black uppercase tracking-[0.15em] text-white/40 leading-none mb-1">Wage</span>
+                        <span className="text-3xl font-black text-white leading-none">
+                            {wageInfo.loading ? '...' : (wageInfo.level?.match(/\d/)?.[0] || '2')}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Stars Rating below the circle */}
+                <div className="relative z-10 flex items-center justify-center gap-0.5 mb-3">
+                    {[1, 2, 3, 4].map((star) => {
+                        const level = parseInt(wageInfo.level?.match(/\d/)?.[0] || '2');
+                        return (
+                            <div key={star} className={`transition-all duration-500 transform ${star <= level ? 'scale-110' : 'opacity-20 scale-90'}`}>
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    viewBox="0 0 24 24"
+                                    className={`w-3.5 h-3.5 ${star <= level ? 'fill-yellow-400 text-yellow-400' : 'text-white'}`}
+                                >
+                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                </svg>
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Fixed Salary Subtext (Fitting large ranges) */}
+                {job.salary && (
+                    <div className="relative z-10 px-2 text-center">
+                        <div className="text-[11px] font-black text-white tracking-tight leading-tight">
+                            {job.salary.includes('-')
+                                ? job.salary.split('-').map(s => `$${(Number(s.replace(/[^0-9]/g, '')) / 1000).toFixed(0)}k`).join(' - ')
+                                : `$${(Number(job.salary.replace(/[^0-9]/g, '')) / 1000).toFixed(0)}k/yr`
+                            }
+                        </div>
+                        <div className="text-[8px] font-bold text-white/40 uppercase tracking-widest mt-0.5">Annual Est.</div>
+                    </div>
+                )}
             </div>
 
-            {/* RESUME HELP MODAL (Remains as is) */}
+            {/* RESUME HELP MODAL */}
             {showResumeModal && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[999] p-4">
-                    <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 relative animate-fadeIn">
+                <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[999] p-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 relative" onClick={(e) => e.stopPropagation()}>
                         <button
                             onClick={() => setShowResumeModal(false)}
-                            className="absolute top-6 right-6 text-gray-400 hover:text-gray-900 transition-colors"
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-900 transition-colors"
                         >
-                            <X className="w-6 h-6" />
+                            <X className="w-5 h-5" />
                         </button>
-
-                        <div className="mb-8">
-                            <h3 className="text-2xl font-black text-gray-900 mb-2">Get Help with Your Resume</h3>
-                            <p className="text-gray-500 text-sm">Fill in your details and we'll help you create the perfect resume</p>
+                        <div className="mb-6">
+                            <h3 className="text-xl font-bold text-[#24385E] mb-1">Get Help with Your Resume</h3>
+                            <p className="text-gray-500 text-xs">Fill in your details and we'll contact you soon.</p>
                         </div>
-
-                        <form onSubmit={handleResumeFormSubmit} className="space-y-5">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">First Name</label>
-                                    <input
-                                        type="text"
-                                        value={resumeFormData.firstName}
-                                        onChange={(e) => handleResumeFormChange('firstName', e.target.value)}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all text-sm"
-                                        placeholder="John"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Last Name</label>
-                                    <input
-                                        type="text"
-                                        value={resumeFormData.lastName}
-                                        onChange={(e) => handleResumeFormChange('lastName', e.target.value)}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all text-sm"
-                                        placeholder="Doe"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Email Address</label>
-                                <input
-                                    type="email"
-                                    value={resumeFormData.email}
-                                    onChange={(e) => handleResumeFormChange('email', e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all text-sm"
-                                    placeholder="john.doe@example.com"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Mobile Number</label>
-                                <PhoneInput
-                                    defaultCountry="us"
-                                    value={resumeFormData.phone}
-                                    onChange={(phone) => handleResumeFormChange('phone', phone)}
-                                    inputStyle={{
-                                        width: '100%',
-                                        height: '46px',
-                                        fontSize: '14px',
-                                        border: 'none',
-                                        backgroundColor: '#F9FAFB',
-                                        borderRadius: '0.75rem',
-                                        paddingLeft: '52px'
-                                    }}
-                                    className="phone-input-custom"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Country</label>
+                        <form onSubmit={handleResumeFormSubmit} className="space-y-4">
+                            <div className="grid grid-cols-2 gap-3">
                                 <input
                                     type="text"
-                                    value={resumeFormData.country}
-                                    onChange={(e) => handleResumeFormChange('country', e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-transparent rounded-xl focus:bg-white focus:border-purple-500 focus:outline-none transition-all text-sm"
-                                    placeholder="United States"
+                                    placeholder="First Name"
+                                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-blue-500 focus:outline-none text-xs"
+                                    value={resumeFormData.firstName}
+                                    onChange={(e) => handleResumeFormChange('firstName', e.target.value)}
+                                    required
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Last Name"
+                                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-blue-500 focus:outline-none text-xs"
+                                    value={resumeFormData.lastName}
+                                    onChange={(e) => handleResumeFormChange('lastName', e.target.value)}
                                     required
                                 />
                             </div>
-
-                            <div className="flex gap-4 pt-4">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowResumeModal(false)}
-                                    className="flex-1 py-4 text-gray-500 font-bold hover:text-gray-900 transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="flex-1 py-4 bg-purple-600 text-white rounded-xl font-bold shadow-lg shadow-purple-200 hover:bg-purple-700 transition-all"
-                                >
-                                    Submit
-                                </button>
+                            <input
+                                type="email"
+                                placeholder="Email Address"
+                                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-blue-500 focus:outline-none text-xs"
+                                value={resumeFormData.email}
+                                onChange={(e) => handleResumeFormChange('email', e.target.value)}
+                                required
+                            />
+                            <PhoneInput
+                                defaultCountry="us"
+                                value={resumeFormData.phone}
+                                onChange={(phone) => handleResumeFormChange('phone', phone)}
+                                inputStyle={{ width: '100%', fontSize: '12px', border: '1px solid #E5E7EB', borderRadius: '0.5rem', backgroundColor: '#F9FAFB' }}
+                            />
+                            <input
+                                type="text"
+                                placeholder="Country"
+                                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:bg-white focus:border-blue-500 focus:outline-none text-xs"
+                                value={resumeFormData.country}
+                                onChange={(e) => handleResumeFormChange('country', e.target.value)}
+                                required
+                            />
+                            <div className="flex gap-3 pt-2">
+                                <button type="button" onClick={() => setShowResumeModal(false)} className="flex-1 py-2.5 text-xs font-bold text-gray-500 hover:text-gray-900 transition-colors">Cancel</button>
+                                <button type="submit" className="flex-1 py-2.5 bg-[#24385E] text-white rounded-lg font-bold shadow-md hover:bg-blue-800 transition-all text-xs">Submit</button>
                             </div>
                         </form>
                     </div>

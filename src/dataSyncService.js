@@ -56,7 +56,8 @@ export const syncAuditReviews = async () => {
                 .from('audit_reviews')
                 .select('*')
                 .range(page * pageSize, (page + 1) * pageSize - 1)
-                .order('created_at', { ascending: false });
+                .order('created_at', { ascending: false })
+                .order('id', { ascending: true }); // Stable ordering
 
             if (error) throw error;
 
@@ -78,7 +79,7 @@ export const syncAuditReviews = async () => {
         const { error: deleteError } = await supabase
             .from('audit_reviews_sync')
             .delete()
-            .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+            .not('id', 'is', null);
 
         if (deleteError) {
             console.warn('⚠️ Could not clear old audit reviews:', deleteError);
@@ -96,7 +97,7 @@ export const syncAuditReviews = async () => {
 
             const { error: insertError } = await supabase
                 .from('audit_reviews_sync')
-                .upsert(batch, { onConflict: 'id' });
+                .upsert(batch, { onConflict: 'id' }); // Use upsert
 
             if (insertError) {
                 console.error(`❌ Error inserting audit reviews batch ${i / batchSize + 1}:`, insertError);
@@ -128,16 +129,22 @@ export const syncSponsoredJobs = async () => {
         let hasMore = true;
 
         while (hasMore) {
+            // NOTE: Added stable ordering by including 'id' to prevent pagination drift/skipping
             const { data, error } = await externalSupabase
                 .from('job_jobrole_sponsored')
                 .select('*')
                 .range(page * pageSize, (page + 1) * pageSize - 1)
-                .order('date_posted', { ascending: false });
+                .order('date_posted', { ascending: false })
+                .order('id', { ascending: true });
 
-            if (error) throw error;
+            if (error) {
+                console.error(`❌ Error fetching external data at page ${page}:`, error);
+                throw error;
+            }
 
             if (data && data.length > 0) {
                 allData = [...allData, ...data];
+                console.log(`📡 Fetched ${allData.length} records so far...`);
                 page++;
                 hasMore = data.length === pageSize;
             } else {
@@ -145,16 +152,19 @@ export const syncSponsoredJobs = async () => {
             }
         }
 
+        console.log(`📦 Total records fetched from external DB: ${allData.length}`);
+
         if (allData.length === 0) {
             console.log('ℹ️ No sponsored jobs found in external DB');
             return { success: true, recordsSynced: 0 };
         }
 
         // Clear existing synced data and insert fresh
+        // Using a more robust way to clear data
         const { error: deleteError } = await supabase
             .from('job_jobrole_sponsored_sync')
             .delete()
-            .neq('id', 0); // Delete all
+            .not('id', 'is', null);
 
         if (deleteError) {
             console.warn('⚠️ Could not clear old sponsored jobs:', deleteError);
@@ -163,20 +173,46 @@ export const syncSponsoredJobs = async () => {
         // Insert in smaller batches to handle parallel wage lookups
         const batchSize = 100;
         let totalInserted = 0;
+        let failedBatches = 0;
+        const wageCache = new Map(); // Local cache to speed up lookups for duplicate titles/locations
+
+        console.log(`🚀 Starting insertion of ${allData.length} records...`);
 
         for (let i = 0; i < allData.length; i += batchSize) {
             const batchRaw = allData.slice(i, i + batchSize);
+            const currentBatchNum = Math.floor(i / batchSize) + 1;
+            const totalBatches = Math.ceil(allData.length / batchSize);
 
             // PRE-CALCULATE wage level for global sorting
             const batch = await Promise.all(batchRaw.map(async (record) => {
-                try {
-                    const results = await getWageLevel(record.title || record.job_role_name, record.location);
-                    const wageLevelStr = (results && results.length > 0) ? results[0]['Wage Level'] : 'Lv 2';
-                    const wageNum = parseInt(wageLevelStr.match(/\d/)?.[0] || '2');
+                const title = record.title || record.job_role_name;
+                const location = record.location;
+                const cacheKey = `${title}|${location}`;
+
+                if (wageCache.has(cacheKey)) {
+                    const cached = wageCache.get(cacheKey);
                     return {
                         ...record,
+                        ...cached,
+                        synced_at: new Date().toISOString()
+                    };
+                }
+
+                try {
+                    const results = await getWageLevel(title, location);
+                    const wageLevelStr = (results && results.length > 0) ? results[0]['Wage Level'] : 'Lv 2';
+                    const wageNum = parseInt(wageLevelStr.match(/\d/)?.[0] || '2');
+
+                    const resultData = {
                         wage_level: wageLevelStr,
-                        wage_num: wageNum,
+                        wage_num: wageNum
+                    };
+
+                    wageCache.set(cacheKey, resultData);
+
+                    return {
+                        ...record,
+                        ...resultData,
                         synced_at: new Date().toISOString()
                     };
                 } catch (err) {
@@ -189,19 +225,29 @@ export const syncSponsoredJobs = async () => {
                 }
             }));
 
+            // Use UPSERT instead of INSERT to handle potential duplicate IDs gracefully
             const { error: insertError } = await supabase
                 .from('job_jobrole_sponsored_sync')
-                .insert(batch);
+                .upsert(batch, { onConflict: 'id' });
 
             if (insertError) {
-                console.error(`❌ Error inserting sponsored jobs batch ${i / batchSize + 1}:`, insertError);
+                console.error(`❌ Error inserting batch ${currentBatchNum}:`, insertError);
+                failedBatches++;
             } else {
                 totalInserted += batch.length;
+                if (currentBatchNum % 5 === 0 || i + batch.length >= allData.length) {
+                    console.log(`✅ Progress: ${totalInserted}/${allData.length} records synced (${currentBatchNum}/${totalBatches} batches)`);
+                }
             }
         }
 
-        console.log(`✅ Synced ${totalInserted} sponsored jobs`);
-        return { success: true, recordsSynced: totalInserted };
+        console.log(`✅ Sync Result: ${totalInserted} inserted, ${failedBatches} batches failed.`);
+        return {
+            success: true,
+            recordsSynced: totalInserted,
+            totalAttempted: allData.length,
+            failedBatches
+        };
 
     } catch (error) {
         console.error('❌ Sponsored jobs sync failed:', error);
