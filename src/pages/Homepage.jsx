@@ -40,6 +40,8 @@ const Homepage = () => {
   });
   const [savedJobIds, setSavedJobIds] = useState(new Set());
   const [appliedJobIds, setAppliedJobIds] = useState(new Set());
+  const [activeFilter, setActiveFilter] = useState('fresh');
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Renewal Flow State
   const [showRenewalFlow, setShowRenewalFlow] = useState(false);
@@ -53,9 +55,11 @@ const Homepage = () => {
     return JSON.stringify({
       p: currentPage,
       s: searchInput,
-      f: filters
+      f: filters,
+      t: activeFilter,
+      d: selectedDate
     });
-  }, [currentPage, searchInput, filters]);
+  }, [currentPage, searchInput, filters, activeFilter, selectedDate]);
 
   const fetchJobs = useCallback(async () => {
     if (!user || subscriptionExpired) return;
@@ -73,34 +77,43 @@ const Homepage = () => {
       const from = (currentPage - 1) * JOBS_PER_PAGE;
       const to = from + JOBS_PER_PAGE - 1;
 
-      let query = supabase
-        .from('job_jobrole_sponsored_sync')
-        .select('*', { count: 'exact' });
+      let results = [];
+      let total = 0;
 
-      if (searchInput) {
-        query = query.or(`title.ilike.%${searchInput}%,company.ilike.%${searchInput}%`);
+      if (activeFilter === 'saved' || activeFilter === 'applied') {
+        const table = activeFilter === 'saved' ? 'saved_jobs' : 'applied_jobs';
+        let query = supabase
+          .from(table)
+          .select('job_data, job_id', { count: 'exact' })
+          .eq('user_id', user.id);
+
+        const { data, count, error } = await query.range(from, to).order('created_at', { ascending: false });
+        if (error) throw error;
+        results = (data || []).map(item => item.job_data);
+        total = count || 0;
+      } else {
+        // MAIN VIEW: Use the pre-filtered database view
+        let query = supabase
+          .from('confirmed_jobs_view')
+          .select('*', { count: 'exact' });
+
+        if (selectedDate) {
+          query = query.eq('date_posted', selectedDate);
+        }
+
+        if (searchInput) {
+          query = query.or(`title.ilike.%${searchInput}%,company.ilike.%${searchInput}%`);
+        }
+
+        const { data, error, count } = await query
+          .order('date_posted', { ascending: false })
+          .range(from, to);
+
+        if (error) throw error;
+
+        results = data || [];
+        total = count || 0;
       }
-
-      if (filters.role.length > 0) {
-        query = query.or(filters.role.map(r => `title.ilike.%${r}%,job_role_name.ilike.%${r}%`).join(','));
-      }
-      if (filters.location.length > 0) {
-        query = query.or(filters.location.map(l => `location.ilike.%${l.split(',')[0]}%`).join(','));
-      }
-      if (filters.company.length > 0) {
-        query = query.or(filters.company.map(c => `company.ilike.%${c}%`).join(','));
-      }
-
-      query = query
-        .order('wage_num', { ascending: false, nullsFirst: false })
-        .order('date_posted', { ascending: false })
-        .range(from, to);
-
-      const { data, error, count } = await query;
-      if (error) throw error;
-
-      const results = data || [];
-      const total = count || 0;
 
       // Update state and cache
       setJobs(results);
@@ -112,7 +125,7 @@ const Homepage = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, subscriptionExpired, cacheKey]);
+  }, [user, subscriptionExpired, cacheKey, activeFilter, selectedDate]);
 
   useEffect(() => {
     if (user) {
@@ -203,14 +216,51 @@ const Homepage = () => {
             }}
           />
 
-          <div className="bg-white border-b border-[#f0f0f0] mb-6">
-            <SearchFilters onFilterChange={(newFilters) => {
-              setFilters(newFilters);
-              setCurrentPage(1);
-            }} />
+          <div className="bg-white border-b border-[#f0f0f0]">
+            <div className="max-w-7xl mx-auto">
+              <SearchFilters onFilterChange={(newFilters) => {
+                setFilters(newFilters);
+                setCurrentPage(1);
+              }} />
+            </div>
           </div>
 
-          <div className="px-8 pb-10 max-w-7xl mx-auto">
+          <div className="bg-white px-8 py-5 border-b border-[#f0f0f0]">
+            <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-center gap-6">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Filter by Posted Date</span>
+                  <input
+                    type="date"
+                    value={selectedDate}
+                    onChange={(e) => {
+                      setSelectedDate(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="px-6 py-2.5 bg-[#fafafa] border-2 border-[#f0f0f0] rounded-2xl focus:border-blue-500 focus:outline-none text-[13px] font-bold text-[#24385E] shadow-sm transition-all"
+                  />
+                </div>
+
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Verified Inventory</span>
+                  <div className="px-6 py-2.5 bg-emerald-50 border-2 border-emerald-100/50 rounded-2xl flex items-center gap-2.5 shadow-sm">
+                    <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
+                    <span className="text-[14px] font-black text-emerald-600">
+                      {totalJobs.toLocaleString()} Confirmed Links
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="hidden lg:block text-right">
+                <p className="text-[12px] font-bold text-gray-400">
+                  Showing real-time confirmed data with high salary metrics.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="px-8 pb-10 max-w-7xl mx-auto mt-8">
             {subscriptionExpired ? (
               <div className="text-center py-20 bg-white rounded-[32px] border border-[#f0f0f0] shadow-sm">
                 <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -231,9 +281,9 @@ const Homepage = () => {
                   </div>
                 ) : jobs.length > 0 ? (
                   <div className={`animate-in fade-in slide-in-from-bottom-4 duration-500 ${loading ? 'opacity-50' : ''}`}>
-                    {jobs.map((job) => (
+                    {jobs.map((job, index) => (
                       <JobCard
-                        key={job.id}
+                        key={job.url || job.id || index}
                         job={job}
                         isSaved={savedJobIds.has(String(job.id))}
                         isApplied={appliedJobIds.has(String(job.id))}

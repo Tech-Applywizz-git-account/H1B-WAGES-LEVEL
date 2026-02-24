@@ -42,16 +42,16 @@ const testimonials = [
 
 const Testimonials = () => {
     return (
-        <section className="py-20 bg-gray-50">
+        <section className="py-20 bg-black">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Section Header */}
                 <div className="text-center mb-14">
-                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">
                         Reviews
                     </h2>
                     <div className="flex items-center justify-center gap-1 mb-2">
                         {[...Array(5)].map((_, i) => (
-                            <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
+                            <Star key={i} className="w-5 h-5 text-[#FDB913] fill-current" />
                         ))}
                     </div>
                 </div>
@@ -59,16 +59,16 @@ const Testimonials = () => {
                 {/* Testimonials Grid */}
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
                     {testimonials.map((testimonial, index) => (
-                        <div key={index} className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                        <div key={index} className="bg-[#111111] rounded-2xl p-6 border border-white/5 shadow-sm hover:shadow-md transition-shadow">
                             {/* Stars */}
                             <div className="flex mb-4">
                                 {[...Array(testimonial.rating)].map((_, i) => (
-                                    <Star key={i} className="w-4 h-4 text-yellow-400 fill-current" />
+                                    <Star key={i} className="w-4 h-4 text-[#FDB913] fill-current" />
                                 ))}
                             </div>
 
                             {/* Content */}
-                            <p className="text-gray-700 text-sm leading-relaxed mb-5">
+                            <p className="text-gray-300 text-sm leading-relaxed mb-5">
                                 "{testimonial.content}"
                             </p>
 

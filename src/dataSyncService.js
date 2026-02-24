@@ -15,6 +15,7 @@ import { externalSupabase } from './externalSupabaseClient.js';
 
 const SYNC_CACHE_KEY = 'lastSyncTimestamp';
 const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const IS_SYNC_ENABLED = true; // Enabled for incremental sync as requested
 
 /**
  * Check if sync is needed (hasn't run in the last 24 hours)
@@ -42,6 +43,10 @@ const markSyncComplete = () => {
  * Sync audit_reviews from external DB to local audit_reviews_sync table
  */
 export const syncAuditReviews = async () => {
+    if (!IS_SYNC_ENABLED) {
+        console.log('⏭️ Sync is currently disabled.');
+        return { success: true, recordsSynced: 0, message: 'Sync disabled' };
+    }
     console.log('🔄 Starting audit_reviews sync...');
 
     try {
@@ -56,8 +61,7 @@ export const syncAuditReviews = async () => {
                 .from('audit_reviews')
                 .select('*')
                 .range(page * pageSize, (page + 1) * pageSize - 1)
-                .order('created_at', { ascending: false })
-                .order('id', { ascending: true }); // Stable ordering
+                .order('created_at', { ascending: false });
 
             if (error) throw error;
 
@@ -75,29 +79,37 @@ export const syncAuditReviews = async () => {
             return { success: true, recordsSynced: 0 };
         }
 
-        // Clear existing synced data and insert fresh
-        const { error: deleteError } = await supabase
+        // --- INCREMENTAL SYNC LOGIC ---
+        // Fetch existing job_links to avoid duplicates
+        const { data: existingRecords } = await supabase
             .from('audit_reviews_sync')
-            .delete()
-            .not('id', 'is', null);
+            .select('job_link');
 
-        if (deleteError) {
-            console.warn('⚠️ Could not clear old audit reviews:', deleteError);
+        const existingLinks = new Set((existingRecords || []).map(r => r.job_link));
+
+        // Filter out data that already exists in our DB
+        const newData = allData.filter(record => !existingLinks.has(record.job_link));
+
+        if (newData.length === 0) {
+            console.log('ℹ️ No new audit reviews to sync');
+            return { success: true, recordsSynced: 0 };
         }
+
+        console.log(`🆕 Found ${newData.length} new audit reviews to insert`);
 
         // Insert in batches of 500
         const batchSize = 500;
         let totalInserted = 0;
 
-        for (let i = 0; i < allData.length; i += batchSize) {
-            const batch = allData.slice(i, i + batchSize).map(record => ({
+        for (let i = 0; i < newData.length; i += batchSize) {
+            const batch = newData.slice(i, i + batchSize).map(record => ({
                 ...record,
                 synced_at: new Date().toISOString()
             }));
 
             const { error: insertError } = await supabase
                 .from('audit_reviews_sync')
-                .upsert(batch, { onConflict: 'id' }); // Use upsert
+                .insert(batch);
 
             if (insertError) {
                 console.error(`❌ Error inserting audit reviews batch ${i / batchSize + 1}:`, insertError);
@@ -119,6 +131,10 @@ export const syncAuditReviews = async () => {
  * Sync job_jobrole_sponsored from external DB to local job_jobrole_sponsored_sync table
  */
 export const syncSponsoredJobs = async () => {
+    if (!IS_SYNC_ENABLED) {
+        console.log('⏭️ Sync is currently disabled.');
+        return { success: true, recordsSynced: 0, message: 'Sync disabled' };
+    }
     console.log('🔄 Starting job_jobrole_sponsored sync...');
 
     try {
@@ -129,22 +145,16 @@ export const syncSponsoredJobs = async () => {
         let hasMore = true;
 
         while (hasMore) {
-            // NOTE: Added stable ordering by including 'id' to prevent pagination drift/skipping
             const { data, error } = await externalSupabase
                 .from('job_jobrole_sponsored')
                 .select('*')
                 .range(page * pageSize, (page + 1) * pageSize - 1)
-                .order('date_posted', { ascending: false })
-                .order('id', { ascending: true });
+                .order('date_posted', { ascending: false });
 
-            if (error) {
-                console.error(`❌ Error fetching external data at page ${page}:`, error);
-                throw error;
-            }
+            if (error) throw error;
 
             if (data && data.length > 0) {
                 allData = [...allData, ...data];
-                console.log(`📡 Fetched ${allData.length} records so far...`);
                 page++;
                 hasMore = data.length === pageSize;
             } else {
@@ -152,72 +162,58 @@ export const syncSponsoredJobs = async () => {
             }
         }
 
-        console.log(`📦 Total records fetched from external DB: ${allData.length}`);
-
         if (allData.length === 0) {
             console.log('ℹ️ No sponsored jobs found in external DB');
             return { success: true, recordsSynced: 0 };
         }
 
-        // Clear existing synced data and insert fresh
-        // Using a more robust way to clear data
-        const { error: deleteError } = await supabase
+        // --- INCREMENTAL SYNC LOGIC ---
+        // Fetch existing URLs to avoid duplicates
+        const { data: existingRecords } = await supabase
             .from('job_jobrole_sponsored_sync')
-            .delete()
-            .not('id', 'is', null);
+            .select('url');
 
-        if (deleteError) {
-            console.warn('⚠️ Could not clear old sponsored jobs:', deleteError);
+        const existingUrls = new Set((existingRecords || []).map(r => r.url));
+
+        // Filter out data that already exists
+        const newData = allData.filter(record => !existingUrls.has(record.url));
+
+        if (newData.length === 0) {
+            console.log('ℹ️ No new sponsored jobs to sync');
+            return { success: true, recordsSynced: 0 };
         }
+
+        console.log(`🆕 Found ${newData.length} new sponsored jobs to insert`);
+
+        // Helper to fix invalid "null" strings in timestamps
+        const fixTimestamp = (ts) => (ts === 'null' || !ts) ? null : ts;
 
         // Insert in smaller batches to handle parallel wage lookups
         const batchSize = 100;
         let totalInserted = 0;
-        let failedBatches = 0;
-        const wageCache = new Map(); // Local cache to speed up lookups for duplicate titles/locations
 
-        console.log(`🚀 Starting insertion of ${allData.length} records...`);
-
-        for (let i = 0; i < allData.length; i += batchSize) {
-            const batchRaw = allData.slice(i, i + batchSize);
-            const currentBatchNum = Math.floor(i / batchSize) + 1;
-            const totalBatches = Math.ceil(allData.length / batchSize);
+        for (let i = 0; i < newData.length; i += batchSize) {
+            const batchRaw = newData.slice(i, i + batchSize);
 
             // PRE-CALCULATE wage level for global sorting
             const batch = await Promise.all(batchRaw.map(async (record) => {
-                const title = record.title || record.job_role_name;
-                const location = record.location;
-                const cacheKey = `${title}|${location}`;
-
-                if (wageCache.has(cacheKey)) {
-                    const cached = wageCache.get(cacheKey);
-                    return {
-                        ...record,
-                        ...cached,
-                        synced_at: new Date().toISOString()
-                    };
-                }
-
                 try {
-                    const results = await getWageLevel(title, location);
+                    const results = await getWageLevel(record.title || record.job_role_name, record.location);
                     const wageLevelStr = (results && results.length > 0) ? results[0]['Wage Level'] : 'Lv 2';
                     const wageNum = parseInt(wageLevelStr.match(/\d/)?.[0] || '2');
-
-                    const resultData = {
-                        wage_level: wageLevelStr,
-                        wage_num: wageNum
-                    };
-
-                    wageCache.set(cacheKey, resultData);
-
                     return {
                         ...record,
-                        ...resultData,
+                        date_posted: fixTimestamp(record.date_posted),
+                        upload_date: fixTimestamp(record.upload_date),
+                        wage_level: wageLevelStr,
+                        wage_num: wageNum,
                         synced_at: new Date().toISOString()
                     };
                 } catch (err) {
                     return {
                         ...record,
+                        date_posted: fixTimestamp(record.date_posted),
+                        upload_date: fixTimestamp(record.upload_date),
                         wage_level: 'Lv 2',
                         wage_num: 2,
                         synced_at: new Date().toISOString()
@@ -225,29 +221,19 @@ export const syncSponsoredJobs = async () => {
                 }
             }));
 
-            // Use UPSERT instead of INSERT to handle potential duplicate IDs gracefully
             const { error: insertError } = await supabase
                 .from('job_jobrole_sponsored_sync')
-                .upsert(batch, { onConflict: 'id' });
+                .insert(batch);
 
             if (insertError) {
-                console.error(`❌ Error inserting batch ${currentBatchNum}:`, insertError);
-                failedBatches++;
+                console.error(`❌ Error inserting sponsored jobs batch ${i / batchSize + 1}:`, insertError);
             } else {
                 totalInserted += batch.length;
-                if (currentBatchNum % 5 === 0 || i + batch.length >= allData.length) {
-                    console.log(`✅ Progress: ${totalInserted}/${allData.length} records synced (${currentBatchNum}/${totalBatches} batches)`);
-                }
             }
         }
 
-        console.log(`✅ Sync Result: ${totalInserted} inserted, ${failedBatches} batches failed.`);
-        return {
-            success: true,
-            recordsSynced: totalInserted,
-            totalAttempted: allData.length,
-            failedBatches
-        };
+        console.log(`✅ Synced ${totalInserted} sponsored jobs`);
+        return { success: true, recordsSynced: totalInserted };
 
     } catch (error) {
         console.error('❌ Sponsored jobs sync failed:', error);
@@ -278,6 +264,10 @@ const logSync = async (tableName, syncType, recordsSynced, status, errorMessage 
  * Called on app load or manually by admin
  */
 export const runFullSync = async (force = false) => {
+    if (!IS_SYNC_ENABLED) {
+        console.log('⏭️ Sync is currently disabled.');
+        return { success: true, message: 'Sync disabled' };
+    }
     if (!force && !isSyncNeeded()) {
         console.log('⏭️ Sync not needed (last sync was < 24h ago)');
         return { skipped: true };

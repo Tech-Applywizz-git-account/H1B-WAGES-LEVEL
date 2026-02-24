@@ -49,7 +49,7 @@ const Navbar = () => {
     };
 
     return (
-        <nav className="sticky top-0 z-50 bg-white border-b border-gray-100" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <nav className="sticky top-0 z-50 bg-[#0A0A0A] border-b border-white/5 shadow-2xl">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
                 {/* -------- Desktop Layout -------- */}
@@ -58,62 +58,33 @@ const Navbar = () => {
                     {/* LEFT — Logo */}
                     <Link to="/" className="flex items-center gap-2 flex-shrink-0">
                         <div className="flex items-center gap-1.5">
-                            <div className="w-8 h-8 bg-black rounded-md flex items-center justify-center">
-                                <span className="text-white font-bold text-sm">H1B</span>
+                            <div className="w-8 h-8 bg-[#FDB913] rounded-md flex items-center justify-center">
+                                <span className="text-black font-bold text-sm">H1B</span>
                             </div>
-                            <span className="font-bold text-lg text-gray-900 tracking-tight">Wage Level</span>
+                            <span className="font-bold text-lg text-white tracking-tight">Wage Level</span>
                         </div>
                     </Link>
 
                     {/* CENTER Nav — always show links for better navigation */}
                     <div className="flex items-center gap-1">
-                        <Link
-                            to="/jobs"
-                            className={`text-sm font-medium transition-colors px-3 py-2 rounded-md hover:bg-gray-50 ${location.pathname === '/jobs' ? 'text-indigo-600 bg-indigo-50' : 'text-gray-600 hover:text-gray-900'}`}
+                        <button
+                            onClick={() => {
+                                if (!user) {
+                                    navigate('/signup');
+                                } else {
+                                    navigate('/jobs');
+                                }
+                            }}
+                            className={`text-sm font-medium transition-colors px-3 py-2 rounded-md hover:bg-white/5 ${location.pathname === '/jobs' ? 'text-[#FDB913] bg-white/5' : 'text-gray-300 hover:text-white'}`}
                         >
                             Find Jobs
-                        </Link>
+                        </button>
 
-                        {!user && (
-                            <Link
-                                to="/signup"
-                                className="text-gray-600 text-sm font-medium hover:text-gray-900 transition-colors px-3 py-2 rounded-md hover:bg-gray-50"
-                            >
-                                Post a job
-                            </Link>
-                        )}
 
-                        {/* Resources Dropdown */}
-                        <div className="relative" ref={resourcesRef}>
-                            <button
-                                onClick={() => setShowResourcesMenu(!showResourcesMenu)}
-                                className="flex items-center gap-1 text-gray-600 text-sm font-medium hover:text-gray-900 transition-colors px-3 py-2 rounded-md hover:bg-gray-50"
-                            >
-                                Resources
-                                <ChevronDown size={14} className={`transition-transform ${showResourcesMenu ? 'rotate-180' : ''}`} />
-                            </button>
-                            {showResourcesMenu && (
-                                <div className="absolute left-0 top-full mt-1 w-72 bg-white border border-gray-100 shadow-xl rounded-xl py-2 z-50">
-                                    <div className="px-4 py-2">
-                                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">About Us</p>
-                                        <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">About Us</a>
-                                        <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">Is H1B Wage Level Legit?</a>
-                                        <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">How to Use H1B Wage Level</a>
-                                    </div>
-                                    <div className="border-t border-gray-100 mx-2 my-1"></div>
-                                    <div className="px-4 py-2">
-                                        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Application & Career Strategy</p>
-                                        <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">Visa Sponsorship Jobs in New York City</a>
-                                        <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">H-1B Visa Sponsorship Jobs in 2026</a>
-                                        <a href="#" className="block text-sm text-gray-700 hover:text-gray-900 py-1 hover:underline">E-3 Visa: Complete Guide for Australians</a>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
 
                         <Link
                             to="/pricing"
-                            className="text-gray-600 text-sm font-medium hover:text-gray-900 transition-colors px-3 py-2 rounded-md hover:bg-gray-50"
+                            className="text-gray-300 text-sm font-medium hover:text-white transition-colors px-3 py-2 rounded-md hover:bg-white/5"
                         >
                             Pricing
                         </Link>
@@ -125,13 +96,13 @@ const Navbar = () => {
                             <div className="flex items-center gap-3">
                                 <Link
                                     to="/login"
-                                    className="text-gray-600 text-sm font-medium hover:text-gray-900 transition-colors px-3 py-2"
+                                    className="text-gray-300 text-sm font-medium hover:text-white transition-colors px-3 py-2"
                                 >
                                     Login
                                 </Link>
                                 <Link
                                     to="/signup"
-                                    className="bg-black hover:bg-gray-800 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                                    className="bg-[#FDB913] hover:bg-[#e5a811] text-black text-sm font-bold px-5 py-2 rounded-full transition-all shadow-[0_0_15px_rgba(253,185,19,0.3)]"
                                 >
                                     Get Access
                                 </Link>
@@ -202,15 +173,6 @@ const Navbar = () => {
                 <div className="md:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-1">
                     {!user && (
                         <>
-                            <Link
-                                to="/signup"
-                                className="block px-3 py-2 rounded-lg text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50 transition-colors"
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                Post a job
-                            </Link>
-
-                            <a href="#" className="block text-sm text-gray-700 font-medium hover:text-gray-900 py-2.5 border-b border-gray-50">Resources</a>
                             <Link
                                 to="/pricing"
                                 className="block text-sm text-gray-700 font-medium hover:text-gray-900 py-2.5 border-b border-gray-50"

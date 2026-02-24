@@ -36,14 +36,14 @@ const features = [
 
 const FeaturesSection = () => {
     return (
-        <section className="py-20 bg-white">
+        <section className="py-20 bg-black">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Section Header */}
                 <div className="text-center mb-16">
-                    <h2 className="text-3xl md:text-4xl font-bold text-primary-dark mb-4">
+                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
                         Everything You Need to Succeed
                     </h2>
-                    <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+                    <p className="text-xl text-gray-400 max-w-2xl mx-auto">
                         Get access to premium features designed to accelerate your job search
                     </p>
                 </div>
@@ -51,12 +51,12 @@ const FeaturesSection = () => {
                 {/* Features Grid */}
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {features.map((feature, index) => (
-                        <div key={index} className="card hover:shadow-lg transition-shadow duration-200">
+                        <div key={index} className="bg-[#111] border border-white/5 rounded-2xl p-8 hover:shadow-[0_0_40px_rgba(253,185,19,0.05)] transition-all duration-200">
                             <div className="mb-4">{feature.icon}</div>
-                            <h3 className="text-xl font-semibold text-primary-dark mb-2">
+                            <h3 className="text-xl font-semibold text-white mb-2">
                                 {feature.title}
                             </h3>
-                            <p className="text-gray-600">{feature.description}</p>
+                            <p className="text-gray-400">{feature.description}</p>
                         </div>
                     ))}
                 </div>

@@ -5,7 +5,7 @@ const Footer = () => {
     const navigate = useNavigate();
 
     return (
-        <footer className="bg-white border-t border-gray-100">
+        <footer className="bg-black border-t border-white/5">
             {/* CTA Banner */}
             <div className="bg-gray-900 py-16">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -17,7 +17,7 @@ const Footer = () => {
                     <p className="text-gray-500 mb-8 text-sm">Find US jobs with visa sponsorship. Your path to working in America starts here.</p>
                     <button
                         onClick={() => navigate('/signup')}
-                        className="inline-flex items-center bg-white text-gray-900 font-bold px-8 py-4 rounded-xl hover:bg-gray-100 transition-all text-base shadow-lg"
+                        className="inline-flex items-center bg-[#FDB913] text-black font-black px-8 py-4 rounded-xl hover:bg-[#e5a811] transition-all text-base shadow-lg"
                     >
                         Get Access →
                     </button>
@@ -30,10 +30,10 @@ const Footer = () => {
                     {/* Brand */}
                     <div className="md:col-span-2">
                         <div className="flex items-center gap-2 mb-4">
-                            <div className="w-8 h-8 bg-black rounded-md flex items-center justify-center">
-                                <span className="text-white font-bold text-sm">H</span>
+                            <div className="w-8 h-8 bg-[#FDB913] rounded-md flex items-center justify-center">
+                                <span className="text-black font-bold text-sm">H</span>
                             </div>
-                            <span className="font-bold text-lg text-gray-900">Wage Level</span>
+                            <span className="font-bold text-lg text-white">Wage Level</span>
                         </div>
                         <p className="text-gray-500 text-sm leading-relaxed max-w-xs">
                             Access 500,000+ verified U.S. jobs with visa sponsorship. Find H-1B, Green Card, E-3, TN, CPT/OPT, H-1B1, and J-1 friendly roles.
@@ -42,7 +42,7 @@ const Footer = () => {
 
                     {/* About Us */}
                     <div>
-                        <h3 className="font-semibold text-gray-900 mb-4 text-sm">About Us</h3>
+                        <h3 className="font-semibold text-white mb-4 text-sm">About Us</h3>
                         <ul className="space-y-2.5 text-sm">
                             <li><a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">About Us</a></li>
                             <li><a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">Is H1B Wage Level Legit?</a></li>
@@ -52,7 +52,7 @@ const Footer = () => {
 
                     {/* Application & Career */}
                     <div>
-                        <h3 className="font-semibold text-gray-900 mb-4 text-sm">Application & Career Strategy</h3>
+                        <h3 className="font-semibold text-white mb-4 text-sm">Application & Career Strategy</h3>
                         <ul className="space-y-2.5 text-sm">
                             <li><a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">Visa Jobs in New York City</a></li>
                             <li><a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">H-1B Sponsorship Jobs 2026</a></li>
@@ -62,7 +62,7 @@ const Footer = () => {
 
                     {/* Policy Updates */}
                     <div>
-                        <h3 className="font-semibold text-gray-900 mb-4 text-sm">Policy Updates</h3>
+                        <h3 className="font-semibold text-white mb-4 text-sm">Policy Updates</h3>
                         <ul className="space-y-2.5 text-sm">
                             <li><a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">Trump's $100K H-1B fee</a></li>
                             <li><a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">H-1B Lottery 2026</a></li>
@@ -83,7 +83,7 @@ const Footer = () => {
                 </div>
 
                 {/* Legal Disclaimer */}
-                <div className="mt-6 p-4 bg-gray-50 rounded-xl">
+                <div className="mt-6 p-4 bg-[#111] rounded-xl">
                     <p className="text-xs text-gray-400 leading-relaxed">
                         <strong className="text-gray-500">Legal Disclaimer:</strong> H1B Wage Level is a technology platform that provides general immigration information and tools and is not a law firm. Nothing on this website constitutes legal advice or creates an attorney-client relationship. Any legal services are provided independently by licensed immigration attorneys, who are solely responsible for the advice they provide. Immigration outcomes depend on individual circumstances and government decisions and are not guaranteed. For advice specific to your situation, consult a qualified immigration attorney.
                     </p>

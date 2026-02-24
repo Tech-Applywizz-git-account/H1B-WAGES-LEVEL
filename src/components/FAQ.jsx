@@ -32,13 +32,13 @@ const FAQ = () => {
     ];
 
     return (
-        <section id="faq" className="py-20 bg-white">
+        <section id="faq" className="py-20 bg-black">
             <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="text-center mb-12">
-                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
                         Frequently Asked Questions
                     </h2>
-                    <p className="text-gray-500">
+                    <p className="text-gray-400">
                         Everything you need to know about H1B Wage Level
                     </p>
                 </div>
@@ -47,13 +47,13 @@ const FAQ = () => {
                     {faqs.map((faq, index) => (
                         <div
                             key={index}
-                            className="border border-gray-100 rounded-2xl overflow-hidden"
+                            className="border border-white/5 rounded-2xl overflow-hidden bg-[#111]"
                         >
                             <button
                                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
                                 className="w-full flex justify-between items-center text-left px-6 py-5 hover:bg-gray-50 transition-colors"
                             >
-                                <h3 className="text-base font-semibold text-gray-900 pr-8">
+                                <h3 className="text-base font-semibold text-white pr-8">
                                     {faq.question}
                                 </h3>
                                 <div className="flex-shrink-0 w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center">

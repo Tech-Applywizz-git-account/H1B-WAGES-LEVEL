@@ -172,7 +172,7 @@ const SearchFilters = ({ onFilterChange }) => {
         <div className="bg-white border-b border-gray-50 mb-6 font-display">
             <div className="w-full py-2">
                 {/* Tabs */}
-                <div className="flex justify-start items-center space-x-1 md:space-x-2 max-w-[1400px] mx-auto px-4 overflow-x-auto no-scrollbar">
+                <div className="flex justify-center items-center space-x-1 md:space-x-2 max-w-[1400px] mx-auto px-4 overflow-x-auto no-scrollbar">
                     {tabs.map(tab => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
@@ -206,7 +206,7 @@ const SearchFilters = ({ onFilterChange }) => {
                 {showFilters && (
                     <div className="py-5 bg-gray-50/50 animate-in fade-in slide-in-from-top-2 duration-300">
                         {/* 1️⃣ TOP OPTIONS (Pills) */}
-                        <div className="flex flex-wrap gap-2 justify-start max-w-[1400px] mx-auto px-4 mb-4">
+                        <div className="flex flex-wrap gap-2 justify-center max-w-[1400px] mx-auto px-4 mb-4">
                             {(activeTab === 'location' ? filterOptions.location.slice(0, 5)
                                 : activeTab === 'role' ? filterOptions.role
                                     : activeTab === 'company' ? filterOptions.company.slice(0, 8)
@@ -227,7 +227,7 @@ const SearchFilters = ({ onFilterChange }) => {
                         </div>
 
                         {/* 2️⃣ SEARCH INPUT (Separate Line, Last) */}
-                        <div className="flex justify-start max-w-[1400px] mx-auto px-4 w-full relative z-10">
+                        <div className="flex justify-center max-w-[1400px] mx-auto px-4 w-full relative z-10">
                             {/* Suggestion Dropdown Helper */}
                             {suggestions.length > 0 && (
                                 <div className="absolute bottom-full mb-2 w-64 bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden z-20">
@@ -373,7 +373,7 @@ const SearchFilters = ({ onFilterChange }) => {
                 {/* Active Filters */}
                 {allActiveFilters.length > 0 && (
                     <div className="py-4 border-t border-gray-50 bg-white">
-                        <div className="flex items-center gap-3 flex-wrap justify-start max-w-[1400px] mx-auto px-4">
+                        <div className="flex items-center gap-3 flex-wrap justify-center max-w-[1400px] mx-auto px-4">
                             <span className="text-[10px] font-black uppercase tracking-widest text-[#24385E]">Active Filters:</span>
 
                             {allActiveFilters.map(({ category, value }) => (
