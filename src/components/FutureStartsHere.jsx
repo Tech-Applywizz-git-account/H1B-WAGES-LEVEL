@@ -15,9 +15,9 @@ const FutureStartsHere = () => {
     const navigate = useNavigate();
 
     return (
-        <section className="py-24 bg-black">
+        <section className="py-16 md:py-24 bg-black">
             <div className="max-w-7xl mx-auto px-4">
-                <div className="bg-[#0A0D14] rounded-[60px] p-12 md:p-24 relative overflow-hidden flex flex-col lg:flex-row items-center gap-16">
+                <div className="bg-[#0A0D14] rounded-[30px] md:rounded-[60px] p-8 md:p-24 relative overflow-hidden flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
                     {/* Subtle background glow */}
                     <div className="absolute top-0 right-0 w-[600px] h-full bg-blue-500/10 blur-[120px] -mr-64 pointer-events-none"></div>
 
@@ -27,7 +27,7 @@ const FutureStartsHere = () => {
                             <span className="text-[11px] font-black text-[#FDB913] uppercase tracking-widest italic">READY TO START? <span className="text-white/40 not-italic">us</span></span>
                         </div>
 
-                        <h2 className="text-5xl md:text-7xl font-black text-white leading-[0.9] mb-8 uppercase">
+                        <h2 className="text-3xl md:text-7xl font-black text-white leading-[1] mb-8 uppercase">
                             YOUR FUTURE <span className="block text-[#FAFAFB]/60 italic">STARTS HERE.</span>
                         </h2>
 
@@ -37,7 +37,7 @@ const FutureStartsHere = () => {
 
                         <button
                             onClick={() => navigate('/signup')}
-                            className="inline-flex items-center gap-3 bg-white text-gray-900 font-black px-10 py-5 rounded-2xl hover:bg-gray-100 transition-all text-base shadow-xl active:scale-95"
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-3 bg-white text-gray-900 font-black px-8 md:px-10 py-4 md:py-5 rounded-2xl hover:bg-gray-100 transition-all text-base shadow-xl active:scale-95"
                         >
                             Get Instant Access <ArrowRight size={20} />
                         </button>

@@ -4,12 +4,12 @@ const SimpleHowItWorks = () => {
     return (
         <section id="how-it-works" className="py-24 bg-black">
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="text-center mb-16">
-                    <h2 className="text-4xl font-extrabold text-white mb-4 uppercase tracking-tight">How it works</h2>
-                    <div className="w-20 h-1.5 bg-[#FDB913] mx-auto rounded-full"></div>
+                <div className="text-center mb-12 md:mb-16">
+                    <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-4 uppercase tracking-tight">How it works</h2>
+                    <div className="w-16 md:w-20 h-1 md:h-1.5 bg-[#FDB913] mx-auto rounded-full"></div>
                 </div>
 
-                <div className="grid md:grid-cols-3 gap-12">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-12">
                     {/* Step 1 */}
                     <div className="text-center group">
                         <div className="w-20 h-20 bg-[#111] border border-white/5 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-sm group-hover:shadow-[0_0_30px_rgba(253,185,19,0.1)] transition-all duration-300 group-hover:-translate-y-2">

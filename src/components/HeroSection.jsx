@@ -40,54 +40,54 @@ const HeroSection = () => {
                     backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
                 }}></div>
 
-                <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28">
+                <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-28 w-full overflow-hidden">
                     <div className="grid lg:grid-cols-2 gap-12 items-center">
                         {/* Left: Text */}
                         <div>
                             {/* Badge */}
-                            <div className="inline-flex items-center gap-2 bg-white bg-opacity-10 border border-white border-opacity-20 rounded-full px-4 py-1.5 mb-6">
-                                <span className="text-sm text-white font-medium">Open Job & Visa Platform 🇺🇸</span>
+                            <div className="flex lg:inline-flex items-center justify-center lg:justify-start gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-8 mx-auto lg:mx-0 w-fit">
+                                <span className="text-[10px] md:text-sm text-white font-bold uppercase tracking-widest">Open Job & Visa Platform 🇺🇸</span>
                             </div>
 
-                            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
+                            <h1 className="text-center lg:text-left text-[28px] sm:text-4xl md:text-5xl lg:text-6xl font-black text-white leading-[1.15] mb-6">
                                 Sick of guessing which companies sponsor visas?
-                                <span className="block text-gray-300 mt-2">So are we.</span>
+                                <span className="block text-[#FAFAFB]/60 mt-3 italic">So are we.</span>
                             </h1>
 
-                            <p className="text-lg text-gray-300 mb-8 leading-relaxed max-w-xl">
+                            <p className="text-center lg:text-left text-sm md:text-lg text-gray-400 mb-10 leading-relaxed max-w-xl mx-auto lg:mx-0 font-medium px-2 sm:px-0">
                                 That's why we built H1B Wage Level. Now you can easily search & find currently open jobs at companies who sponsor visas. We've done the work so you can skip the painful hours of doom scrolling and rejection emails.
                             </p>
 
-                            <div className="flex flex-col sm:flex-row gap-3">
+                            <div className="flex flex-col sm:flex-row gap-4 px-2 sm:px-0 max-w-md mx-auto lg:mx-0">
                                 <button
                                     onClick={() => navigate('/signup')}
-                                    className="inline-flex items-center justify-center bg-white text-gray-900 font-bold px-7 py-3.5 rounded-xl hover:bg-gray-100 transition-all text-base shadow-lg"
+                                    className="w-full sm:w-auto inline-flex items-center justify-center bg-[#FDB913] text-black font-black px-8 py-4 rounded-2xl hover:bg-[#e5a811] transition-all text-base shadow-[0_10px_30px_rgba(253,185,19,0.3)] active:scale-95 px-10"
                                 >
-                                    Get Access →
+                                    Get Access Now
                                 </button>
                                 <button
                                     onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
-                                    className="inline-flex items-center justify-center border border-white border-opacity-30 text-white font-semibold px-7 py-3.5 rounded-xl hover:bg-white hover:bg-opacity-10 transition-all text-base"
+                                    className="w-full sm:w-auto inline-flex items-center justify-center border border-white/20 text-white font-bold px-8 py-4 rounded-2xl hover:bg-white/5 transition-all text-base"
                                 >
                                     How it works
                                 </button>
                             </div>
 
                             {/* Stats */}
-                            <div className="flex items-center gap-6 mt-10 pt-8 border-t border-white border-opacity-10">
-                                <div>
-                                    <div className="text-2xl font-bold text-white">500K+</div>
-                                    <div className="text-sm text-gray-400">Verified open roles</div>
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-8 lg:gap-12 mt-12 pt-10 border-t border-white/10">
+                                <div className="text-center lg:text-left">
+                                    <div className="text-xl md:text-3xl font-black text-white">500K+</div>
+                                    <div className="text-[9px] md:text-[11px] text-gray-500 uppercase tracking-widest font-bold mt-1">Verified roles</div>
                                 </div>
-                                <div className="w-px h-10 bg-white bg-opacity-20"></div>
-                                <div>
-                                    <div className="text-2xl font-bold text-white">6</div>
-                                    <div className="text-sm text-gray-400">Visa types supported</div>
+                                <div className="hidden lg:block w-px h-12 bg-white/10"></div>
+                                <div className="text-center lg:text-left border-l border-white/5 lg:border-0 pl-4 lg:pl-0">
+                                    <div className="text-xl md:text-3xl font-black text-white">6</div>
+                                    <div className="text-[9px] md:text-[11px] text-gray-500 uppercase tracking-widest font-bold mt-1">Visa types</div>
                                 </div>
-                                <div className="w-px h-10 bg-white bg-opacity-20"></div>
-                                <div>
-                                    <div className="text-2xl font-bold text-white">Daily</div>
-                                    <div className="text-sm text-gray-400">New job updates</div>
+                                <div className="hidden lg:block w-px h-12 bg-white/10"></div>
+                                <div className="col-span-2 lg:col-span-1 border-t lg:border-t-0 border-white/10 pt-6 lg:pt-0 text-center lg:text-left">
+                                    <div className="text-xl md:text-3xl font-black text-[#FDB913]">DAILY UPDATES</div>
+                                    <div className="text-[9px] md:text-[11px] text-gray-500 uppercase tracking-widest font-bold mt-1">New job postings</div>
                                 </div>
                             </div>
                         </div>
@@ -150,20 +150,20 @@ const HeroSection = () => {
                     </div>
 
                     {/* Company Marquee */}
-                    <div className="mt-20">
-                        <p className="text-center text-[13px] font-medium text-[#c49b5d]/60 uppercase tracking-[0.3em] mb-10">
+                    <div className="mt-12 md:mt-20">
+                        <p className="text-center text-[11px] md:text-[13px] font-medium text-[#c49b5d]/60 uppercase tracking-[0.2em] md:tracking-[0.3em] mb-6 md:mb-10">
                             Top Companies Where Our Clients Landed Interviews
                         </p>
-                        <div className="relative overflow-hidden bg-[#0a0a0a]/80 backdrop-blur-xl py-12 rounded-[50px] border border-white/5 shadow-[0_20px_80px_rgba(0,0,0,0.5)] mx-4">
-                            <div className="flex flex-col gap-8">
+                        <div className="relative overflow-hidden bg-[#0a0a0a]/80 backdrop-blur-xl py-8 md:py-12 rounded-[30px] md:rounded-[50px] border border-white/5 shadow-[0_20px_80px_rgba(0,0,0,0.5)] mx-2 md:mx-4">
+                            <div className="flex flex-col gap-6 md:gap-8">
                                 {/* Row 1: Scrolling Left */}
                                 <div className="flex animate-marquee whitespace-nowrap">
                                     {[
                                         'Walmart', 'ORACLE', 'UNITED', 'Goldman Sachs', 'TikTok',
                                         'Walmart', 'ORACLE', 'UNITED', 'Goldman Sachs', 'TikTok'
                                     ].map((company, i) => (
-                                        <div key={`r1-${i}`} className="flex items-center justify-center mx-14">
-                                            <span className="text-2xl md:text-3xl font-black text-white/40 tracking-tighter hover:text-white transition-opacity cursor-default">
+                                        <div key={`r1-${i}`} className="flex items-center justify-center mx-8 md:mx-14">
+                                            <span className="text-xl md:text-3xl font-black text-white/40 tracking-tighter hover:text-white transition-opacity cursor-default">
                                                 {company === 'Walmart' ? (
                                                     <span className="flex items-center gap-1">Walmart<span className="text-[#FDB913]">✻</span></span>
                                                 ) : company === 'Goldman Sachs' ? (
@@ -180,8 +180,8 @@ const HeroSection = () => {
                                         'Uber', 'American Airlines', 'hp', 'DELL', 'Google', 'Apple', 'Deloitte',
                                         'Uber', 'American Airlines', 'hp', 'DELL', 'Google', 'Apple', 'Deloitte'
                                     ].map((company, i) => (
-                                        <div key={`r2-${i}`} className="flex items-center justify-center mx-14">
-                                            <span className="text-2xl md:text-3xl font-black text-white/40 tracking-tighter hover:text-white transition-opacity cursor-default">
+                                        <div key={`r2-${i}`} className="flex items-center justify-center mx-8 md:mx-14">
+                                            <span className="text-xl md:text-3xl font-black text-white/40 tracking-tighter hover:text-white transition-opacity cursor-default">
                                                 {company === 'hp' ? (
                                                     <span className="italic lowercase border-2 border-white/20 rounded-full w-10 h-10 flex items-center justify-center text-xl">hp</span>
                                                 ) : company === 'Apple' ? (
@@ -196,8 +196,8 @@ const HeroSection = () => {
                             </div>
 
                             {/* Fading Edges */}
-                            <div className="absolute inset-y-0 left-0 w-40 bg-gradient-to-r from-[#0a0a0a] to-transparent z-10 pointer-events-none"></div>
-                            <div className="absolute inset-y-0 right-0 w-40 bg-gradient-to-l from-[#0a0a0a] to-transparent z-10 pointer-events-none"></div>
+                            <div className="absolute inset-y-0 left-0 w-20 md:w-40 bg-gradient-to-r from-[#0a0a0a] to-transparent z-10 pointer-events-none"></div>
+                            <div className="absolute inset-y-0 right-0 w-20 md:w-40 bg-gradient-to-l from-[#0a0a0a] to-transparent z-10 pointer-events-none"></div>
                         </div>
                     </div>
                 </div>

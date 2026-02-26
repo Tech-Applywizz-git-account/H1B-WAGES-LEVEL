@@ -32,6 +32,7 @@ const Homepage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalJobs, setTotalJobs] = useState(0);
   const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filters, setFilters] = useState({
     role: [],
     location: [],
@@ -43,6 +44,12 @@ const Homepage = () => {
   const [activeFilter, setActiveFilter] = useState('fresh');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchInput), 500);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
   // Renewal Flow State
   const [showRenewalFlow, setShowRenewalFlow] = useState(false);
   const [renewalStep, setRenewalStep] = useState(1);
@@ -50,16 +57,19 @@ const Homepage = () => {
     firstName: '', lastName: '', email: '', phone: '', country: ''
   });
 
-  // Generate a cache key based on current state
+  // Generate a cache key based on current state (using debounced search)
   const cacheKey = useMemo(() => {
     return JSON.stringify({
       p: currentPage,
-      s: searchInput,
+      s: debouncedSearch,
       f: filters,
       t: activeFilter,
       d: selectedDate
     });
-  }, [currentPage, searchInput, filters, activeFilter, selectedDate]);
+  }, [currentPage, debouncedSearch, filters, activeFilter, selectedDate]);
+
+  // Track the latest fetch to prevent race conditions
+  const fetchIdRef = useRef(0);
 
   const fetchJobs = useCallback(async () => {
     if (!user || subscriptionExpired) return;
@@ -71,6 +81,9 @@ const Homepage = () => {
       setTotalJobs(cached.total);
       return;
     }
+
+    // Increment fetch ID - only the latest fetch will update state
+    const currentFetchId = ++fetchIdRef.current;
 
     setLoading(true);
     try {
@@ -98,11 +111,13 @@ const Homepage = () => {
           .select('*', { count: 'exact' });
 
         if (selectedDate) {
-          query = query.eq('date_posted', selectedDate);
+          // Use range to capture entire day regardless of time
+          query = query.gte('date_posted', `${selectedDate} 00:00:00`)
+            .lte('date_posted', `${selectedDate} 23:59:59`);
         }
 
-        if (searchInput) {
-          query = query.or(`title.ilike.%${searchInput}%,company.ilike.%${searchInput}%`);
+        if (debouncedSearch) {
+          query = query.or(`title.ilike.%${debouncedSearch}%,company.ilike.%${debouncedSearch}%`);
         }
 
         const { data, error, count } = await query
@@ -111,9 +126,19 @@ const Homepage = () => {
 
         if (error) throw error;
 
-        results = data || [];
+        // Deduplicate by URL to prevent duplicate job cards
+        const seen = new Set();
+        results = (data || []).filter(job => {
+          const key = job.url || job.id;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
         total = count || 0;
       }
+
+      // Only update state if this is still the latest fetch (prevents race conditions)
+      if (currentFetchId !== fetchIdRef.current) return;
 
       // Update state and cache
       setJobs(results);
@@ -121,19 +146,30 @@ const Homepage = () => {
       jobsCache.set(cacheKey, { data: results, total });
 
     } catch (err) {
+      if (currentFetchId !== fetchIdRef.current) return;
       console.error("Fetch jobs error:", err);
     } finally {
-      setLoading(false);
+      if (currentFetchId === fetchIdRef.current) {
+        setLoading(false);
+      }
     }
-  }, [user, subscriptionExpired, cacheKey, activeFilter, selectedDate]);
+  }, [user, subscriptionExpired, currentPage, debouncedSearch, filters, activeFilter, selectedDate]);
 
+  // Initial load of user states
   useEffect(() => {
     if (user) {
       fetchSavedJobIds();
       fetchAppliedJobIds();
+    }
+  }, [user]);
+
+  // Fetch jobs when filters/page/search change
+  useEffect(() => {
+    if (user) {
       fetchJobs();
     }
-  }, [user, fetchJobs]);
+  }, [fetchJobs]);
+
 
   const fetchSavedJobIds = async () => {
     if (!user) return;

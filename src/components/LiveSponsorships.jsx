@@ -39,67 +39,69 @@ const LiveSponsorships = () => {
     const navigate = useNavigate();
 
     return (
-        <section className="py-24 bg-black">
-            <div className="max-w-7xl mx-auto px-4 text-center">
-                <h2 className="text-[42px] font-black text-white mb-4 tracking-tight uppercase">
-                    LIVE <span className="text-[#FDB913]">SPONSORSHIPS.</span>
-                </h2>
-                <p className="text-gray-400 text-lg font-medium max-w-2xl mx-auto mb-16">
-                    Access 500,000+ verified roles at companies actively hiring and sponsoring today.
-                </p>
+        <section className="py-8">
+            <div className="max-w-7xl mx-auto px-4 md:px-8">
+                <div className="bg-black rounded-[48px] py-16 md:py-24 px-6 md:px-12 text-center shadow-2xl">
+                    <h2 className="text-2xl md:text-[32px] font-black text-white mb-3 tracking-tight uppercase">
+                        LIVE <span className="text-[#FDB913]">SPONSORSHIPS.</span>
+                    </h2>
+                    <p className="text-gray-400 text-base md:text-lg font-medium max-w-2xl mx-auto mb-10 md:mb-16">
+                        Access 500,000+ verified roles at companies actively hiring and sponsoring today.
+                    </p>
 
-                <div className="grid md:grid-cols-3 gap-8 mb-16">
-                    {sponsorshipData.map((job, idx) => (
-                        <div key={idx} className="bg-[#111111] rounded-[40px] p-10 shadow-[0_10px_50px_rgba(0,0,0,0.5)] border border-white/5 flex flex-col text-left hover:scale-[1.02] transition-transform duration-300">
-                            <div className="flex justify-between items-start mb-6">
-                                <div className={`w-14 h-14 ${job.companyColor} rounded-2xl flex items-center justify-center text-white text-2xl font-black`}>
-                                    {job.companyInitial}
-                                </div>
-                                <span className="bg-[#EEF2FF] text-[#6366F1] text-[10px] font-black px-4 py-1.5 rounded-full tracking-widest">
-                                    FULL-TIME
-                                </span>
-                            </div>
-
-                            <h3 className="text-[26px] font-black text-white mb-1">{job.title}</h3>
-                            <p className="text-gray-500 font-bold mb-8 text-[15px]">
-                                {job.companyName} • {job.location}
-                            </p>
-
-                            <div className="flex gap-2 mb-10">
-                                {job.tags.map(tag => (
-                                    <span key={tag} className="bg-white/5 text-gray-400 text-[9px] font-black px-3 py-1.5 rounded-lg tracking-wider border border-white/10 uppercase">
-                                        {tag}
-                                    </span>
-                                ))}
-                            </div>
-
-                            <div className="mt-auto flex items-center justify-between border-t border-white/5 pt-8">
-                                <div className="flex items-center gap-6">
-                                    <div className="bg-[#FDB913] rounded-2xl p-4 flex flex-col items-center justify-center text-black w-[75px]">
-                                        <div className="flex gap-0.5 mb-1">
-                                            {[1, 2, 3, 4].map(s => (
-                                                <Star key={s} size={8} fill={s <= parseInt(job.level.split(' ')[1]) ? "#000" : "transparent"} stroke={s <= parseInt(job.level.split(' ')[1]) ? "#000" : "rgba(0,0,0,0.2)"} />
-                                            ))}
-                                        </div>
-                                        <div className="text-xl font-black leading-none">{job.level}</div>
-                                        <div className="text-[8px] font-bold text-black/50 uppercase tracking-tighter">WAGE LEVEL</div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-7 mb-12">
+                        {sponsorshipData.map((job, idx) => (
+                            <div key={idx} className="bg-[#111111] rounded-[24px] md:rounded-[32px] p-5 md:p-8 shadow-[0_10px_50px_rgba(0,0,0,0.5)] border border-white/5 flex flex-col text-left hover:scale-[1.02] transition-transform duration-300">
+                                <div className="flex justify-between items-start mb-6">
+                                    <div className={`w-14 h-14 ${job.companyColor} rounded-2xl flex items-center justify-center text-white text-2xl font-black`}>
+                                        {job.companyInitial}
                                     </div>
-                                    <div className="text-[18px] font-black text-white">{job.salary}</div>
+                                    <span className="bg-yellow-50 text-[#24385E] text-[10px] font-black px-4 py-1.5 rounded-full tracking-widest border border-yellow-200">
+                                        FULL-TIME
+                                    </span>
                                 </div>
-                                <button className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-white border border-white/10 hover:bg-white/10 transition-colors">
-                                    <ArrowRight size={20} />
-                                </button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
 
-                <button
-                    onClick={() => navigate('/signup')}
-                    className="inline-flex items-center gap-2 text-[13px] font-black text-[#FDB913] uppercase tracking-widest hover:translate-x-1 transition-transform"
-                >
-                    SEE 500k+ MORE JOBS <ArrowRight size={16} />
-                </button>
+                                <h3 className="text-xl md:text-[26px] font-black text-white mb-1">{job.title}</h3>
+                                <p className="text-gray-500 font-bold mb-8 text-[15px]">
+                                    {job.companyName} • {job.location}
+                                </p>
+
+                                <div className="flex gap-2 mb-10">
+                                    {job.tags.map(tag => (
+                                        <span key={tag} className="bg-white/5 text-gray-400 text-[9px] font-black px-3 py-1.5 rounded-lg tracking-wider border border-white/10 uppercase">
+                                            {tag}
+                                        </span>
+                                    ))}
+                                </div>
+
+                                <div className="mt-auto flex items-center justify-between border-t border-white/5 pt-8">
+                                    <div className="flex items-center gap-6">
+                                        <div className="bg-[#FDB913] rounded-2xl p-3 md:p-4 flex flex-col items-center justify-center text-black w-[65px] md:w-[75px]">
+                                            <div className="flex gap-0.5 mb-1">
+                                                {[1, 2, 3, 4].map(s => (
+                                                    <Star key={s} size={8} fill={s <= parseInt(job.level.split(' ')[1]) ? "#000" : "transparent"} stroke={s <= parseInt(job.level.split(' ')[1]) ? "#000" : "rgba(0,0,0,0.2)"} />
+                                                ))}
+                                            </div>
+                                            <div className="text-xl font-black leading-none">{job.level}</div>
+                                            <div className="text-[8px] font-bold text-black/50 uppercase tracking-tighter">WAGE LEVEL</div>
+                                        </div>
+                                        <div className="text-base md:text-[18px] font-black text-white">{job.salary}</div>
+                                    </div>
+                                    <button className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center text-white border border-white/10 hover:bg-white/10 transition-colors">
+                                        <ArrowRight size={20} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+
+                    <button
+                        onClick={() => navigate('/signup')}
+                        className="inline-flex items-center gap-2 text-[13px] font-black text-[#FDB913] uppercase tracking-widest hover:translate-x-1 transition-transform"
+                    >
+                        SEE 500k+ MORE JOBS <ArrowRight size={16} />
+                    </button>
+                </div>
             </div>
         </section>
     );

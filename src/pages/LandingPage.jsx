@@ -1,39 +1,43 @@
 import React, { useEffect } from 'react';
-import Navbar from '../components/Navbar';
-import HeroSection from '../components/HeroSection';
-import LiveSponsorships from '../components/LiveSponsorships';
-import FutureStartsHere from '../components/FutureStartsHere';
+import MigrateNavbar from '../components/MigrateNavbar';
+import MigrateHero from '../components/MigrateHero';
+import MigrateMiddleSections from '../components/MigrateMiddleSections';
 import BuiltByImmigrants from '../components/BuiltByImmigrants';
-import SimpleHowItWorks from '../components/SimpleHowItWorks';
-import FeaturesSection from '../components/FeaturesSection';
-import FAQ from '../components/FAQ';
-import Testimonials from '../components/Testimonials';
-import Footer from '../components/Footer';
+import MigrateFooterSections from '../components/MigrateFooterSections';
 
 const LandingPage = () => {
     // Scroll to top on load
     useEffect(() => {
         window.scrollTo(0, 0);
+        document.title = "Wage Level | Land your dream job in the US";
     }, []);
 
     return (
-        <div className="min-h-screen bg-black text-white">
-            <Navbar />
-            <main>
-                <HeroSection />
+        <div className="mm-landing bg-slate-50 min-h-screen font-sans selection:bg-[#24385E]/20">
+            {/* 1) TOP NAVBAR (Sticky) */}
+            <MigrateNavbar />
 
-                {/* User Requested Sections - Premium Theme */}
-                <LiveSponsorships />
-                <FutureStartsHere />
-                <BuiltByImmigrants />
+            <main className="max-w-[1600px] mx-auto space-y-24 md:space-y-40 pb-32">
+                {/* 2 & 3) HERO & SEARCH CARD */}
+                <div className="pt-8">
+                    <MigrateHero />
+                </div>
 
-                {/* Information Sections */}
-                <SimpleHowItWorks />
-                <FeaturesSection />
-                <Testimonials />
-                <FAQ />
+                {/* 4, 5, 6, 7) MIDDLE SECTIONS */}
+                <div>
+                    <MigrateMiddleSections />
+                </div>
+
+                {/* BUILT BY IMMIGRANTS - New Section */}
+                <div>
+                    <BuiltByImmigrants />
+                </div>
+
+                {/* 8, 9, 10) FOOTER SECTIONS */}
+                <div>
+                    <MigrateFooterSections />
+                </div>
             </main>
-            <Footer />
         </div>
     );
 };

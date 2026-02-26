@@ -128,9 +128,6 @@ const Signup = () => {
                 createOrder: async () => {
                     try {
                         console.log('Creating PayPal order...');
-                        console.log('Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
-                        console.log('PayPal Client ID:', import.meta.env.VITE_PAYPAL_CLIENT_ID);
-
                         const response = await fetch(
                             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-paypal-order`,
                             {
@@ -215,32 +212,41 @@ const Signup = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black opacity-30"></div>
+        <div className="min-h-screen bg-[#24385E] flex items-center justify-center p-4 relative overflow-hidden">
+            {/* Decorative background elements */}
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-[#FDB913]/10 rounded-full -translate-y-1/2 translate-x-1/3"></div>
+            <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-white/5 rounded-full translate-y-1/2 -translate-x-1/3"></div>
+            <div className="absolute top-1/3 right-1/4 w-64 h-64 bg-[#FDB913]/5 rounded-full"></div>
 
-            <div className="relative card max-w-2xl w-full">
+            <div className="relative bg-white rounded-3xl shadow-2xl max-w-3xl w-full p-8 md:p-10">
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <Link to="/" className="inline-flex items-center space-x-2">
-                        <div className="w-12 h-12 bg-primary-dark rounded-lg flex items-center justify-center">
-                            <span className="text-primary-white font-bold text-2xl">H1B</span>
+                    <Link to="/" className="inline-flex items-center gap-2 group">
+                        <div className="relative">
+                            <div className="w-10 h-10 bg-[#24385E] rounded-xl flex items-center justify-center transform rotate-12 transition-transform group-hover:rotate-0 shadow-lg">
+                                <span className="text-white font-black text-xl italic tracking-tighter">W</span>
+                            </div>
+                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#FDB913] rounded-full border-2 border-white"></div>
                         </div>
-                        <span className="font-bold text-xl text-primary-dark">Wage Level</span>
+                        <div className="flex flex-col">
+                            <span className="text-xl font-bold text-[#24385E] tracking-tight leading-none">Wage</span>
+                            <span className="text-xl font-bold text-[#FDB913] tracking-tight leading-none">Level</span>
+                        </div>
                     </Link>
                 </div>
 
                 {step === 1 && (
                     // Step 1: Form Page
                     <div>
-                        <h1 className="text-3xl font-bold text-primary-dark mb-4 text-center">
+                        <h1 className="text-3xl font-black text-[#24385E] mb-2 text-center">
                             Get Access to 500,000+ Jobs
                         </h1>
-                        <p className="text-gray-600 text-center mb-8">
+                        <p className="text-gray-400 font-medium text-center mb-8">
                             Fill in your details to proceed
                         </p>
 
                         {error && (
-                            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm font-semibold">
                                 {error}
                             </div>
                         )}
@@ -248,7 +254,7 @@ const Signup = () => {
                         <form onSubmit={handleFormSubmit} className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    <label className="block text-xs font-black text-[#24385E] uppercase tracking-wider mb-2">
                                         First Name *
                                     </label>
                                     <input
@@ -257,13 +263,13 @@ const Signup = () => {
                                         value={formData.firstName}
                                         onChange={handleInputChange}
                                         required
-                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+                                        className="w-full px-4 py-3.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#FDB913] focus:border-transparent text-[#24385E] font-medium placeholder:text-gray-300 bg-gray-50/50"
                                         placeholder="John"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    <label className="block text-xs font-black text-[#24385E] uppercase tracking-wider mb-2">
                                         Last Name *
                                     </label>
                                     <input
@@ -272,14 +278,14 @@ const Signup = () => {
                                         value={formData.lastName}
                                         onChange={handleInputChange}
                                         required
-                                        className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+                                        className="w-full px-4 py-3.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#FDB913] focus:border-transparent text-[#24385E] font-medium placeholder:text-gray-300 bg-gray-50/50"
                                         placeholder="Doe"
                                     />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-xs font-black text-[#24385E] uppercase tracking-wider mb-2">
                                     Email *
                                 </label>
                                 <input
@@ -288,13 +294,13 @@ const Signup = () => {
                                     value={formData.email}
                                     onChange={handleInputChange}
                                     required
-                                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+                                    className="w-full px-4 py-3.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#FDB913] focus:border-transparent text-[#24385E] font-medium placeholder:text-gray-300 bg-gray-50/50"
                                     placeholder="john.doe@example.com"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-xs font-black text-[#24385E] uppercase tracking-wider mb-2">
                                     Mobile Number *
                                 </label>
                                 <div className="flex gap-2">
@@ -302,7 +308,7 @@ const Signup = () => {
                                         name="countryCode"
                                         value={formData.countryCode}
                                         onChange={handleInputChange}
-                                        className="px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-yellow bg-white"
+                                        className="px-4 py-3.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#FDB913] bg-gray-50/50 text-[#24385E] font-medium"
                                     >
                                         {countryCodes.map((item) => (
                                             <option key={item.code} value={item.code}>
@@ -316,14 +322,14 @@ const Signup = () => {
                                         value={formData.mobileNumber}
                                         onChange={handleInputChange}
                                         required
-                                        className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+                                        className="flex-1 px-4 py-3.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#FDB913] focus:border-transparent text-[#24385E] font-medium placeholder:text-gray-300 bg-gray-50/50"
                                         placeholder="1234567890"
                                     />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="block text-xs font-black text-[#24385E] uppercase tracking-wider mb-2">
                                     Promo Code (Optional)
                                 </label>
                                 <input
@@ -331,24 +337,24 @@ const Signup = () => {
                                     name="promoCode"
                                     value={formData.promoCode}
                                     onChange={handleInputChange}
-                                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary-yellow"
+                                    className="w-full px-4 py-3.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#FDB913] focus:border-transparent text-[#24385E] font-medium placeholder:text-gray-300 bg-gray-50/50"
                                     placeholder="Enter promo code"
                                 />
                             </div>
 
                             <button
                                 type="submit"
-                                className="w-full btn-primary text-lg"
+                                className="w-full py-4 bg-[#FDB913] hover:bg-[#e5a811] text-[#24385E] font-black text-lg rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                                 disabled={loading}
                             >
-                                {loading ? 'Processing...' : 'Proceed to Payment'}
+                                {loading ? 'Processing...' : 'Proceed to Payment →'}
                             </button>
                         </form>
 
                         <div className="mt-6 text-center">
-                            <p className="text-gray-600">
+                            <p className="text-gray-400 font-medium">
                                 Already have an account?{' '}
-                                <Link to="/login" className="text-accent-blue font-semibold hover:underline">
+                                <Link to="/login" className="text-[#FDB913] font-bold hover:text-[#e5a811] transition-colors">
                                     Log in
                                 </Link>
                             </p>
@@ -359,12 +365,12 @@ const Signup = () => {
                 {step === 2 && (
                     // Step 2: Payment Section
                     <div>
-                        <h1 className="text-3xl font-bold text-primary-dark mb-4 text-center">
+                        <h1 className="text-3xl font-black text-[#24385E] mb-4 text-center">
                             Complete Your Payment
                         </h1>
 
-                        <div className="bg-gray-50 rounded-lg p-6 mb-6">
-                            <p className="text-center text-xl font-semibold text-primary-dark mb-4">
+                        <div className="bg-[#24385E]/5 rounded-2xl p-6 mb-6">
+                            <p className="text-center text-xl font-black text-[#24385E] mb-5">
                                 30-day free trial, then $30 USD/month
                             </p>
 
@@ -377,38 +383,40 @@ const Signup = () => {
                                     'Verified email of a real company contact',
                                     'Cancel anytime',
                                 ].map((feature, index) => (
-                                    <div key={index} className="flex items-center space-x-3">
-                                        <Check className="w-5 h-5 text-accent-green flex-shrink-0" />
-                                        <span className="text-gray-700">{feature}</span>
+                                    <div key={index} className="flex items-center gap-3">
+                                        <div className="w-5 h-5 bg-[#FDB913]/20 rounded-full flex items-center justify-center shrink-0">
+                                            <Check className="w-3 h-3 text-[#24385E]" strokeWidth={3} />
+                                        </div>
+                                        <span className="text-[#24385E] font-medium">{feature}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
                         {/* Testimonial */}
-                        <div className="border-l-4 border-primary-yellow bg-gray-50 p-4 mb-6">
+                        <div className="border-l-4 border-[#FDB913] bg-[#FDB913]/5 p-5 rounded-r-xl mb-6">
                             <div className="flex mb-2">
                                 {[...Array(5)].map((_, i) => (
-                                    <Star key={i} className="w-4 h-4 text-primary-yellow fill-current" />
+                                    <Star key={i} className="w-4 h-4 text-[#FDB913] fill-current" />
                                 ))}
                             </div>
-                            <p className="text-gray-700 italic text-sm mb-2">
+                            <p className="text-gray-600 italic text-sm mb-2 font-medium">
                                 "This platform helped me land my dream job at Microsoft! Highly recommended!"
                             </p>
-                            <p className="text-sm font-semibold text-gray-800">- Rajesh K., Software Engineer</p>
+                            <p className="text-sm font-black text-[#24385E]">- Rajesh K., Software Engineer</p>
                         </div>
 
                         {error && (
-                            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm font-semibold">
                                 {error}
                             </div>
                         )}
 
                         {/* PayPal Button Container */}
                         {paypalLoading && (
-                            <div className="mb-4 p-6 bg-gray-50 rounded-lg text-center">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-yellow mx-auto mb-2"></div>
-                                <p className="text-gray-600">Loading PayPal...</p>
+                            <div className="mb-4 p-6 bg-gray-50 rounded-xl text-center">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FDB913] mx-auto mb-2"></div>
+                                <p className="text-gray-500 font-medium">Loading PayPal...</p>
                             </div>
                         )}
                         <div
@@ -419,11 +427,11 @@ const Signup = () => {
 
                         {loading && (
                             <div className="text-center py-4">
-                                <p className="text-gray-600">Processing payment...</p>
+                                <p className="text-gray-500 font-medium">Processing payment...</p>
                             </div>
                         )}
 
-                        <p className="text-center text-sm text-gray-500">
+                        <p className="text-center text-sm text-gray-400 font-bold">
                             Customer: {formData.firstName} {formData.lastName} ({formData.email})
                         </p>
                     </div>
@@ -433,55 +441,55 @@ const Signup = () => {
                     // Step 3: Success Card
                     <div className="text-center">
                         <div className="mb-6 flex justify-center">
-                            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
-                                <CheckCircle className="w-12 h-12 text-green-600" />
+                            <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center">
+                                <CheckCircle className="w-12 h-12 text-emerald-500" />
                             </div>
                         </div>
 
-                        <h1 className="text-3xl font-bold text-green-600 mb-4">
+                        <h1 className="text-3xl font-black text-emerald-500 mb-4">
                             Payment Successful! 🎉
                         </h1>
 
-                        <p className="text-gray-600 mb-6">
+                        <p className="text-gray-500 font-medium mb-6">
                             Thank you for your subscription. Your account is now active!
                         </p>
 
-                        <div className="bg-gray-50 rounded-lg p-6 mb-6 text-left">
-                            <h3 className="text-lg font-semibold text-primary-dark mb-4">Transaction Details</h3>
-                            <div className="space-y-2">
+                        <div className="bg-gray-50 rounded-2xl p-6 mb-6 text-left">
+                            <h3 className="text-lg font-black text-[#24385E] mb-4">Transaction Details</h3>
+                            <div className="space-y-3">
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Transaction ID:</span>
-                                    <span className="font-medium text-gray-900">{paymentData.transactionId}</span>
+                                    <span className="text-gray-400 font-medium">Transaction ID:</span>
+                                    <span className="font-bold text-[#24385E]">{paymentData.transactionId}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Order ID:</span>
-                                    <span className="font-medium text-gray-900">{paymentData.orderId}</span>
+                                    <span className="text-gray-400 font-medium">Order ID:</span>
+                                    <span className="font-bold text-[#24385E]">{paymentData.orderId}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Amount:</span>
-                                    <span className="font-medium text-gray-900">{paymentData.currency} {paymentData.amount}</span>
+                                    <span className="text-gray-400 font-medium">Amount:</span>
+                                    <span className="font-bold text-[#24385E]">{paymentData.currency} {paymentData.amount}</span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-gray-600">Date:</span>
-                                    <span className="font-medium text-gray-900">
+                                    <span className="text-gray-400 font-medium">Date:</span>
+                                    <span className="font-bold text-[#24385E]">
                                         {new Date(paymentData.timeOfPayment).toLocaleDateString()}
                                     </span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                            <p className="text-sm text-blue-800">
+                        <div className="bg-[#24385E]/5 border border-[#24385E]/10 rounded-2xl p-4 mb-6">
+                            <p className="text-sm text-[#24385E] font-medium">
                                 📧 Your login credentials have been sent to <strong>{formData.email}</strong>
                             </p>
-                            <p className="text-xs text-blue-700 mt-2">
+                            <p className="text-xs text-gray-500 mt-2">
                                 <strong>Note:</strong> If you don't see the email in your inbox, please check your spam or junk mail folder.
                             </p>
                         </div>
 
                         <button
                             onClick={() => navigate('/login')}
-                            className="w-full btn-primary text-lg"
+                            className="w-full py-4 bg-[#24385E] hover:bg-[#1a2a47] text-white font-black text-lg rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98]"
                         >
                             Click Here to Login
                         </button>

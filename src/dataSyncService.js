@@ -40,6 +40,35 @@ const markSyncComplete = () => {
 };
 
 /**
+ * Helper to fetch all records from a table in the MAIN database using pagination.
+ * Necessary because regular .select() is limited to 1000 items.
+ */
+const fetchAllExistingFromMain = async (table, selectStr) => {
+    let allData = [];
+    let page = 0;
+    const pageSize = 1000;
+    let hasMore = true;
+
+    while (hasMore) {
+        const { data, error } = await supabase
+            .from(table)
+            .select(selectStr)
+            .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+            allData = [...allData, ...data];
+            page++;
+            hasMore = data.length === pageSize;
+        } else {
+            hasMore = false;
+        }
+    }
+    return allData;
+};
+
+/**
  * Sync audit_reviews from external DB to local audit_reviews_sync table
  */
 export const syncAuditReviews = async () => {
@@ -80,15 +109,13 @@ export const syncAuditReviews = async () => {
         }
 
         // --- INCREMENTAL SYNC LOGIC ---
-        // Fetch existing job_links to avoid duplicates
-        const { data: existingRecords } = await supabase
-            .from('audit_reviews_sync')
-            .select('job_link');
+        // Dedup by `id` (primary key from external DB).
+        // Uses pagination to fetch ALL existing IDs (avoids 1000 limit issue).
+        const existingRecords = await fetchAllExistingFromMain('audit_reviews_sync', 'id');
+        const existingIds = new Set((existingRecords || []).map(r => r.id));
 
-        const existingLinks = new Set((existingRecords || []).map(r => r.job_link));
-
-        // Filter out data that already exists in our DB
-        const newData = allData.filter(record => !existingLinks.has(record.job_link));
+        // Filter out records whose id already exists in our DB
+        const newData = allData.filter(record => !existingIds.has(record.id));
 
         if (newData.length === 0) {
             console.log('ℹ️ No new audit reviews to sync');
@@ -98,6 +125,7 @@ export const syncAuditReviews = async () => {
         console.log(`🆕 Found ${newData.length} new audit reviews to insert`);
 
         // Insert in batches of 500
+        // Using upsert with ignoreDuplicates as a safety net to prevent 409 crashes
         const batchSize = 500;
         let totalInserted = 0;
 
@@ -168,15 +196,16 @@ export const syncSponsoredJobs = async () => {
         }
 
         // --- INCREMENTAL SYNC LOGIC ---
-        // Fetch existing URLs to avoid duplicates
-        const { data: existingRecords } = await supabase
-            .from('job_jobrole_sponsored_sync')
-            .select('url');
+        // Fetch ALL existing (url + job_role_name) combos using pagination
+        const existingRecords = await fetchAllExistingFromMain('job_jobrole_sponsored_sync', 'url, job_role_name');
+        const existingKeys = new Set(
+            (existingRecords || []).map(r => `${r.url}|||${r.job_role_name}`)
+        );
 
-        const existingUrls = new Set((existingRecords || []).map(r => r.url));
-
-        // Filter out data that already exists
-        const newData = allData.filter(record => !existingUrls.has(record.url));
+        // Filter out records where (url + job_role_name) already exists
+        const newData = allData.filter(record =>
+            !existingKeys.has(`${record.url}|||${record.job_role_name}`)
+        );
 
         if (newData.length === 0) {
             console.log('ℹ️ No new sponsored jobs to sync');
@@ -317,11 +346,17 @@ const STATE_MAPPING = {
     'VA': 'VIRGINIA', 'WA': 'WASHINGTON', 'WV': 'WEST VIRGINIA', 'WI': 'WISCONSIN', 'WY': 'WYOMING'
 };
 
+// Simple memory cache for wage levels
+const wageCache = new Map();
+
 /**
  * Fetch H1B wage level for a given occupation and area
  * Used by JobCard to show wage level info
  */
 export const getWageLevel = async (occupation, locationStr = null) => {
+    const cacheKey = `${occupation}|${locationStr}`;
+    if (wageCache.has(cacheKey)) return wageCache.get(cacheKey);
+
     try {
         if (!occupation) return [];
 
@@ -439,7 +474,7 @@ export const getWageLevel = async (occupation, locationStr = null) => {
             return s.toString().replace(/[^0-9]/g, '');
         };
 
-        return (results || []).map(item => ({
+        const finalResults = (results || []).map(item => ({
             ...item,
             'Wage Level': mapLevel(item['Wage Level']),
             'Yearly': cleanSalary(item['Yearly']),
@@ -450,6 +485,9 @@ export const getWageLevel = async (occupation, locationStr = null) => {
             const levelB = parseInt(b['Wage Level'].match(/\d/)?.[0] || '0');
             return levelB - levelA;
         });
+
+        wageCache.set(cacheKey, finalResults);
+        return finalResults;
     } catch (error) {
         console.error('Error fetching wage level:', error);
         return [];

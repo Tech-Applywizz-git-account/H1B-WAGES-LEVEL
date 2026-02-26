@@ -357,6 +357,7 @@ export function AuthProvider({ children }) {
   const [loggingOut, setLoggingOut] = useState(false);
   const isInitialLoad = useRef(true);
   const hasProfileQueryRun = useRef(false);
+  const isAuthInitialized = useRef(false);
 
   // Helper: load profile.role for a user with caching
   const loadUserRole = async (userObj) => {
@@ -522,15 +523,15 @@ export function AuthProvider({ children }) {
 
         // Set a loading timeout to prevent infinite loading
         initTimeout = setTimeout(() => {
-          if (isMounted && loading) {
-            console.warn("⚠️ Auth init taking too long, using localStorage fallback");
+          if (isMounted && !isAuthInitialized.current) {
+            // Only fallback if we haven't initialized yet
             const storedRole = localStorage.getItem("userRole");
             if (storedRole && !role) {
               setRole(storedRole);
             }
             setLoading(false);
           }
-        }, 3000); // 3 second timeout
+        }, 8000);
 
         // Get session and user in parallel for faster load
         const [sessionPromise, userPromise] = await Promise.allSettled([
@@ -548,19 +549,18 @@ export function AuthProvider({ children }) {
         }
 
         if (currentUser && isMounted) {
-
           setUser(currentUser);
-
           // Load role but don't wait for it to finish before setting loading to false
           loadUserRole(currentUser).finally(() => {
             if (isMounted) {
+              isAuthInitialized.current = true;
               clearTimeout(initTimeout);
               setLoading(false);
             }
           });
         } else {
-
           if (isMounted) {
+            isAuthInitialized.current = true;
             clearTimeout(initTimeout);
             setUser(null);
             setRole(null);
@@ -572,6 +572,7 @@ export function AuthProvider({ children }) {
       } catch (err) {
         console.error("💥 Error during auth init:", err);
         if (isMounted) {
+          isAuthInitialized.current = true;
           clearTimeout(initTimeout);
           setLoading(false);
           setCheckingSub(false);
@@ -600,6 +601,7 @@ export function AuthProvider({ children }) {
         case 'SIGNED_IN':
         case 'USER_UPDATED':
         case 'TOKEN_REFRESHED':
+        case 'INITIAL_SESSION': // Handle initial session event
           if (session?.user) {
             console.log("🔄 Auth event:", event, "for user:", session.user.email);
             setUser(session.user);

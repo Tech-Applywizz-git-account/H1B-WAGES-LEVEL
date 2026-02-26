@@ -29,28 +29,10 @@ const SearchFilters = ({ onFilterChange }) => {
 
     const [filterOptions, setFilterOptions] = useState(defaultOptions);
 
+    // No need to fetch filter options if they are hardcoded
     useEffect(() => {
-        const fetchFilterOptions = async () => {
-            try {
-                const { data, error } = await supabase
-                    .from('job_jobrole_sponsored_sync')
-                    .select('years_exp_required');
-
-                if (error) throw error;
-
-                // For experience, we only want the requested three hardcoded ones
-                const standardExperiences = ['0-4 years', '5-7 years', '8-11 years'];
-                setFilterOptions(prev => ({
-                    ...prev,
-                    experience: standardExperiences,
-                }));
-
-            } catch (err) {
-                console.error("Error fetching filter options:", err);
-            }
-        };
-
-        fetchFilterOptions();
+        // Experience options are already set in defaultOptions
+        // If we needed to fetch dynamic options, we would do it here with appropriate limits or distinct queries
     }, []);
 
     const [showLocationInput, setShowLocationInput] = useState(false);

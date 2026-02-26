@@ -153,41 +153,50 @@ const Navbar = () => {
                 {/* -------- Mobile Layout -------- */}
                 <div className="md:hidden flex justify-between items-center h-14">
                     <Link to="/" className="flex items-center gap-1.5">
-                        <div className="w-8 h-8 bg-black rounded-lg flex items-center justify-center shadow-lg">
-                            <span className="text-white font-black text-sm">H</span>
+                        <div className="w-8 h-8 bg-[#FDB913] rounded-md flex items-center justify-center">
+                            <span className="text-black font-bold text-sm">H1B</span>
                         </div>
-                        <span className="font-black text-base md:text-lg text-gray-900 tracking-tight">Wage Level</span>
+                        <span className="font-bold text-base text-white tracking-tight">Wage Level</span>
                     </Link>
 
                     <button
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                        className="p-2 rounded-lg hover:bg-white/5 transition-colors"
                     >
-                        {isMenuOpen ? <X size={22} className="text-gray-700" /> : <Menu size={22} className="text-gray-700" />}
+                        {isMenuOpen ? <X size={22} className="text-white" /> : <Menu size={22} className="text-white" />}
                     </button>
                 </div>
             </div>
 
             {/* -------- Mobile Dropdown -------- */}
             {isMenuOpen && (
-                <div className="md:hidden bg-white border-t border-gray-100 px-4 py-4 space-y-1">
-                    {!user && (
-                        <>
-                            <Link
-                                to="/pricing"
-                                className="block text-sm text-gray-700 font-medium hover:text-gray-900 py-2.5 border-b border-gray-50"
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                Pricing
-                            </Link>
-                        </>
-                    )}
+                <div className="md:hidden bg-[#0A0A0A] border-t border-white/5 px-4 py-4 space-y-1">
+                    <button
+                        onClick={() => {
+                            if (!user) {
+                                navigate('/signup');
+                            } else {
+                                navigate('/jobs');
+                            }
+                            setIsMenuOpen(false);
+                        }}
+                        className="block w-full text-left text-sm text-gray-300 font-medium hover:text-white py-2.5 border-b border-white/5"
+                    >
+                        Find Jobs
+                    </button>
+                    <Link
+                        to="/pricing"
+                        className="block text-sm text-gray-300 font-medium hover:text-white py-2.5 border-b border-white/5"
+                        onClick={() => setIsMenuOpen(false)}
+                    >
+                        Pricing
+                    </Link>
 
                     <div className="pt-3 mt-2">
                         {user ? (
                             <div className="space-y-4">
                                 <div className="space-y-1">
-                                    <p className="px-3 text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">My Account</p>
+                                    <p className="px-3 text-[10px] font-black uppercase tracking-widest text-[#FDB913]/60 mb-2">My Account</p>
                                     {[
                                         { id: "all-jobs", label: "Find Jobs", icon: Search, type: "link", path: "/jobs" },
                                         { id: "overview", label: "Overview", icon: LayoutDashboard },
@@ -207,19 +216,19 @@ const Navbar = () => {
                                                 }
                                                 setIsMenuOpen(false);
                                             }}
-                                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-700 font-bold hover:bg-gray-50 transition-colors"
+                                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-300 font-bold hover:bg-white/5 transition-colors"
                                         >
-                                            <tab.icon size={18} className={tab.id === "all-jobs" ? "text-indigo-600" : "text-gray-400"} />
+                                            <tab.icon size={18} className={tab.id === "all-jobs" ? "text-[#FDB913]" : "text-gray-400"} />
                                             <span className="text-sm">{tab.label}</span>
                                         </button>
                                     ))}
                                 </div>
 
-                                <div className="pt-2 border-t border-gray-100">
+                                <div className="pt-2 border-t border-white/5">
                                     <button
                                         onClick={handleLogout}
                                         disabled={loggingOut}
-                                        className="w-full flex items-center gap-3 px-3 py-2.5 text-red-600 font-bold hover:bg-red-50 rounded-xl transition-colors disabled:opacity-50"
+                                        className="w-full flex items-center gap-3 px-3 py-2.5 text-red-500 font-bold hover:bg-red-500/10 rounded-xl transition-colors disabled:opacity-50"
                                     >
                                         <LogOut size={18} />
                                         <span className="text-sm">{loggingOut ? 'Logging out...' : 'Logout'}</span>
@@ -227,17 +236,17 @@ const Navbar = () => {
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex flex-col gap-2">
+                            <div className="flex flex-col gap-3">
                                 <Link
                                     to="/login"
-                                    className="block text-center py-2.5 text-sm text-gray-700 font-medium hover:text-gray-900 border border-gray-200 rounded-lg"
+                                    className="block text-center py-2.5 text-sm text-gray-300 font-medium hover:text-white border border-white/10 rounded-lg"
                                     onClick={() => setIsMenuOpen(false)}
                                 >
                                     Login
                                 </Link>
                                 <Link
                                     to="/signup"
-                                    className="block text-center bg-black hover:bg-gray-800 text-white text-sm font-semibold py-2.5 rounded-lg"
+                                    className="block text-center bg-[#FDB913] hover:bg-[#e5a811] text-black text-sm font-bold py-3 rounded-lg shadow-lg"
                                     onClick={() => setIsMenuOpen(false)}
                                 >
                                     Get Access

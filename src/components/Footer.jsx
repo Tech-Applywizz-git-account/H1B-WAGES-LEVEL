@@ -9,7 +9,7 @@ const Footer = () => {
             {/* CTA Banner */}
             <div className="bg-gray-900 py-16">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-                    <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 leading-tight">
+                    <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-4 leading-tight">
                         We built H1B Wage Level for ourselves,<br className="hidden md:block" />
                         now we're sharing it with the world.
                     </h2>
@@ -17,7 +17,7 @@ const Footer = () => {
                     <p className="text-gray-500 mb-8 text-sm">Find US jobs with visa sponsorship. Your path to working in America starts here.</p>
                     <button
                         onClick={() => navigate('/signup')}
-                        className="inline-flex items-center bg-[#FDB913] text-black font-black px-8 py-4 rounded-xl hover:bg-[#e5a811] transition-all text-base shadow-lg"
+                        className="w-full sm:w-auto inline-flex items-center justify-center bg-[#FDB913] text-black font-black px-8 py-4 rounded-xl hover:bg-[#e5a811] transition-all text-base shadow-lg"
                     >
                         Get Access →
                     </button>
@@ -26,16 +26,16 @@ const Footer = () => {
 
             {/* Footer Links */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
+                <div className="grid grid-cols-2 lg:grid-cols-5 gap-10 md:gap-8">
                     {/* Brand */}
-                    <div className="md:col-span-2">
-                        <div className="flex items-center gap-2 mb-4">
+                    <div className="col-span-2 lg:col-span-2">
+                        <div className="flex items-center gap-2 mb-6">
                             <div className="w-8 h-8 bg-[#FDB913] rounded-md flex items-center justify-center">
-                                <span className="text-black font-bold text-sm">H</span>
+                                <span className="text-black font-bold text-sm">H1B</span>
                             </div>
-                            <span className="font-bold text-lg text-white">Wage Level</span>
+                            <span className="font-bold text-xl text-white tracking-tight">Wage Level</span>
                         </div>
-                        <p className="text-gray-500 text-sm leading-relaxed max-w-xs">
+                        <p className="text-gray-400 text-sm leading-relaxed max-w-sm">
                             Access 500,000+ verified U.S. jobs with visa sponsorship. Find H-1B, Green Card, E-3, TN, CPT/OPT, H-1B1, and J-1 friendly roles.
                         </p>
                     </div>
@@ -72,20 +72,20 @@ const Footer = () => {
                 </div>
 
                 {/* Bottom */}
-                <div className="border-t border-gray-100 mt-10 pt-8 flex flex-col md:flex-row justify-between items-start gap-4">
-                    <div className="flex flex-wrap gap-4 text-sm">
-                        <a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">Contact Support</a>
-                        <a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">Privacy Policy</a>
-                        <a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">Careers</a>
-                        <a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">Blog</a>
+                <div className="border-t border-white/5 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div className="flex flex-wrap justify-center md:justify-start gap-6 text-[13px] font-medium">
+                        <a href="#" className="text-gray-400 hover:text-white transition-colors">Contact Support</a>
+                        <a href="#" className="text-gray-400 hover:text-white transition-colors">Privacy Policy</a>
+                        <a href="#" className="text-gray-400 hover:text-white transition-colors">Careers</a>
+                        <a href="#" className="text-gray-400 hover:text-white transition-colors">Blog</a>
                     </div>
-                    <p className="text-gray-400 text-sm">© 2026 H1B Wage Level. All Rights Reserved.</p>
+                    <p className="text-gray-500 text-[13px]">© 2026 H1B Wage Level. All Rights Reserved.</p>
                 </div>
 
                 {/* Legal Disclaimer */}
-                <div className="mt-6 p-4 bg-[#111] rounded-xl">
-                    <p className="text-xs text-gray-400 leading-relaxed">
-                        <strong className="text-gray-500">Legal Disclaimer:</strong> H1B Wage Level is a technology platform that provides general immigration information and tools and is not a law firm. Nothing on this website constitutes legal advice or creates an attorney-client relationship. Any legal services are provided independently by licensed immigration attorneys, who are solely responsible for the advice they provide. Immigration outcomes depend on individual circumstances and government decisions and are not guaranteed. For advice specific to your situation, consult a qualified immigration attorney.
+                <div className="mt-8 p-6 bg-white/5 rounded-2xl border border-white/5">
+                    <p className="text-[11px] text-gray-500 leading-relaxed text-center md:text-left">
+                        <strong className="text-gray-400">Legal Disclaimer:</strong> H1B Wage Level is a technology platform that provides general immigration information and tools and is not a law firm. Nothing on this website constitutes legal advice or creates an attorney-client relationship. Any legal services are provided independently by licensed immigration attorneys, who are solely responsible for the advice they provide. Immigration outcomes depend on individual circumstances and government decisions and are not guaranteed. For advice specific to your situation, consult a qualified immigration attorney.
                     </p>
                 </div>
             </div>

@@ -10,7 +10,7 @@ import JobSearch from './pages/JobSearch';
 import Dashboard from './pages/Dashboard';
 import { AuthProvider } from './hooks/useAuth';
 import useDataSync from './hooks/useDataSync';
-import './index.css';
+import './output.css';
 
 // Silent background sync component — auto-syncs external DB data daily
 const DataSyncWrapper = ({ children }) => {

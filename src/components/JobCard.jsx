@@ -22,9 +22,9 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
 
     useEffect(() => setSaved(isSaved), [isSaved]);
 
-    // Fetch Wage Level dynamically
+    // Use pre-calculated wage level if available from the database
     useEffect(() => {
-        if (job.wage_level && job.wage_level !== 'Lv 2') {
+        if (job.wage_level) {
             setWageInfo({
                 level: job.wage_level,
                 yearly: (job.salary || '').replace(/[^0-9]/g, ''),
@@ -106,7 +106,7 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
             <div className="flex gap-8">
                 {/* Left Section: Logo & Verified */}
                 <div className="flex flex-col items-center shrink-0">
-                    <div className="w-24 h-24 border border-gray-100 rounded-xl bg-white flex items-center justify-center text-2xl font-black text-gray-400 mb-3 shadow-inner">
+                    <div className="w-24 h-24 border border-[#24385E]/10 rounded-xl bg-[#24385E]/5 flex items-center justify-center text-2xl font-black text-[#24385E]/40 mb-3">
                         {getCompanyInitials(job.company)}
                     </div>
                     <div className="bg-emerald-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-md flex items-center gap-1.5 shadow-sm whitespace-nowrap">
@@ -126,8 +126,8 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                             onClick={handleSaveToggle}
                             disabled={saving}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all text-sm font-bold border ${saved
-                                    ? 'bg-indigo-50 border-indigo-100 text-[#1A3BA3]'
-                                    : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200 hover:text-gray-600'
+                                ? 'bg-[#FDB913]/10 border-[#FDB913]/30 text-[#24385E]'
+                                : 'bg-white border-gray-100 text-gray-400 hover:border-[#24385E]/20 hover:text-[#24385E]'
                                 }`}
                         >
                             {saved ? <BookmarkCheck size={18} fill="currentColor" /> : <Bookmark size={18} />}
@@ -151,12 +151,12 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                     </div>
 
                     <div className="flex items-center gap-6 mt-auto select-none">
-                        <div className="flex items-center gap-2 text-gray-400 text-sm">
-                            <MapPin size={16} className="text-gray-300" />
+                        <div className="flex items-center gap-2 text-gray-500 text-sm">
+                            <MapPin size={16} className="text-[#FDB913]" />
                             <span className="font-medium">{job.location || 'Location'}</span>
                         </div>
-                        <div className="flex items-center gap-2 text-gray-400 text-sm">
-                            <Clock size={16} className="text-gray-300" />
+                        <div className="flex items-center gap-2 text-gray-500 text-sm">
+                            <Clock size={16} className="text-[#FDB913]" />
                             <span className="font-medium">{job.years_exp_required || 'Experience'}</span>
                         </div>
                     </div>
@@ -164,11 +164,9 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
 
                 {/* Right Section: Wage & Action */}
                 <div className="w-[160px] flex flex-col gap-4 shrink-0">
-                    <div className="bg-[#1A3BA3] rounded-2xl p-5 flex flex-col items-center justify-center text-white shadow-lg relative overflow-hidden group">
+                    <div className="bg-[#24385E] rounded-2xl p-5 flex flex-col items-center justify-center text-white shadow-lg relative overflow-hidden group">
                         {/* Decorative background circle */}
-                        <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-white/5 rounded-full"></div>
-
-
+                        <div className="absolute -bottom-4 -right-4 w-16 h-16 bg-[#FDB913]/10 rounded-full"></div>
 
                         <div className="flex gap-0.5 mb-2">
                             {[1, 2, 3, 4].map((star) => {
@@ -177,7 +175,7 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                                     <Star
                                         key={star}
                                         size={14}
-                                        className={star <= level ? "fill-yellow-400 text-yellow-400" : "text-white/20"}
+                                        className={star <= level ? "fill-[#FDB913] text-[#FDB913]" : "text-white/20"}
                                     />
                                 );
                             })}
@@ -195,7 +193,7 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                         href={job.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center justify-center gap-2 w-full py-3.5 bg-[#2563EB] text-white text-[14px] font-bold rounded-xl hover:bg-blue-700 transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
+                        className="flex items-center justify-center gap-2 w-full py-3.5 bg-[#FDB913] text-[#24385E] text-[14px] font-black rounded-xl hover:bg-[#e5a811] transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
                     >
                         Apply Now
                         <ExternalLink size={16} />
