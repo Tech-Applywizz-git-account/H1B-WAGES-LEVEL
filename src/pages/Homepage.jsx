@@ -121,6 +121,7 @@ const Homepage = () => {
         }
 
         const { data, error, count } = await query
+          .order('wage_num', { ascending: false })
           .order('date_posted', { ascending: false })
           .range(from, to);
 
@@ -134,7 +135,10 @@ const Homepage = () => {
           seen.add(key);
           return true;
         });
-        total = count || 0;
+
+        // Use count from database, but ensure it's at least as much as what we got
+        // back in the results to prevent "0" showing when results exist.
+        total = Math.max(count || 0, results.length);
       }
 
       // Only update state if this is still the latest fetch (prevents race conditions)
@@ -263,7 +267,8 @@ const Homepage = () => {
 
           <div className="bg-white px-8 py-5 border-b border-[#f0f0f0]">
             <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="flex items-center gap-6">
+              <div className="flex items-end gap-6">
+                {/* Date Filter Column */}
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Filter by Posted Date</span>
                   <input
@@ -273,16 +278,18 @@ const Homepage = () => {
                       setSelectedDate(e.target.value);
                       setCurrentPage(1);
                     }}
-                    className="px-6 py-2.5 bg-[#fafafa] border-2 border-[#f0f0f0] rounded-2xl focus:border-blue-500 focus:outline-none text-[13px] font-bold text-[#24385E] shadow-sm transition-all"
+                    className="px-6 py-2.5 bg-[#fafafa] border-2 border-[#f0f0f0] rounded-2xl focus:border-blue-500 focus:outline-none text-[13px] font-bold text-[#24385E] shadow-sm transition-all h-[46px]"
                   />
                 </div>
 
+                {/* Counter Tab Column */}
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Verified Inventory</span>
-                  <div className="px-6 py-2.5 bg-emerald-50 border-2 border-emerald-100/50 rounded-2xl flex items-center gap-2.5 shadow-sm">
+                  {/* Invisible spacer to match the "Filter by Posted Date" label height */}
+                  <span className="text-[10px] font-black opacity-0 mb-1.5">Spacer</span>
+                  <div className="px-6 py-2.5 bg-emerald-50 border-2 border-emerald-100/50 rounded-2xl flex items-center gap-2.5 shadow-sm h-[46px]">
                     <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.4)]"></div>
                     <span className="text-[14px] font-black text-emerald-600">
-                      {totalJobs.toLocaleString()} Confirmed Links
+                      {totalJobs.toLocaleString()} Sponsored Jobs
                     </span>
                   </div>
                 </div>
