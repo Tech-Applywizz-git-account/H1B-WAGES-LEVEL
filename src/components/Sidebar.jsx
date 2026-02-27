@@ -56,7 +56,7 @@ const Sidebar = ({ className = "", showHeader = true }) => {
 
     const handleLogout = async () => {
         await signOut();
-        navigate('/login');
+        navigate('/');
     };
 
     if (!mounted) return null;

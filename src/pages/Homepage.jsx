@@ -13,9 +13,6 @@ import CompanyCard from '../components/CompanyCard';
 import CompanyJobCard from '../components/CompanyJobCard';
 import Navbar from '../components/Navbar';
 import HeroSection from '../components/HeroSection';
-import LiveSponsorships from '../components/LiveSponsorships';
-import SimpleHowItWorks from '../components/SimpleHowItWorks';
-import FutureStartsHere from '../components/FutureStartsHere';
 import Testimonials from '../components/Testimonials';
 import FAQ from '../components/FAQ';
 import Footer from '../components/Footer';
@@ -277,7 +274,10 @@ const Homepage = () => {
   // const [paymentStatus, setPaymentStatus] = useState(null);
   // const [paymentLoading, setPaymentLoading] = useState(true);
 
-  // Use payment status from useAuth directly for consistency
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/', { replace: true });
+  };
 
   const [activeView, setActiveView] = useState('all_companies');
   const [companies, setCompanies] = useState([]);
@@ -514,24 +514,11 @@ const Homepage = () => {
   const handleCompanySelect = (c) => { setSelectedCompany(c.company); setSelectedCompanyData(c); setJobPage(1); setJobSearch(''); };
 
   if (authLoading || paymentLoading) return <div className="h-screen w-screen flex items-center justify-center bg-[#f5f5f7]"><Loader2 className="w-8 h-8 text-[#24385E] animate-spin" /></div>;
-  if (!user) return (
-    <div className="bg-black min-h-screen">
-      <Navbar />
-      <main>
-        <HeroSection />
-        <LiveSponsorships />
-        <SimpleHowItWorks />
-        <FutureStartsHere />
-        <Testimonials />
-        <FAQ />
-        <Footer />
-      </main>
-    </div>
-  );
+  if (!user) return <div className="bg-white"><Navbar /><HeroSection /><Testimonials /><FAQ /><Footer /></div>;
 
   // ── Payment gate: show teaser if not paid ──
   const isPaid = paymentStatus === 'paid' || paymentStatus === 'active';
-  if (!isPaid) return <TeaserDashboard user={user} signOut={signOut} navigate={navigate} />;
+  if (!isPaid) return <TeaserDashboard user={user} signOut={handleLogout} navigate={navigate} />;
 
   const navItems = [
     { id: 'all_jobs', label: 'All jobs', icon: Briefcase },
@@ -662,7 +649,7 @@ const Homepage = () => {
 
           <button
             style={{ ...S.navItem(false), color: '#ef4444' }}
-            onClick={signOut}
+            onClick={handleLogout}
             onMouseEnter={e => e.currentTarget.style.background = '#fef2f2'}
             onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
           >

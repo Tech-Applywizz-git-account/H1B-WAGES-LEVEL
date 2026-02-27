@@ -22,7 +22,7 @@ const AppHeader = ({ title = "Job Board" }) => {
 
     const handleLogout = async () => {
         await signOut();
-        navigate('/login');
+        navigate('/');
     };
 
     return (
