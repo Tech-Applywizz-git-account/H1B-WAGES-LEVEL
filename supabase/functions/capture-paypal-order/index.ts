@@ -23,12 +23,22 @@ serve(async (req) => {
             ? 'https://api-m.paypal.com'
             : 'https://api-m.sandbox.paypal.com'
 
-        // Database credentials from Supabase secrets
-        const dbUrl = Deno.env.get('DB_URL')
-        const dbServiceRoleKey = Deno.env.get('DB_SERVICE_ROLE_KEY')
+        // Database credentials - Use multiple fallbacks to ensure we get the keys
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') || Deno.env.get('DB_URL')
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('DB_SERVICE_ROLE_KEY')
 
-        if (!dbUrl || !dbServiceRoleKey) {
-            return new Response(JSON.stringify({ success: false, error: 'Database configuration missing on server.' }), {
+        console.log(`🔍 DIAGNOSTIC: supabaseUrl present? ${!!supabaseUrl}, supabaseKey present? ${!!supabaseKey}`);
+        if (supabaseKey) {
+            console.log(`🔍 DIAGNOSTIC: Key length is ${supabaseKey.length}. Starts with ${supabaseKey.substring(0, 10)}...`);
+        }
+
+        if (!supabaseUrl || !supabaseKey) {
+            console.error("❌ CRITICAL ERROR: Database credentials missing.");
+            const missing = !supabaseUrl ? "SUPABASE_URL" : "SUPABASE_SERVICE_ROLE_KEY";
+            return new Response(JSON.stringify({
+                success: false,
+                error: `Server configuration error: ${missing} is missing on the server. Please add it to Supabase Secrets.`
+            }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 200,
             })
@@ -80,69 +90,77 @@ serve(async (req) => {
         }
 
         if (captureData.status === 'COMPLETED') {
-            const supabase = createClient(dbUrl, dbServiceRoleKey)
+            const supabase = createClient(supabaseUrl, supabaseKey)
             const captureDetails = captureData.purchase_units[0].payments.captures[0];
 
             // 4. Record payment in database
             console.log(`🚀 RECORDING PAYMENT: Inserting ${captureDetails.amount.value} ${captureDetails.amount.currency_code} for ${email}`);
-            const { error: paymentError } = await supabase.from('payment_details').insert([
-                {
-                    email,
-                    transaction_id: captureDetails.id,
-                    order_id: orderId,
-                    time_of_payment: new Date().toISOString(),
-                    amount: parseFloat(captureDetails.amount.value),
-                    currency: captureDetails.amount.currency_code,
-                    status: 'COMPLETED',
-                }
-            ])
 
-            if (paymentError) {
-                console.error("❌ Database error recording payment:", paymentError);
-                // We keep going so we can at least try to update the profile
+            try {
+                const { error: paymentError } = await supabase.from('payment_details').insert([
+                    {
+                        email,
+                        transaction_id: captureDetails.id,
+                        order_id: orderId,
+                        time_of_payment: new Date().toISOString(),
+                        amount: parseFloat(captureDetails.amount.value),
+                        currency: captureDetails.amount.currency_code,
+                        status: 'COMPLETED',
+                    }
+                ])
+
+                if (paymentError) {
+                    console.error("❌ Database error recording payment:", paymentError);
+                }
+            } catch (dbErr) {
+                console.error("💥 Exception during payment recording:", dbErr);
             }
 
             // 5. Handle Auth User (Get UUID by email)
-            // Users who "Continue with Google" already have an account.
             let userIdValue = null;
+            const userPassword = `${(firstName || 'User').toLowerCase()}@123`;
 
             console.log(`Checking for existing user with email: ${email}`);
 
-            // Try to find user in Auth
-            const { data: users, error: listError } = await supabase.auth.admin.listUsers();
-            if (listError) {
-                console.error("Error listing users:", listError);
-            }
+            try {
+                // Try to find user in Auth
+                const { data: users, error: listError } = await supabase.auth.admin.listUsers();
+                if (listError) throw listError;
 
-            const existingUser = users?.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+                const existingUser = users?.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
-            const userPassword = `${firstName.toLowerCase()}@123`;
-
-            if (existingUser) {
-                userIdValue = existingUser.id;
-                console.log(`Found existing user ID: ${userIdValue}. Updating password for email consistency.`);
-                // Set the password so the email is accurate even for Google users
-                await supabase.auth.admin.updateUserById(userIdValue, {
-                    password: userPassword
-                });
-            } else {
-                // If not found (unlikely if they just paid, but possible if it's a new email flow)
-                console.log("No existing user found. Creating new account...");
-                const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-                    email,
-                    password: userPassword,
-                    email_confirm: true,
-                    user_metadata: { first_name: firstName, last_name: lastName }
-                });
-
-                if (authError) {
-                    console.error("Auth creation error:", authError);
-                    // Last ditch effort: query profiles to see if they exist there
-                    const { data: prof } = await supabase.from('profiles').select('id').eq('email', email).maybeSingle();
-                    if (prof) userIdValue = prof.id;
-                    else throw new Error(`Account creation failed: ${authError.message}`);
+                if (existingUser) {
+                    userIdValue = existingUser.id;
+                    console.log(`Found existing user ID: ${userIdValue}. Updating profile triggers.`);
+                    // We don't update password here to avoid unwanted side effects, 
+                    // but we ensure the profile is updated next.
                 } else {
-                    userIdValue = authUser.user.id;
+                    console.log("No existing user found. Creating new account...");
+                    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+                        email,
+                        password: userPassword,
+                        email_confirm: true,
+                        user_metadata: { first_name: firstName, last_name: lastName }
+                    });
+
+                    if (authError) {
+                        console.error("Auth creation error:", authError);
+                        // Last ditch effort: query profiles to see if they exist there
+                        const { data: prof } = await supabase.from('profiles').select('id').eq('email', email).maybeSingle();
+                        if (prof) userIdValue = prof.id;
+                        else throw new Error(`Account creation failed: ${authError.message}`);
+                    } else {
+                        userIdValue = authUser.user.id;
+                    }
+                }
+            } catch (authErr) {
+                console.error("💥 Auth management error:", authErr);
+                // Last ditch: try to get user id from profiles table by email
+                const { data: prof } = await supabase.from('profiles').select('id').eq('email', email).maybeSingle();
+                if (prof) {
+                    userIdValue = prof.id;
+                } else {
+                    throw authErr;
                 }
             }
 
@@ -158,7 +176,7 @@ serve(async (req) => {
                 first_name: firstName,
                 last_name: lastName,
                 mobile_number: mobileNumber,
-                country_code: countryCode, // Matches capture input
+                country_code: countryCode,
                 payment_status: 'paid',
                 role: 'user',
                 subscription_end_date: subscriptionEndDate.toISOString(),
@@ -167,7 +185,7 @@ serve(async (req) => {
 
             if (upsertError) {
                 console.error("Profile upsert error:", upsertError);
-                // Try upsert by email if ID fails (e.g. if ID was mismatched)
+                // Try upsert by email if ID fails
                 await supabase.from('profiles').upsert({
                     email,
                     first_name: firstName,
@@ -181,11 +199,12 @@ serve(async (req) => {
             try {
                 const userPassword = `${firstName.toLowerCase()}@123`;
                 console.log("Attempting to send welcome email...");
-                const emailResult = await fetch(`${dbUrl}/functions/v1/send-email`, {
+                const emailResult = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${dbServiceRoleKey}`
+                        'Authorization': `Bearer ${supabaseKey}`,
+                        'apikey': supabaseKey // Also pass as apikey header for Supabase internal routing
                     },
                     body: JSON.stringify({
                         to: email, firstName, lastName,
