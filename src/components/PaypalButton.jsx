@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PayPalButtons } from "@paypal/react-paypal-js";
 import { supabase } from '../supabaseClient';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
