@@ -1,16 +1,25 @@
 //src/pages/Login.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import useAuth from '../hooks/useAuth';
 
 const Login = () => {
+    const { user, loading: authLoading } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
+    const [googleLoading, setGoogleLoading] = useState(false);
+
+    useEffect(() => {
+        if (!authLoading && user) {
+            navigate('/app', { replace: true });
+        }
+    }, [user, authLoading, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -20,7 +29,6 @@ const Login = () => {
         console.log("🔄 Login attempt started for email:", email);
 
         try {
-            // Authenticate with Supabase
             const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
                 email,
                 password
@@ -30,26 +38,32 @@ const Login = () => {
             if (!authData?.user) throw new Error("Authentication failed.");
 
             console.log("✅ Login successful! User:", authData.user.email);
-            console.log("🔄 Auth context will load role automatically...");
-
-            // Navigate immediately - useAuth context handles role loading via onAuthStateChange
             navigate("/app", { replace: true });
-
 
         } catch (err) {
             console.error("💥 Login error:", err);
             setError(err.message || "Login failed. Try again.");
-
-            // Sign out on error to ensure clean state
             await supabase.auth.signOut();
-
         } finally {
             setLoading(false);
         }
     };
 
-    const togglePasswordVisibility = () => {
-        setShowPassword(!showPassword);
+    const handleGoogleSignIn = async () => {
+        setGoogleLoading(true);
+        setError('');
+        try {
+            const { error } = await supabase.auth.signInWithOAuth({
+                provider: 'google',
+                options: {
+                    redirectTo: `${window.location.origin}/auth/callback`,
+                },
+            });
+            if (error) throw error;
+        } catch (err) {
+            setError(err.message || 'Google sign-in failed.');
+            setGoogleLoading(false);
+        }
     };
 
     return (
@@ -82,6 +96,34 @@ const Login = () => {
                 <p className="text-gray-400 text-sm font-medium text-center mb-8">
                     Login to access your dashboard
                 </p>
+
+                {/* Google Sign In */}
+                <button
+                    onClick={handleGoogleSignIn}
+                    disabled={googleLoading || loading}
+                    className="w-full flex items-center justify-center gap-3 py-3 px-4 border border-gray-200 rounded-2xl hover:bg-gray-50 transition-all mb-5 font-semibold text-gray-700 text-sm shadow-sm"
+                >
+                    {googleLoading ? (
+                        <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                        </svg>
+                    )}
+                    Continue with Google
+                </button>
+
+                <div className="relative mb-5">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-100" />
+                    </div>
+                    <div className="relative flex justify-center text-xs text-gray-400 font-medium">
+                        <span className="bg-white px-3">or sign in with email</span>
+                    </div>
+                </div>
 
                 {error && (
                     <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
@@ -135,7 +177,7 @@ const Login = () => {
                             />
                             <button
                                 type="button"
-                                onClick={togglePasswordVisibility}
+                                onClick={() => setShowPassword(!showPassword)}
                                 className="absolute inset-y-0 right-0 pr-4 flex items-center focus:outline-none"
                                 aria-label={showPassword ? "Hide password" : "Show password"}
                             >
@@ -155,7 +197,7 @@ const Login = () => {
 
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || googleLoading}
                         className="w-full flex items-center justify-center gap-2 py-4 bg-[#24385E] hover:bg-[#1a2a47] text-white font-black text-base rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:scale-100"
                     >
                         {loading ? (

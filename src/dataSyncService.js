@@ -353,138 +353,178 @@ const wageCache = new Map();
  * Fetch H1B wage level for a given occupation and area
  * Used by JobCard to show wage level info
  */
-export const getWageLevel = async (occupation, locationStr = null) => {
-    const cacheKey = `${occupation}|${locationStr}`;
+export const getWageLevel = async (occupation, locationStr = null, salary = null) => {
+    const cacheKey = `${occupation}|${locationStr}|${salary}`;
     if (wageCache.has(cacheKey)) return wageCache.get(cacheKey);
 
     try {
         if (!occupation) return [];
 
+        // ── 1. Parse location ────────────────────────────────────────────────
         let city = null;
         let stateFull = null;
-
         if (locationStr) {
             const parts = locationStr.split(',').map(p => p.trim());
             if (parts.length >= 2) {
-                const stateAbbr = parts[1].toUpperCase().slice(0, 2);
-                stateFull = STATE_MAPPING[stateAbbr] || parts[1];
-                city = parts[0];
+                const stateAbbr = parts[parts.length - 1].toUpperCase().trim().slice(0, 2);
+                stateFull = STATE_MAPPING[stateAbbr] || null;
+                city = parts[0].toUpperCase();
             } else {
-                city = parts[0];
+                city = parts[0]?.toUpperCase();
             }
         }
 
-        // Clean occupation: remove common prefixes and suffixes
-        const keywords = occupation
-            .toLowerCase()
-            .replace(/senior|junior|lead|staff|principal|sr\.|jr\.|ii|iii|iv|v/gi, '')
-            .replace(/[^a-z\s]/g, ' ')
-            .split(/\s+/)
-            .filter(w => w.length > 2);
+        // ── 2. Map job title → SOC occupation keyword ────────────────────────
+        const titleLower = occupation.toLowerCase();
 
-        if (keywords.length === 0) return [];
+        // Order matters — more specific patterns first
+        let socKeyword = null;
+        if (titleLower.match(/data\s*scien/)) socKeyword = 'Data Scientists';
+        else if (titleLower.match(/machine\s*learn|deep\s*learn|artificial\s*intel|nlp|llm|ml\s*engin/)) socKeyword = 'Software Developers';
+        else if (titleLower.match(/software|frontend|back.?end|full.?stack|web\s*dev|mobile\s*dev|ios|android|react|angular|vue|java|python|node|dotnet|\.net|c#|golang|scala|ruby|php/)) socKeyword = 'Software Developers';
+        else if (titleLower.match(/cloud|devops|sre|platform\s*engin|infrastructure|kubernetes|docker|terraform|aws|gcp|azure/)) socKeyword = 'Software Developers';
+        else if (titleLower.match(/data\s*engin|etl|pipeline|spark|kafka|hadoop|databricks|airflow/)) socKeyword = 'Software Developers';
+        else if (titleLower.match(/data\s*analy|business\s*intel|bi\s*dev|tableau|power\s*bi|looker/)) socKeyword = 'Computer Occupations';
+        else if (titleLower.match(/network\s*engin|network\s*admin|cisco|firewall|vpn/)) socKeyword = 'Network';
+        else if (titleLower.match(/security|cyber|infosec|soc\s*analy|penetration/)) socKeyword = 'Security';
+        else if (titleLower.match(/database|dba|sql\s*dev|oracle\s*dev/)) socKeyword = 'Database';
+        else if (titleLower.match(/product\s*manager|project\s*manager|program\s*manager|scrum\s*master/)) socKeyword = 'Computer Occupations';
+        else if (titleLower.match(/system\s*analy|business\s*analy|functional\s*analy/)) socKeyword = 'Systems Analysts';
+        else if (titleLower.match(/qa|quality\s*assur|test\s*engin|sdet|automation\s*test/)) socKeyword = 'Software Developers';
+        else if (titleLower.match(/mechanical\s*engin/)) socKeyword = 'Mechanical Engineers';
+        else if (titleLower.match(/electrical\s*engin/)) socKeyword = 'Electrical Engineers';
+        else if (titleLower.match(/civil\s*engin/)) socKeyword = 'Civil Engineers';
+        else if (titleLower.match(/chemical\s*engin/)) socKeyword = 'Chemical Engineers';
+        else if (titleLower.match(/accountant|accounting|cpa/)) socKeyword = 'Accountants';
+        else if (titleLower.match(/financial\s*analy|finance|investment|fp&a/)) socKeyword = 'Financial';
+        else if (titleLower.match(/nurse|nursing|rn\b/)) socKeyword = 'Registered Nurses';
+        else if (titleLower.match(/physician|doctor|md\b/)) socKeyword = 'Physicians';
+        else if (titleLower.match(/pharmacist/)) socKeyword = 'Pharmacists';
+        else if (titleLower.match(/supply\s*chain/)) socKeyword = 'Supply Chain';
+        else if (titleLower.match(/marketing|growth\s*market/)) socKeyword = 'Marketing';
+        else if (titleLower.match(/researcher|research\s*scien|postdoc/)) socKeyword = 'Research';
+        else if (titleLower.match(/engin/)) socKeyword = 'Software Developers'; // generic engineer fallback
 
-        // Special mapping: Engineer <-> Developer
-        let searchKeywords = [...keywords];
-        if (keywords.includes('engineer') && !keywords.includes('developer')) {
-            // Replace engineer with developer for more aggressive matching in Strategy 1/2
-            const engineerIdx = searchKeywords.indexOf('engineer');
-            if (engineerIdx !== -1) searchKeywords[engineerIdx] = 'developer';
+        if (!socKeyword) {
+            wageCache.set(cacheKey, []);
+            return []; // Cannot map to SOC — return empty
         }
 
-        // Take top 2 most important keywords, prioritizing "software" or "data" if present
-        let primaryKeywords = searchKeywords.slice(0, 2);
-        if (searchKeywords.includes('software') && primaryKeywords[0] !== 'software') {
-            primaryKeywords = ['software', ...searchKeywords.filter(k => k !== 'software').slice(0, 1)];
-        }
+        // ── 3. Determine preferred level from title seniority ────────────────
+        let preferredLevel = 2;
+        if (titleLower.match(/\blead\b|\bstaff\b|\bprincipal\b|\bdirector\b|\bvp\b|\bhead\b|\bchief\b/)) preferredLevel = 4;
+        else if (titleLower.match(/\bsenior\b|\bsr[\s.]\b/)) preferredLevel = 3;
+        else if (titleLower.match(/\bjunior\b|\bjr[\s.]\b|\bentry\b|\bintern\b|\bgraduate\b|\bgrad\b/)) preferredLevel = 1;
+        else if (titleLower.match(/\b(ii|2)\b/)) preferredLevel = 2;
+        else if (titleLower.match(/\b(iii|3)\b/)) preferredLevel = 3;
+        else if (titleLower.match(/\b(iv|4)\b/)) preferredLevel = 4;
 
-        /**
-         * Search Strategy:
-         * 1. Exact-ish matches in specific location
-         * 2. First primary keyword in specific location
-         * 3. Exact-ish match in State
-         * 4. Broad keyword match (Anywhere)
-         */
-
-        const runQuery = async (kws, area = null, state = null) => {
+        // ── 4. Query h1b_wage_data for all wage tiers ────────────────────────
+        const runQuery = async (state = null, areaCity = null) => {
             let q = supabase
                 .from('h1b_wage_data')
-                .select('"Wage Level", "Hourly", "Yearly", "Occupation", "Area", "State"');
-
-            // Apply keyword filters (AND join)
-            kws.forEach(kw => {
-                q = q.ilike('Occupation', `%${kw}%`);
-            });
+                .select('"Wage Level", "Hourly", "Yearly", "Area", "State"')
+                .ilike('Occupation', `%${socKeyword}%`)
+                .not('Wage Level', 'ilike', '%MEAN%'); // Exclude MEAN rows
 
             if (state) q = q.ilike('State', `%${state}%`);
-            if (area) q = q.ilike('Area', `%${area}%`);
+            if (areaCity) q = q.ilike('Area', `%${areaCity}%`);
 
-            const { data, error } = await q.limit(3);
+            const { data, error } = await q.limit(20);
             return error ? [] : (data || []);
         };
 
         let results = [];
+        if (stateFull && city) results = await runQuery(stateFull, city);
+        if (results.length === 0 && stateFull) results = await runQuery(stateFull, null);
+        if (results.length === 0) results = await runQuery(null, null);
 
-        // 1. Try Primary Keywords + City + State
-        if (stateFull && city) {
-            results = await runQuery(primaryKeywords, city, stateFull);
-        }
-
-        // 2. Try Primary Keywords + State
-        if (results.length === 0 && stateFull) {
-            results = await runQuery(primaryKeywords, null, stateFull);
-        }
-
-        // 3. Try First Keyword + State
-        if (results.length === 0 && stateFull) {
-            results = await runQuery([primaryKeywords[0]], null, stateFull);
-        }
-
-        // 4. Try Broad Match (Primary keywords only)
         if (results.length === 0) {
-            results = await runQuery(primaryKeywords);
+            wageCache.set(cacheKey, []);
+            return [];
         }
 
-        // 5. Absolute Fallback: First Keyword
-        if (results.length === 0) {
-            results = await runQuery([primaryKeywords[0]]);
-        }
-
-        // Post-process to standardize Level
+        // ── 5. Map wage levels to numbers ────────────────────────────────────
         const mapLevel = (l) => {
-            if (!l) return 'Lv 2';
+            if (!l) return null;
             const val = l.toString().trim().toUpperCase();
-
-            // Handle "MEAN" which often appears in H2B or special records
-            if (val.includes('MEAN')) return 'Lv 2'; // Mean is usually interpreted as Level 2 equivalent
-
-            if (val.includes('IV') || val === '4') return 'Lv 4';
-            if (val.includes('III') || val === '3') return 'Lv 3';
-            if (val.includes('II') || val === '2') return 'Lv 2';
-            if (val.includes('I') || val === '1') return 'Lv 1';
-
-            // Final fallback: if it's a number, use it, otherwise Lv 2
-            const num = val.match(/\d/);
-            return num ? `Lv ${num[0]}` : 'Lv 2';
+            if (val.includes('MEAN')) return null;
+            if (val.includes('IV') || val === '4') return 4;
+            if (val.includes('III') || val === '3') return 3;
+            if (val === 'II' || val === '2') return 2;
+            if (val === 'I' || val === '1') return 1;
+            return null;
         };
 
-        const cleanSalary = (s) => {
+        const cleanSalaryNum = (s) => {
             if (!s) return null;
-            // Remove everything except digits
-            return s.toString().replace(/[^0-9]/g, '');
+            const n = parseFloat(s.replace(/[^0-9.]/g, ''));
+            return isNaN(n) ? null : n;
         };
 
-        const finalResults = (results || []).map(item => ({
-            ...item,
-            'Wage Level': mapLevel(item['Wage Level']),
-            'Yearly': cleanSalary(item['Yearly']),
-            'Hourly': cleanSalary(item['Hourly'])
-        })).sort((a, b) => {
-            // Sort by level number descending (Lv 4 before Lv 3, etc.)
-            const levelA = parseInt(a['Wage Level'].match(/\d/)?.[0] || '0');
-            const levelB = parseInt(b['Wage Level'].match(/\d/)?.[0] || '0');
-            return levelB - levelA;
-        });
+        // ── 6. Build tier map ────────────────────────────────────────────────
+        // Group by level, pick the state-level data preferring city match
+        const tierMap = new Map(); // level -> { yearly, hourly }
+        for (const r of results) {
+            const lvl = mapLevel(r['Wage Level']);
+            if (lvl === null) continue;
+            if (!tierMap.has(lvl)) {
+                tierMap.set(lvl, {
+                    level: lvl,
+                    yearly: cleanSalaryNum(r['Yearly']),
+                    hourly: cleanSalaryNum(r['Hourly']),
+                    area: r['Area'] || ''
+                });
+            }
+        }
+
+        const tiers = Array.from(tierMap.values()).sort((a, b) => a.level - b.level);
+        if (tiers.length === 0) {
+            wageCache.set(cacheKey, []);
+            return [];
+        }
+
+        // ── 7. Pick level ────────────────────────────────────────────────────
+        let chosenLevel;
+
+        // If salary is provided, compare against thresholds
+        const parsedSalary = (() => {
+            if (!salary) return null;
+            const nums = salary.replace(/[^0-9.,\-]/g, ' ').split(/[-–]/)
+                .map(s => parseFloat(s.replace(/,/g, '').trim()))
+                .filter(n => !isNaN(n) && n > 1000);
+            return nums.length > 0 ? nums.reduce((a, b) => a + b, 0) / nums.length : null;
+        })();
+
+        if (parsedSalary) {
+            // Find tier whose yearly is closest to the job salary
+            let best = tiers[0];
+            let bestDiff = Math.abs(parsedSalary - (tiers[0].yearly || 0));
+            for (const t of tiers) {
+                const diff = Math.abs(parsedSalary - (t.yearly || 0));
+                if (diff < bestDiff) { bestDiff = diff; best = t; }
+            }
+            chosenLevel = best.level;
+        } else {
+            // Use seniority-based preferred level
+            let best = tiers[0];
+            let bestDist = Math.abs(tiers[0].level - preferredLevel);
+            for (const t of tiers) {
+                const dist = Math.abs(t.level - preferredLevel);
+                if (dist < bestDist || (dist === bestDist && t.level > best.level)) {
+                    bestDist = dist;
+                    best = t;
+                }
+            }
+            chosenLevel = best.level;
+        }
+
+        const chosen = tierMap.get(chosenLevel);
+        const finalResults = [{
+            'Wage Level': `Lv ${chosenLevel}`,
+            'Yearly': chosen?.yearly?.toString(),
+            'Hourly': chosen?.hourly?.toString(),
+        }];
 
         wageCache.set(cacheKey, finalResults);
         return finalResults;

@@ -1,9 +1,13 @@
 ﻿import React, { useState, useEffect } from 'react';
 import MigrateNavbar from '../components/MigrateNavbar';
 import { Link } from 'react-router-dom';
+import useAuth from '../hooks/useAuth';
+import { PayPalScriptProvider } from "@paypal/react-paypal-js";
+import PaypalButton from '../components/PaypalButton';
 import { Check, ChevronDown, ChevronUp, Sparkles, Shield, Zap, Star, Instagram, Twitter, Linkedin, Facebook } from 'lucide-react';
 
 const Pricing = () => {
+    const { user, paymentStatus } = useAuth();
     const [openFaq, setOpenFaq] = useState(null);
 
     // Scroll to top when page loads
@@ -14,7 +18,7 @@ const Pricing = () => {
     const faqs = [
         {
             question: 'How does the subscription work?',
-            answer: 'H1-B Wage Level costs $30/month. You get immediate access to all 500,000+ verified jobs, direct company contact emails, and all premium features. Your subscription renews automatically each month until you cancel.'
+            answer: `H1-B Wage Level costs $${import.meta.env.VITE_PAYMENT_AMOUNT || '30.00'}/month. You get immediate access to all 500,000+ verified jobs, direct company contact emails, and all premium features. Your subscription renews automatically each month until you cancel.`
         },
         {
             question: 'Can I cancel anytime?',
@@ -30,7 +34,7 @@ const Pricing = () => {
         },
         {
             question: 'Will the price increase later?',
-            answer: 'Your price is locked in at $30/month as long as you remain a subscriber. We may adjust pricing for new members in the future, but existing members keep their current rate.'
+            answer: `Your price is locked in at $${import.meta.env.VITE_PAYMENT_AMOUNT || '30.00'}/month as long as you remain a subscriber. We may adjust pricing for new members in the future, but existing members keep their current rate.`
         }
     ];
 
@@ -55,7 +59,7 @@ const Pricing = () => {
                             H1-B Wage Level
                         </h1>
                         <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto font-medium">
-                            Unlimited access to 500,000+ visa-sponsored jobs for just $30/month.
+                            Unlimited access to 500,000+ visa-sponsored jobs for just ${import.meta.env.VITE_PAYMENT_AMOUNT || '30.00'}/month.
                         </p>
                     </div>
                 </div>
@@ -71,10 +75,12 @@ const Pricing = () => {
                         <div className="p-8 md:p-14">
                             {/* Price */}
                             <div className="text-center mb-10">
-                                <div className="inline-flex items-baseline gap-1">
-                                    <span className="text-lg text-gray-400 font-bold">$</span>
-                                    <span className="text-7xl md:text-8xl font-black text-[#24385E]">30</span>
-                                    <span className="text-xl text-gray-400 font-bold">/month</span>
+                                <div className="inline-flex items-center justify-center gap-1 font-black text-[#24385E]">
+                                    <span className="text-6xl md:text-7xl opacity-20">$</span>
+                                    <span className="text-6xl md:text-7xl tracking-tight">
+                                        {import.meta.env.VITE_PAYMENT_AMOUNT || '39.99'}
+                                    </span>
+                                    <span className="text-6xl md:text-7xl opacity-20 ml-2">/mo</span>
                                 </div>
                                 <p className="text-base text-gray-400 font-bold mt-2">billed monthly · cancel anytime</p>
                                 <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-[#24385E]/5 rounded-full">
@@ -104,13 +110,42 @@ const Pricing = () => {
                                 ))}
                             </div>
 
-                            {/* CTA Button */}
-                            <Link
-                                to="/signup"
-                                className="block w-full text-center text-lg font-black py-4 px-8 bg-[#FDB913] hover:bg-[#e5a811] text-[#24385E] rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98]"
-                            >
-                                Get Access Now →
-                            </Link>
+                            {/* CTA Section or Payment UI */}
+                            {user ? (
+                                paymentStatus === 'paid' ? (
+                                    <Link
+                                        to="/app"
+                                        className="block w-full text-center text-lg font-black py-4 px-8 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+                                    >
+                                        Go to Dashboard →
+                                    </Link>
+                                ) : (
+                                    <div className="space-y-6">
+                                        <div className="text-center bg-[#24385E]/5 p-4 rounded-xl border border-[#24385E]/10 border-dashed">
+                                            <p className="text-[#24385E] font-black text-sm uppercase tracking-widest">Complete Your Payment</p>
+                                        </div>
+                                        <div className="p-1">
+                                            <PayPalScriptProvider options={{
+                                                "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID,
+                                                currency: "USD",
+                                                intent: "capture"
+                                            }}>
+                                                <PaypalButton amount={import.meta.env.VITE_PAYMENT_AMOUNT || '30.00'} />
+                                            </PayPalScriptProvider>
+                                        </div>
+                                        <p className="text-center text-[11px] text-gray-400 font-bold uppercase tracking-tighter">
+                                            SECURE 256-BIT SSL ENCRYPTED PAYMENT
+                                        </p>
+                                    </div>
+                                )
+                            ) : (
+                                <Link
+                                    to="/signup"
+                                    className="block w-full text-center text-lg font-black py-4 px-8 bg-[#FDB913] hover:bg-[#e5a811] text-[#24385E] rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98]"
+                                >
+                                    Get Access Now →
+                                </Link>
+                            )}
                             <p className="text-center text-sm text-gray-400 font-bold mt-4">
                                 Join 30,000+ members finding their dream jobs
                             </p>

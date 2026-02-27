@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowRight, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import useAuth from '../hooks/useAuth';
 
 const sponsorshipData = [
     {
@@ -36,6 +37,7 @@ const sponsorshipData = [
 ];
 
 const LiveSponsorships = () => {
+    const { user } = useAuth();
     const navigate = useNavigate();
 
     return (
@@ -96,10 +98,10 @@ const LiveSponsorships = () => {
                     </div>
 
                     <button
-                        onClick={() => navigate('/signup')}
+                        onClick={() => navigate(user ? '/app' : '/signup')}
                         className="inline-flex items-center gap-2 text-[13px] font-black text-[#FDB913] uppercase tracking-widest hover:translate-x-1 transition-transform"
                     >
-                        SEE 500k+ MORE JOBS <ArrowRight size={16} />
+                        {user ? 'GO TO YOUR DASHBOARD' : 'SEE 500k+ MORE JOBS'} <ArrowRight size={16} />
                     </button>
                 </div>
             </div>

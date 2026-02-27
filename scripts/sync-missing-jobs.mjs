@@ -38,6 +38,9 @@ if (!MAIN_URL || !MAIN_KEY || !EXT_URL || !EXT_KEY) {
 const mainDb = createClient(MAIN_URL, MAIN_KEY);
 const extDb = createClient(EXT_URL, EXT_KEY);
 
+// Import the wage level lookup logic
+import { getWageLevel } from '../src/dataSyncService.js';
+
 // --- Helpers ---
 const fixTimestamp = (ts) => (ts === 'null' || !ts) ? null : ts;
 
@@ -108,14 +111,31 @@ async function syncMissingJobs() {
     let totalInserted = 0;
     let totalErrors = 0;
 
-    for (let i = 0; i < missingData.length; i += batchSize) {
-        const batch = missingData.slice(i, i + batchSize).map(record => ({
-            ...record,
-            date_posted: fixTimestamp(record.date_posted),
-            upload_date: fixTimestamp(record.upload_date),
-            wage_level: record.wage_level || 'Lv 2',
-            wage_num: record.wage_num || 2,
-            synced_at: new Date().toISOString()
+    for (let i = 0; i < missingData.length; i += 50) {
+        const batchRaw = missingData.slice(i, i + 50);
+        const batch = await Promise.all(batchRaw.map(async (record) => {
+            try {
+                const results = await getWageLevel(record.title || record.job_role_name, record.location);
+                const wageLevelStr = (results && results.length > 0) ? results[0]['Wage Level'] : 'Lv 2';
+                const wageNum = parseInt(wageLevelStr.match(/\d/)?.[0] || '2');
+                return {
+                    ...record,
+                    date_posted: fixTimestamp(record.date_posted),
+                    upload_date: fixTimestamp(record.upload_date),
+                    wage_level: wageLevelStr,
+                    wage_num: wageNum,
+                    synced_at: new Date().toISOString()
+                };
+            } catch (err) {
+                return {
+                    ...record,
+                    date_posted: fixTimestamp(record.date_posted),
+                    upload_date: fixTimestamp(record.upload_date),
+                    wage_level: 'Lv 2',
+                    wage_num: 2,
+                    synced_at: new Date().toISOString()
+                };
+            }
         }));
 
         // Rule: Preserve the source DB's 'id' field

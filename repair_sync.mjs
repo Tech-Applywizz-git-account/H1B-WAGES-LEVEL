@@ -9,6 +9,9 @@ const EXT_KEY = process.env.VITE_EXTERNAL_SUPABASE_ANON_KEY;
 const mainDb = createClient(MAIN_URL, MAIN_KEY);
 const extDb = createClient(EXT_URL, EXT_KEY);
 
+// Import the wage level lookup logic
+import { getWageLevel } from './src/dataSyncService.js';
+
 async function syncAllAuditReviews() {
     console.log('🚀 Syncing Audit Reviews...');
 
@@ -79,15 +82,28 @@ async function syncAllSponsoredJobs() {
     console.log(`Inserting ${toInsert.length} new records...`);
 
     // 4. Insert in batches
-    for (let i = 0; i < toInsert.length; i += 200) {
-        const batch = toInsert.slice(i, i + 200).map(r => {
-            return {
-                ...r,
-                synced_at: new Date().toISOString(),
-                wage_level: r.wage_level || 'Lv 2',
-                wage_num: r.wage_num || 2
-            };
-        });
+    for (let i = 0; i < toInsert.length; i += 50) { // Smaller batches for parallel lookups
+        const batchRaw = toInsert.slice(i, i + 50);
+        const batch = await Promise.all(batchRaw.map(async (r) => {
+            try {
+                const results = await getWageLevel(r.title || r.job_role_name, r.location);
+                const wageLevelStr = (results && results.length > 0) ? results[0]['Wage Level'] : 'Lv 2';
+                const wageNum = parseInt(wageLevelStr.match(/\d/)?.[0] || '2');
+                return {
+                    ...r,
+                    synced_at: new Date().toISOString(),
+                    wage_level: wageLevelStr,
+                    wage_num: wageNum
+                };
+            } catch (err) {
+                return {
+                    ...r,
+                    synced_at: new Date().toISOString(),
+                    wage_level: 'Lv 2',
+                    wage_num: 2
+                };
+            }
+        }));
         const { error } = await mainDb.from('job_jobrole_sponsored_sync').insert(batch);
         if (error) console.error('Insert error:', error);
         else process.stdout.write('.');

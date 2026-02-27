@@ -7,6 +7,7 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+    // 1. ALWAYS handle CORS first
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -14,9 +15,26 @@ serve(async (req) => {
     try {
         const { orderId, email, firstName, lastName, mobileNumber, countryCode } = await req.json()
 
-        // Get PayPal access token
-        const auth = btoa(`${Deno.env.get('PAYPAL_CLIENT_ID')}:${Deno.env.get('PAYPAL_CLIENT_SECRET')}`)
-        const tokenResponse = await fetch(`${Deno.env.get('PAYPAL_MODE') === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'}/v1/oauth2/token`, {
+        // HARDCODED PAYPAL KEYS
+        const clientId = "AcYuhmCAUCY5XhrzPskgsOrYeLxES5qD7n-kBcEhBY6xosFgg79Qijsut0C891NEV8Dso2diLaucZ5ZD"
+        const clientSecret = "EAiFPObWbJqFFRKjYwl0WCb6kfIZLu9XxsTHMjqGyT2X1izr7hiA67fQrlVU7u4iugE17-vJTEcWRPDA"
+        const mode = "sandbox"
+        const baseUrl = 'https://api-m.sandbox.paypal.com'
+
+        // Database credentials from Supabase secrets
+        const dbUrl = Deno.env.get('DB_URL')
+        const dbServiceRoleKey = Deno.env.get('DB_SERVICE_ROLE_KEY')
+
+        if (!dbUrl || !dbServiceRoleKey) {
+            return new Response(JSON.stringify({ success: false, error: 'Database configuration missing on server.' }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200,
+            })
+        }
+
+        // 2. Get PayPal access token
+        const auth = btoa(`${clientId}:${clientSecret}`)
+        const tokenResponse = await fetch(`${baseUrl}/v1/oauth2/token`, {
             method: 'POST',
             headers: {
                 'Authorization': `Basic ${auth}`,
@@ -25,10 +43,21 @@ serve(async (req) => {
             body: 'grant_type=client_credentials',
         })
 
-        const { access_token } = await tokenResponse.json()
+        const tokenData = await tokenResponse.json()
+        if (!tokenResponse.ok) {
+            return new Response(JSON.stringify({
+                success: false,
+                error: `PayPal Auth Error: ${tokenData.error_description || tokenData.error || 'Check keys'}`
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200,
+            })
+        }
 
-        // Capture payment
-        const captureResponse = await fetch(`${Deno.env.get('PAYPAL_MODE') === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'}/v2/checkout/orders/${orderId}/capture`, {
+        const access_token = tokenData.access_token
+
+        // 3. Capture payment
+        const captureResponse = await fetch(`${baseUrl}/v2/checkout/orders/${orderId}/capture`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${access_token}`,
@@ -38,61 +67,69 @@ serve(async (req) => {
 
         const captureData = await captureResponse.json()
 
-        if (captureData.status === 'COMPLETED') {
-            const supabase = createClient(
-                Deno.env.get('DB_URL') ?? '',
-                Deno.env.get('DB_SERVICE_ROLE_KEY') ?? ''
-            )
+        if (!captureResponse.ok) {
+            return new Response(JSON.stringify({
+                success: false,
+                error: `PayPal Capture Failed: ${captureData.message || 'Verification Error'}`
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200,
+            })
+        }
 
-            // 1. Record payment
-            const { error: paymentError } = await supabase.from('payment_details').insert([
+        if (captureData.status === 'COMPLETED') {
+            const supabase = createClient(dbUrl, dbServiceRoleKey)
+            const captureDetails = captureData.purchase_units[0].payments.captures[0];
+
+            // 4. Record payment in database
+            await supabase.from('payment_details').insert([
                 {
                     email,
-                    transaction_id: captureData.purchase_units[0].payments.captures[0].id,
+                    transaction_id: captureDetails.id,
                     order_id: orderId,
                     time_of_payment: new Date().toISOString(),
-                    amount: parseFloat(captureData.purchase_units[0].payments.captures[0].amount.value),
-                    currency: captureData.purchase_units[0].payments.captures[0].amount.currency_code,
+                    amount: parseFloat(captureDetails.amount.value),
+                    currency: captureDetails.amount.currency_code,
                     status: 'COMPLETED',
                     metadata: captureData
                 }
             ])
 
-            if (paymentError) throw paymentError
-
-            // 2. Create Auth User FIRST (to get the UUID)
+            // 5. Handle Auth User (Get UUID)
             const userPassword = `${firstName.toLowerCase()}@123`
             let userIdValue = null;
 
-            // Check if user already exists
-            const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
-            const existingUser = existingUsers?.users.find(u => u.email === email);
+            const { data: users } = await supabase.auth.admin.listUsers();
+            const existingUser = users?.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
 
             if (existingUser) {
                 userIdValue = existingUser.id;
-                console.log('User already exists, updating existing profile for UUID:', userIdValue);
             } else {
                 const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
                     email,
                     password: userPassword,
                     email_confirm: true,
-                    user_metadata: { firstName, lastName }
+                    user_metadata: { first_name: firstName, last_name: lastName }
                 })
 
                 if (authError) {
-                    console.error('Error creating auth user:', authError);
-                    // If creation fails but user might exist (race condition), try to fetch again
-                    throw authError;
+                    if (authError.message.includes('already registered')) {
+                        const { data: retriedUsers } = await supabase.auth.admin.listUsers();
+                        userIdValue = retriedUsers?.users.find(u => u.email?.toLowerCase() === email.toLowerCase())?.id;
+                    } else {
+                        throw new Error(`Account creation failed: ${authError.message}`);
+                    }
+                } else {
+                    userIdValue = authUser.user.id;
                 }
-                userIdValue = authUser.user.id;
             }
 
-            // 3. Create/Update Profile with 30 days subscription
+            // 6. Update Profile
             const subscriptionEndDate = new Date()
             subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 30)
 
-            const { error: profileError } = await supabase.from('profiles').upsert({
-                id: userIdValue, // CRITICAL: Link to Auth UUID
+            await supabase.from('profiles').upsert({
+                id: userIdValue,
                 email,
                 first_name: firstName,
                 last_name: lastName,
@@ -104,53 +141,38 @@ serve(async (req) => {
                 updated_at: new Date().toISOString()
             }, { onConflict: 'id' })
 
-            if (profileError) throw profileError
-
-            // Note: If user exists, we might get an error, but that's okay for now
-
-            // 4. Send Welcome Email
+            // 7. Send Welcome Email (Fail-safe)
             try {
-                await fetch(`${Deno.env.get('DB_URL')}/functions/v1/send-email`, {
+                await fetch(`${dbUrl}/functions/v1/send-email`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${Deno.env.get('DB_ANON_KEY')}`
+                        'Authorization': `Bearer ${dbServiceRoleKey}`
                     },
                     body: JSON.stringify({
-                        to: email,
-                        firstName,
-                        lastName,
-                        transactionId: captureData.purchase_units[0].payments.captures[0].id,
-                        orderId: orderId,
-                        timeOfPayment: new Date().toISOString(),
-                        amount: captureData.purchase_units[0].payments.captures[0].amount.value,
-                        currency: captureData.purchase_units[0].payments.captures[0].amount.currency_code,
+                        to: email, firstName, lastName,
+                        transactionId: captureDetails.id, orderId: orderId,
                         password: userPassword
                     })
                 })
-            } catch (emailErr) {
-                console.error('Error triggering email:', emailErr)
-                // We don't throw here to ensure the user still gets a success response
-            }
+            } catch (e) { }
 
             return new Response(JSON.stringify({
                 success: true,
-                transactionId: captureData.purchase_units[0].payments.captures[0].id,
-                orderId: orderId,
-                amount: captureData.purchase_units[0].payments.captures[0].amount.value,
-                currency: captureData.purchase_units[0].payments.captures[0].amount.currency_code,
-                timeOfPayment: new Date().toISOString()
+                transactionId: captureDetails.id,
+                orderId: orderId
             }), {
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 200,
             })
         } else {
-            throw new Error('Payment was not completed successfully')
+            throw new Error(`Payment status is ${captureData.status}. Expected COMPLETED.`)
         }
     } catch (error) {
+        console.error('Capture Function Error:', error)
         return new Response(JSON.stringify({ success: false, error: error.message }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
+            status: 200,
         })
     }
 })

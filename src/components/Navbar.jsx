@@ -56,7 +56,7 @@ const Navbar = () => {
                 <div className="hidden md:flex justify-between items-center h-16 w-full">
 
                     {/* LEFT — Logo */}
-                    <Link to="/" className="flex items-center gap-2 flex-shrink-0">
+                    <Link to={user ? "/app" : "/"} className="flex items-center gap-2 flex-shrink-0">
                         <div className="flex items-center gap-1.5">
                             <div className="w-8 h-8 bg-[#FDB913] rounded-md flex items-center justify-center">
                                 <span className="text-black font-bold text-sm">H1-B</span>
@@ -92,67 +92,69 @@ const Navbar = () => {
 
                     {/* RIGHT — Login / Profile */}
                     <div className="relative flex items-center gap-3">
-                        {!user ? (
-                            <div className="flex items-center gap-3">
-                                <Link
-                                    to="/login"
-                                    className="text-gray-300 text-sm font-medium hover:text-white transition-colors px-3 py-2"
-                                >
-                                    Login
-                                </Link>
-                                <Link
-                                    to="/signup"
-                                    className="bg-[#FDB913] hover:bg-[#e5a811] text-black text-sm font-bold px-5 py-2 rounded-full transition-all shadow-[0_0_15px_rgba(253,185,19,0.3)]"
-                                >
-                                    Get Access
-                                </Link>
-                            </div>
-                        ) : (
-                            <>
-                                <button
-                                    onClick={() => setShowDropdown(!showDropdown)}
-                                    className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-                                >
-                                    <User size={18} className="text-gray-700" />
-                                </button>
+                        {!useAuth().loading && (
+                            !user ? (
+                                <div className="flex items-center gap-3">
+                                    <Link
+                                        to="/login"
+                                        className="text-gray-300 text-sm font-medium hover:text-white transition-colors px-3 py-2"
+                                    >
+                                        Login
+                                    </Link>
+                                    <Link
+                                        to="/signup"
+                                        className="bg-[#FDB913] hover:bg-[#e5a811] text-black text-sm font-bold px-5 py-2 rounded-full transition-all shadow-[0_0_15px_rgba(253,185,19,0.3)]"
+                                    >
+                                        Get Access
+                                    </Link>
+                                </div>
+                            ) : (
+                                <>
+                                    <button
+                                        onClick={() => setShowDropdown(!showDropdown)}
+                                        className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                                    >
+                                        <User size={18} className="text-gray-700" />
+                                    </button>
 
-                                {showDropdown && (
-                                    <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 shadow-lg rounded-xl py-2">
-                                        <button
-                                            onClick={handleDashboardClick}
-                                            className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 text-gray-700"
-                                        >
-                                            <LayoutDashboard size={16} className="text-gray-500" />
-                                            <span className="text-sm font-medium">{role === "admin" ? "Admin Dashboard" : "My Dashboard"}</span>
-                                        </button>
-                                        <div className="mx-3 my-1 border-t border-gray-100"></div>
-                                        <button
-                                            onClick={handleLogout}
-                                            disabled={loggingOut}
-                                            className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 text-red-600 disabled:opacity-50"
-                                        >
-                                            {loggingOut ? (
-                                                <>
-                                                    <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-                                                    <span className="text-sm font-medium">Logging out...</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <LogOut size={16} />
-                                                    <span className="text-sm font-medium">Logout</span>
-                                                </>
-                                            )}
-                                        </button>
-                                    </div>
-                                )}
-                            </>
+                                    {showDropdown && (
+                                        <div className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 shadow-lg rounded-xl py-2">
+                                            <button
+                                                onClick={() => { setShowDropdown(false); navigate('/app'); }}
+                                                className="w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 text-gray-700"
+                                            >
+                                                <LayoutDashboard size={16} className="text-gray-500" />
+                                                <span className="text-sm font-medium">{role === "admin" ? "Admin Dashboard" : "My Dashboard"}</span>
+                                            </button>
+                                            <div className="mx-3 my-1 border-t border-gray-100"></div>
+                                            <button
+                                                onClick={handleLogout}
+                                                disabled={loggingOut}
+                                                className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 text-red-600 disabled:opacity-50"
+                                            >
+                                                {loggingOut ? (
+                                                    <>
+                                                        <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                                                        <span className="text-sm font-medium">Logging out...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <LogOut size={16} />
+                                                        <span className="text-sm font-medium">Logout</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
+                            )
                         )}
                     </div>
                 </div>
 
                 {/* -------- Mobile Layout -------- */}
                 <div className="md:hidden flex justify-between items-center h-14">
-                    <Link to="/" className="flex items-center gap-1.5">
+                    <Link to={user ? "/app" : "/"} className="flex items-center gap-1.5">
                         <div className="w-8 h-8 bg-[#FDB913] rounded-md flex items-center justify-center">
                             <span className="text-black font-bold text-sm">H1-B</span>
                         </div>
@@ -212,7 +214,7 @@ const Navbar = () => {
                                                 if (tab.type === "link") {
                                                     navigate(tab.path);
                                                 } else {
-                                                    navigate("/dashboard", { state: { initialTab: tab.id } });
+                                                    navigate("/app", { state: { initialTab: tab.id } });
                                                 }
                                                 setIsMenuOpen(false);
                                             }}

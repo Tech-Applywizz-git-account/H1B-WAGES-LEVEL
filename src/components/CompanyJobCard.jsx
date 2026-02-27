@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, DollarSign, Clock, ExternalLink, Star } from 'lucide-react';
 
@@ -52,6 +53,19 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false })
             );
         }
 
+        if (job.isTeaser) {
+            return (
+                <Link
+                    to="/pricing"
+                    style={baseStyle}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
+                >
+                    Get Access to Apply <ExternalLink size={13} />
+                </Link>
+            );
+        }
+
         return (
             <a
                 href={job.url || job.apply_url || '#'}
@@ -66,6 +80,8 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false })
             </a>
         );
     };
+
+    const [logoError, setLogoError] = useState(false);
 
     return (
         <div style={{
@@ -96,10 +112,20 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false })
                 {/* Logo */}
                 <div style={{
                     width: '38px', height: '38px', borderRadius: '10px', flexShrink: 0,
-                    background: '#f0f0f0', display: 'flex', alignItems: 'center',
-                    justifyContent: 'center', fontSize: '12px', fontWeight: 800, color: '#888', marginTop: '2px'
+                    background: (job.logo && !logoError) ? '#fff' : '#f0f0f0', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', fontSize: '12px', fontWeight: 800, color: '#888', marginTop: '2px',
+                    border: (job.logo && !logoError) ? '1px solid #eee' : 'none', overflow: 'hidden'
                 }}>
-                    {getInitials(job.company)}
+                    {job.logo && !logoError ? (
+                        <img
+                            src={job.logo}
+                            alt=""
+                            onError={() => setLogoError(true)}
+                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        />
+                    ) : (
+                        getInitials(job.company)
+                    )}
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>

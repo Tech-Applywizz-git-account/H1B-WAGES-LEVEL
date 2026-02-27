@@ -31,10 +31,10 @@ Write-Host ""
 Write-Host "Step 3: Setting environment secrets..." -ForegroundColor Yellow
 
 Write-Host "  - Setting PAYPAL_CLIENT_ID..." -ForegroundColor Gray
-supabase secrets set PAYPAL_CLIENT_ID="AaefgWjYfloz4uumcUTB2iiDcb3tp_0ope-DPegqEmt86o3S-mSsZ-y_0ieAbfCec0s6uM1awIihtUzZ"
+supabase secrets set PAYPAL_CLIENT_ID="AcYuhmCAUCY5XhrzPskgsOrYeLxES5qD7n-kBcEhBY6xosFgg79Qijsut0C891NEV8Dso2diLaucZ5ZD"
 
 Write-Host "  - Setting PAYPAL_CLIENT_SECRET..." -ForegroundColor Gray
-supabase secrets set PAYPAL_CLIENT_SECRET="ENewD9DCs9P52sQG2HcRoAuM-Fe1YY_vrFSvHnx0aWqKei5kyTzwZltMjPK3qjlbVzqi1vyEadknjMku"
+supabase secrets set PAYPAL_CLIENT_SECRET="EAiFPObWbJqFFRKjYwl0WCb6kfIZLu9XxsTHMjqGyT2X1izr7hiA67fQrlVU7u4iugE17-vJTEcWRPDA"
 
 Write-Host "  - Setting PAYPAL_MODE..." -ForegroundColor Gray  
 supabase secrets set PAYPAL_MODE="sandbox"

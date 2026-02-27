@@ -352,6 +352,8 @@ export function AuthProvider({ children }) {
   const [subscriptionEndDate, setSubscriptionEndDate] = useState(null);
   const [checkingSub, setCheckingSub] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [paymentStatus, setPaymentStatus] = useState(null);
+  const [paymentLoading, setPaymentLoading] = useState(true);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [loggingOut, setLoggingOut] = useState(false);
@@ -398,7 +400,7 @@ export function AuthProvider({ children }) {
     try {
       const { data: profile, error } = await supabase
         .from("profiles")
-        .select("role, updated_at, created_at, subscription_end_date, first_name, last_name")
+        .select("role, updated_at, created_at, subscription_end_date, first_name, last_name, payment_status")
         .eq("id", userId)
         .maybeSingle();
 
@@ -437,6 +439,8 @@ export function AuthProvider({ children }) {
         setSubscriptionEndDate(endDate);
         setFirstName(profile.first_name || "");
         setLastName(profile.last_name || "");
+        setPaymentStatus(profile.payment_status || "pending");
+        setPaymentLoading(false);
         localStorage.setItem("userRole", userRole);
         roleCache.set(userId, {
           role: userRole,
@@ -444,6 +448,7 @@ export function AuthProvider({ children }) {
           subscriptionEndDate: endDate,
           firstName: profile.first_name,
           lastName: profile.last_name,
+          paymentStatus: profile.payment_status || "pending",
           timestamp: Date.now(),
           updatedAt: profile.updated_at
         });
@@ -666,6 +671,8 @@ export function AuthProvider({ children }) {
     subscriptionEndDate,
     checkingSub,
     loading,
+    paymentStatus,
+    paymentLoading,
     firstName,
     lastName,
     loggingOut,

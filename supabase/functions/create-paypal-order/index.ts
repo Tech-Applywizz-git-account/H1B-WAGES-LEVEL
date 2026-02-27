@@ -6,7 +6,7 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-    // Handle CORS preflight request
+    // 1. ALWAYS handle CORS first
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
@@ -14,9 +14,14 @@ serve(async (req) => {
     try {
         const { amount, currency } = await req.json()
 
-        // Get access token
-        const auth = btoa(`${Deno.env.get('PAYPAL_CLIENT_ID')}:${Deno.env.get('PAYPAL_CLIENT_SECRET')}`)
-        const tokenResponse = await fetch(`${Deno.env.get('PAYPAL_MODE') === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'}/v1/oauth2/token`, {
+        // HARDCODED SANDBOX KEYS (Confirmed by user)
+        const clientId = "AcYuhmCAUCY5XhrzPskgsOrYeLxES5qD7n-kBcEhBY6xosFgg79Qijsut0C891NEV8Dso2diLaucZ5ZD"
+        const clientSecret = "EAiFPObWbJqFFRKjYwl0WCb6kfIZLu9XxsTHMjqGyT2X1izr7hiA67fQrlVU7u4iugE17-vJTEcWRPDA"
+        const baseUrl = 'https://api-m.sandbox.paypal.com'
+
+        // 2. PayPal Authentication
+        const auth = btoa(`${clientId}:${clientSecret}`)
+        const tokenResponse = await fetch(`${baseUrl}/v1/oauth2/token`, {
             method: 'POST',
             headers: {
                 'Authorization': `Basic ${auth}`,
@@ -25,10 +30,22 @@ serve(async (req) => {
             body: 'grant_type=client_credentials',
         })
 
-        const { access_token } = await tokenResponse.json()
+        const tokenData = await tokenResponse.json()
 
-        // Create order
-        const orderResponse = await fetch(`${Deno.env.get('PAYPAL_MODE') === 'live' ? 'https://api-m.paypal.com' : 'https://api-m.sandbox.paypal.com'}/v2/checkout/orders`, {
+        if (!tokenResponse.ok) {
+            console.error("PayPal Auth Error Details:", tokenData);
+            return new Response(JSON.stringify({
+                error: `PayPal Authentication Failed. Root cause: ${tokenData.error_description || tokenData.error || 'Invalid Keys'}`
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200, // Force 200 so we can show this specific message on screen
+            })
+        }
+
+        const access_token = tokenData.access_token
+
+        // 3. Create PayPal Order
+        const orderResponse = await fetch(`${baseUrl}/v2/checkout/orders`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${access_token}`,
@@ -36,27 +53,36 @@ serve(async (req) => {
             },
             body: JSON.stringify({
                 intent: 'CAPTURE',
-                purchase_units: [
-                    {
-                        amount: {
-                            currency_code: currency || 'USD',
-                            value: amount || '30.00',
-                        },
-                    },
-                ],
+                purchase_units: [{
+                    amount: {
+                        currency_code: currency || 'USD',
+                        value: amount || '39.99'
+                    }
+                }],
             }),
         })
 
-        const order = await orderResponse.json()
+        const orderData = await orderResponse.json()
 
-        return new Response(JSON.stringify(order), {
+        if (!orderResponse.ok) {
+            return new Response(JSON.stringify({
+                error: `PayPal Order Creation Failed: ${orderData.message || 'Unknown error'}`
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200,
+            })
+        }
+
+        return new Response(JSON.stringify(orderData), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 200,
         })
+
     } catch (error) {
-        return new Response(JSON.stringify({ error: error.message }), {
+        console.error('Final Catch-all Error:', error)
+        return new Response(JSON.stringify({ error: `Function Crash: ${error.message}` }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
+            status: 200,
         })
     }
 })

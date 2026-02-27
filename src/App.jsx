@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import JobSearch from './pages/JobSearch';
+import AuthCallback from './pages/AuthCallback';
 import { AuthProvider } from './hooks/useAuth';
 import useDataSync from './hooks/useDataSync';
 import './output.css';
@@ -34,6 +35,9 @@ function App() {
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/search" element={<Homepage />} />
             <Route path="/jobs" element={<Homepage />} />
+
+            {/* OAuth callback */}
+            <Route path="/auth/callback" element={<AuthCallback />} />
 
             {/* Redirect old /dashboard to new /app */}
             <Route path="/dashboard" element={<Navigate to="/app" replace />} />

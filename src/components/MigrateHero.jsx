@@ -263,7 +263,7 @@ const MigrateHero = () => {
                             {/* CTA to Signup instead of Pagination */}
                             <div style={{ marginTop: 'auto', paddingTop: '24px', textAlign: 'center' }}>
                                 <Link
-                                    to="/signup"
+                                    to={user ? "/app" : "/signup"}
                                     style={{
                                         display: 'block',
                                         padding: '12px',
@@ -279,7 +279,7 @@ const MigrateHero = () => {
                                     onMouseEnter={e => { e.currentTarget.style.background = '#24385E'; e.currentTarget.style.color = '#fff'; }}
                                     onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#24385E'; }}
                                 >
-                                    Get access to all companies →
+                                    {user ? "Continue to Dashboard →" : "Get access to all companies →"}
                                 </Link>
                             </div>
                         </div>
@@ -342,7 +342,7 @@ const MigrateHero = () => {
                                     {/* CTA to Signup instead of Job Pagination */}
                                     <div style={{ marginTop: 'auto', paddingTop: '24px', textAlign: 'center' }}>
                                         <Link
-                                            to="/signup"
+                                            to={user ? "/app" : "/signup"}
                                             style={{
                                                 display: 'inline-flex',
                                                 alignItems: 'center',
@@ -360,7 +360,7 @@ const MigrateHero = () => {
                                             onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(36,56,94,0.35)'; }}
                                             onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(36,56,94,0.25)'; }}
                                         >
-                                            Get access to all jobs <ChevronRight size={18} />
+                                            {user ? "Go to Your Dashboard" : "Get access to all jobs"} <ChevronRight size={18} />
                                         </Link>
                                     </div>
                                 </>

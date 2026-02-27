@@ -55,6 +55,16 @@
   }
 }
 
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 0.7s linear infinite;
+}
+
 .animate-fadeIn {
   animation: fadeIn 0.8s ease-out forwards;
 }

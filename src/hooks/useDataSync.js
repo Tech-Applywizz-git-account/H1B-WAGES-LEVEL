@@ -20,10 +20,10 @@ const useDataSync = () => {
 
     // Auto-sync on mount if needed
     useEffect(() => {
-        if (user && isSyncNeeded()) {
+        if (user && isAdmin && isSyncNeeded()) {
             performSync();
         }
-    }, [user]);
+    }, [user, isAdmin]);
 
     // Fetch last sync logs for admin dashboard
     useEffect(() => {
