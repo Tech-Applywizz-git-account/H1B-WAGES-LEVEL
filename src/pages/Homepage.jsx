@@ -13,6 +13,9 @@ import CompanyCard from '../components/CompanyCard';
 import CompanyJobCard from '../components/CompanyJobCard';
 import Navbar from '../components/Navbar';
 import HeroSection from '../components/HeroSection';
+import LiveSponsorships from '../components/LiveSponsorships';
+import SimpleHowItWorks from '../components/SimpleHowItWorks';
+import FutureStartsHere from '../components/FutureStartsHere';
 import Testimonials from '../components/Testimonials';
 import FAQ from '../components/FAQ';
 import Footer from '../components/Footer';
@@ -511,7 +514,20 @@ const Homepage = () => {
   const handleCompanySelect = (c) => { setSelectedCompany(c.company); setSelectedCompanyData(c); setJobPage(1); setJobSearch(''); };
 
   if (authLoading || paymentLoading) return <div className="h-screen w-screen flex items-center justify-center bg-[#f5f5f7]"><Loader2 className="w-8 h-8 text-[#24385E] animate-spin" /></div>;
-  if (!user) return <div className="bg-white"><Navbar /><HeroSection /><Testimonials /><FAQ /><Footer /></div>;
+  if (!user) return (
+    <div className="bg-black min-h-screen">
+      <Navbar />
+      <main>
+        <HeroSection />
+        <LiveSponsorships />
+        <SimpleHowItWorks />
+        <FutureStartsHere />
+        <Testimonials />
+        <FAQ />
+        <Footer />
+      </main>
+    </div>
+  );
 
   // ── Payment gate: show teaser if not paid ──
   const isPaid = paymentStatus === 'paid' || paymentStatus === 'active';
