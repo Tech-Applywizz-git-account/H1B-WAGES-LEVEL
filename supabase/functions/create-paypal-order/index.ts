@@ -56,6 +56,10 @@ serve(async (req) => {
             },
             body: JSON.stringify({
                 intent: 'CAPTURE',
+                application_context: {
+                    shipping_preference: 'NO_SHIPPING',
+                    user_action: 'PAY_NOW'
+                },
                 purchase_units: [{
                     amount: {
                         currency_code: currency || 'USD',
