@@ -84,7 +84,8 @@ serve(async (req) => {
             const captureDetails = captureData.purchase_units[0].payments.captures[0];
 
             // 4. Record payment in database
-            await supabase.from('payment_details').insert([
+            console.log(`🚀 RECORDING PAYMENT: Inserting ${captureDetails.amount.value} ${captureDetails.amount.currency_code} for ${email}`);
+            const { error: paymentError } = await supabase.from('payment_details').insert([
                 {
                     email,
                     transaction_id: captureDetails.id,
@@ -93,9 +94,13 @@ serve(async (req) => {
                     amount: parseFloat(captureDetails.amount.value),
                     currency: captureDetails.amount.currency_code,
                     status: 'COMPLETED',
-                    metadata: captureData
                 }
             ])
+
+            if (paymentError) {
+                console.error("❌ Database error recording payment:", paymentError);
+                // We keep going so we can at least try to update the profile
+            }
 
             // 5. Handle Auth User (Get UUID by email)
             // Users who "Continue with Google" already have an account.

@@ -80,6 +80,17 @@ const PaypalButton = ({ amount = import.meta.env.VITE_PAYMENT_AMOUNT || "30.00",
         }
     };
 
+    // Auto-redirect to dashboard after 3 seconds on success
+    useEffect(() => {
+        let redirectTimeout;
+        if (success) {
+            redirectTimeout = setTimeout(() => {
+                window.location.href = '/app';
+            }, 3000);
+        }
+        return () => clearTimeout(redirectTimeout);
+    }, [success]);
+
     if (success) {
         return (
             <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-8 text-center animate-in fade-in zoom-in duration-300">
@@ -88,14 +99,19 @@ const PaypalButton = ({ amount = import.meta.env.VITE_PAYMENT_AMOUNT || "30.00",
                         <CheckCircle2 className="w-10 h-10 text-white" />
                     </div>
                 </div>
-                <h3 className="text-2xl font-black text-emerald-900 mb-2">Success!</h3>
-                <p className="text-emerald-700 font-bold mb-6">Your account has been upgraded to Premium access.</p>
-                <button
-                    onClick={() => window.location.href = '/app'}
-                    className="px-8 py-3 bg-emerald-600 text-white font-black rounded-xl hover:bg-emerald-700 transition-all transform hover:scale-105"
-                >
-                    Enter Dashboard →
-                </button>
+                <h3 className="text-2xl font-black text-emerald-900 mb-2">Payment Successful!</h3>
+                <p className="text-emerald-700 font-bold mb-6">Your account has been upgraded. Redirecting you to the dashboard...</p>
+                <div className="flex flex-col gap-3">
+                    <button
+                        onClick={() => window.location.href = '/app'}
+                        className="px-8 py-3 bg-emerald-600 text-white font-black rounded-xl hover:bg-emerald-700 transition-all transform hover:scale-105"
+                    >
+                        Enter Dashboard Now →
+                    </button>
+                    <p className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest animate-pulse">
+                        Redirecting in 3 seconds...
+                    </p>
+                </div>
             </div>
         );
     }
