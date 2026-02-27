@@ -97,55 +97,86 @@ serve(async (req) => {
                 }
             ])
 
-            // 5. Handle Auth User (Get UUID)
-            const userPassword = `${firstName.toLowerCase()}@123`
+            // 5. Handle Auth User (Get UUID by email)
+            // Users who "Continue with Google" already have an account.
             let userIdValue = null;
 
-            const { data: users } = await supabase.auth.admin.listUsers();
+            console.log(`Checking for existing user with email: ${email}`);
+
+            // Try to find user in Auth
+            const { data: users, error: listError } = await supabase.auth.admin.listUsers();
+            if (listError) {
+                console.error("Error listing users:", listError);
+            }
+
             const existingUser = users?.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+
+            const userPassword = `${firstName.toLowerCase()}@123`;
 
             if (existingUser) {
                 userIdValue = existingUser.id;
+                console.log(`Found existing user ID: ${userIdValue}. Updating password for email consistency.`);
+                // Set the password so the email is accurate even for Google users
+                await supabase.auth.admin.updateUserById(userIdValue, {
+                    password: userPassword
+                });
             } else {
+                // If not found (unlikely if they just paid, but possible if it's a new email flow)
+                console.log("No existing user found. Creating new account...");
                 const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
                     email,
                     password: userPassword,
                     email_confirm: true,
                     user_metadata: { first_name: firstName, last_name: lastName }
-                })
+                });
 
                 if (authError) {
-                    if (authError.message.includes('already registered')) {
-                        const { data: retriedUsers } = await supabase.auth.admin.listUsers();
-                        userIdValue = retriedUsers?.users.find(u => u.email?.toLowerCase() === email.toLowerCase())?.id;
-                    } else {
-                        throw new Error(`Account creation failed: ${authError.message}`);
-                    }
+                    console.error("Auth creation error:", authError);
+                    // Last ditch effort: query profiles to see if they exist there
+                    const { data: prof } = await supabase.from('profiles').select('id').eq('email', email).maybeSingle();
+                    if (prof) userIdValue = prof.id;
+                    else throw new Error(`Account creation failed: ${authError.message}`);
                 } else {
                     userIdValue = authUser.user.id;
                 }
             }
 
-            // 6. Update Profile
-            const subscriptionEndDate = new Date()
-            subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 30)
+            // 6. Update Profile - THIS GRANTS DASHBOARD ACCESS
+            const subscriptionEndDate = new Date();
+            subscriptionEndDate.setDate(subscriptionEndDate.getDate() + 30);
 
-            await supabase.from('profiles').upsert({
+            console.log(`Updating profile for user ${userIdValue} to 'paid' status...`);
+
+            const { error: upsertError } = await supabase.from('profiles').upsert({
                 id: userIdValue,
                 email,
                 first_name: firstName,
                 last_name: lastName,
                 mobile_number: mobileNumber,
-                country_code: countryCode,
+                country_code: countryCode, // Matches capture input
                 payment_status: 'paid',
                 role: 'user',
                 subscription_end_date: subscriptionEndDate.toISOString(),
                 updated_at: new Date().toISOString()
-            }, { onConflict: 'id' })
+            }, { onConflict: 'id' });
 
-            // 7. Send Welcome Email (Fail-safe)
+            if (upsertError) {
+                console.error("Profile upsert error:", upsertError);
+                // Try upsert by email if ID fails (e.g. if ID was mismatched)
+                await supabase.from('profiles').upsert({
+                    email,
+                    first_name: firstName,
+                    last_name: lastName,
+                    payment_status: 'paid',
+                    subscription_end_date: subscriptionEndDate.toISOString()
+                }, { onConflict: 'email' });
+            }
+
+            // 7. Send Welcome Email (Fail-safe, non-blocking)
             try {
-                await fetch(`${dbUrl}/functions/v1/send-email`, {
+                const userPassword = `${firstName.toLowerCase()}@123`;
+                console.log("Attempting to send welcome email...");
+                const emailResult = await fetch(`${dbUrl}/functions/v1/send-email`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -154,10 +185,20 @@ serve(async (req) => {
                     body: JSON.stringify({
                         to: email, firstName, lastName,
                         transactionId: captureDetails.id, orderId: orderId,
+                        amount: captureDetails.amount.value,
+                        currency: captureDetails.amount.currency_code,
+                        timeOfPayment: new Date().toISOString(),
                         password: userPassword
                     })
-                })
-            } catch (e) { }
+                });
+
+                if (!emailResult.ok) {
+                    const errTxt = await emailResult.text();
+                    console.warn("Email function returned error (flow continuing):", errTxt);
+                }
+            } catch (e) {
+                console.error("Non-fatal email error:", e);
+            }
 
             return new Response(JSON.stringify({
                 success: true,

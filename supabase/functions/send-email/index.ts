@@ -14,6 +14,11 @@ const corsHeaders = {
 
 // Get Microsoft Graph API access token
 async function getAccessToken() {
+  if (!TENANT_ID || !CLIENT_ID || !CLIENT_SECRET) {
+    console.error("❌ CRITICAL: Azure secrets are missing. Email cannot be sent.");
+    return null;
+  }
+
   const tokenUrl = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`;
 
   const params = new URLSearchParams({
@@ -23,21 +28,27 @@ async function getAccessToken() {
     grant_type: 'client_credentials'
   });
 
-  const response = await fetch(tokenUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: params.toString(),
-  });
+  try {
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
+    });
 
-  const data = await response.json();
+    const data = await response.json();
 
-  if (!response.ok) {
-    throw new Error(`Failed to get access token: ${data.error_description || data.error}`);
+    if (!response.ok) {
+      console.error("Failed to get access token:", data);
+      return null;
+    }
+
+    return data.access_token;
+  } catch (err) {
+    console.error("Error fetching access token:", err);
+    return null;
   }
-
-  return data.access_token;
 }
 
 serve(async (req) => {
@@ -195,6 +206,21 @@ serve(async (req) => {
     // Get access token
     const accessToken = await getAccessToken();
 
+    if (!accessToken) {
+      console.warn("⚠️ Skipping email delivery - Microsoft Graph credentials not configured.");
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Payment recorded. Note: Welcome email skipped (missing server configuration).",
+          warning: "Missing MS Graph credentials"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
+    }
+
     // Send email using Microsoft Graph API
     const emailResponse = await fetch(
       `https://graph.microsoft.com/v1.0/users/${SENDER_EMAIL}/sendMail`,
@@ -227,7 +253,19 @@ serve(async (req) => {
     if (!emailResponse.ok) {
       const errorData = await emailResponse.text();
       console.error('Microsoft Graph API error:', errorData);
-      throw new Error(`Email sending failed: ${emailResponse.status} ${emailResponse.statusText}`);
+      // We still return success: true because the payment WAS successful.
+      // The email failure shouldn't stop the user's dashboard access.
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Payment successful. Email delivery failed (account is active).",
+          log: errorData
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
     }
 
     console.log(`Email sent successfully to ${to}`);
@@ -246,13 +284,17 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Error in send-email function:', error);
+    // CRITICAL: Even if the email function crashes, we don't want to return 400
+    // to the capture function because that might make the capture function think
+    // the payment capture itself failed.
     return new Response(
       JSON.stringify({
         success: false,
         error: error.message,
+        tip: "Check your Azure/Graph API configuration in Supabase Secrets."
       }),
       {
-        status: 400,
+        status: 200, // Return 200 so the caller (capture-paypal-order) doesn't treat it as a hard crash
         headers: {
           ...corsHeaders,
           "Content-Type": "application/json",

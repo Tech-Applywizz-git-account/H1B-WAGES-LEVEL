@@ -32,8 +32,8 @@ Write-Host "Step 3: Setting environment secrets..." -ForegroundColor Yellow
 
 # CONFIGURATION - CHANGE THIS FOR LIVE DEPLOYMENT
 $PAYPAL_MODE = "live" 
-$PAYPAL_CLIENT_ID = "AcYuhmCAUCY5XhrzPskgsOrYeLxES5qD7n-kBcEhBY6xosFgg79Qijsut0C891NEV8Dso2diLaucZ5ZD"
-$PAYPAL_CLIENT_SECRET = "EAiFPObWbJqFFRKjYwl0WCb6kfIZLu9XxsTHMjqGyT2X1izr7hiA67fQrlVU7u4iugE17-vJTEcWRPDA"
+$PAYPAL_CLIENT_ID = "AZCvAH1MClUT_HWWXG1jiitOUywedaEGr2Gb01gt5_AD-yz5kvF2DaQa5E5MteKzulkn2ewx7-aWk9CP"
+$PAYPAL_CLIENT_SECRET = "EPrHmPDh9ozHlnGgsNaD9miswqjP1NhOI5qjRLzlAkVKfqL-xPPLJjRkBi4xTB1LySIR4Yu3CAt9O460"
 
 Write-Host "  - Setting PAYPAL_CLIENT_ID..." -ForegroundColor Gray
 supabase secrets set PAYPAL_CLIENT_ID="$PAYPAL_CLIENT_ID"
@@ -75,10 +75,10 @@ Write-Host ""
 Write-Host "Step 4: Deploying edge functions..." -ForegroundColor Yellow
 
 Write-Host "  - Deploying create-paypal-order..." -ForegroundColor Gray
-supabase functions deploy create-paypal-order
+supabase functions deploy create-paypal-order --no-verify-jwt
 
 Write-Host "  - Deploying capture-paypal-order..." -ForegroundColor Gray
-supabase functions deploy capture-paypal-order
+supabase functions deploy capture-paypal-order --no-verify-jwt
 
 Write-Host "  - Deploying send-email..." -ForegroundColor Gray
 supabase functions deploy send-email
