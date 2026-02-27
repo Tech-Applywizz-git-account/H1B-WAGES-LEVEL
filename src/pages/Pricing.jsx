@@ -125,11 +125,15 @@ const Pricing = () => {
                                             <p className="text-[#24385E] font-black text-sm uppercase tracking-widest">Complete Your Payment</p>
                                         </div>
                                         <div className="p-1">
-                                            <PayPalScriptProvider options={{
-                                                "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID,
-                                                currency: "USD",
-                                                intent: "capture"
-                                            }}>
+                                            <PayPalScriptProvider
+                                                options={{
+                                                    "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID,
+                                                    currency: "USD",
+                                                    intent: "capture",
+                                                    components: "buttons",
+                                                    environment: import.meta.env.VITE_PAYPAL_ENVIRONMENT || "sandbox"
+                                                }}
+                                            >
                                                 <PaypalButton amount={import.meta.env.VITE_PAYMENT_AMOUNT || '30.00'} />
                                             </PayPalScriptProvider>
                                         </div>

@@ -15,11 +15,13 @@ serve(async (req) => {
     try {
         const { orderId, email, firstName, lastName, mobileNumber, countryCode } = await req.json()
 
-        // HARDCODED PAYPAL KEYS
-        const clientId = "AcYuhmCAUCY5XhrzPskgsOrYeLxES5qD7n-kBcEhBY6xosFgg79Qijsut0C891NEV8Dso2diLaucZ5ZD"
-        const clientSecret = "EAiFPObWbJqFFRKjYwl0WCb6kfIZLu9XxsTHMjqGyT2X1izr7hiA67fQrlVU7u4iugE17-vJTEcWRPDA"
-        const mode = "sandbox"
-        const baseUrl = 'https://api-m.sandbox.paypal.com'
+        // Detect environment mode
+        const clientId = Deno.env.get('PAYPAL_CLIENT_ID')
+        const clientSecret = Deno.env.get('PAYPAL_CLIENT_SECRET')
+        const mode = Deno.env.get('PAYPAL_MODE') || 'sandbox'
+        const baseUrl = mode === 'live'
+            ? 'https://api-m.paypal.com'
+            : 'https://api-m.sandbox.paypal.com'
 
         // Database credentials from Supabase secrets
         const dbUrl = Deno.env.get('DB_URL')

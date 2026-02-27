@@ -30,14 +30,19 @@ Write-Host ""
 # Step 3: Set secrets
 Write-Host "Step 3: Setting environment secrets..." -ForegroundColor Yellow
 
+# CONFIGURATION - CHANGE THIS FOR LIVE DEPLOYMENT
+$PAYPAL_MODE = "live" # Set to "live" for production
+$PAYPAL_CLIENT_ID = "YOUR_PAYPAL_LIVE_CLIENT_ID" # Get from PayPal Developer Portal
+$PAYPAL_CLIENT_SECRET = "YOUR_PAYPAL_LIVE_CLIENT_SECRET" # Get from PayPal Developer Portal
+
 Write-Host "  - Setting PAYPAL_CLIENT_ID..." -ForegroundColor Gray
-supabase secrets set PAYPAL_CLIENT_ID="AcYuhmCAUCY5XhrzPskgsOrYeLxES5qD7n-kBcEhBY6xosFgg79Qijsut0C891NEV8Dso2diLaucZ5ZD"
+supabase secrets set PAYPAL_CLIENT_ID="$PAYPAL_CLIENT_ID"
 
 Write-Host "  - Setting PAYPAL_CLIENT_SECRET..." -ForegroundColor Gray
-supabase secrets set PAYPAL_CLIENT_SECRET="EAiFPObWbJqFFRKjYwl0WCb6kfIZLu9XxsTHMjqGyT2X1izr7hiA67fQrlVU7u4iugE17-vJTEcWRPDA"
+supabase secrets set PAYPAL_CLIENT_SECRET="$PAYPAL_CLIENT_SECRET"
 
 Write-Host "  - Setting PAYPAL_MODE..." -ForegroundColor Gray  
-supabase secrets set PAYPAL_MODE="sandbox"
+supabase secrets set PAYPAL_MODE="$PAYPAL_MODE"
 
 Write-Host "  - Setting DB_URL..." -ForegroundColor Gray
 supabase secrets set DB_URL="https://nngkmekxgljtnouazdql.supabase.co"
