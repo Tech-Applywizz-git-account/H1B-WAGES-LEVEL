@@ -31,9 +31,9 @@ Write-Host ""
 Write-Host "Step 3: Setting environment secrets..." -ForegroundColor Yellow
 
 # CONFIGURATION - CHANGE THIS FOR LIVE DEPLOYMENT
-$PAYPAL_MODE = "live" # Set to "live" for production
-$PAYPAL_CLIENT_ID = "YOUR_PAYPAL_LIVE_CLIENT_ID" # Get from PayPal Developer Portal
-$PAYPAL_CLIENT_SECRET = "YOUR_PAYPAL_LIVE_CLIENT_SECRET" # Get from PayPal Developer Portal
+$PAYPAL_MODE = "live" 
+$PAYPAL_CLIENT_ID = "AcYuhmCAUCY5XhrzPskgsOrYeLxES5qD7n-kBcEhBY6xosFgg79Qijsut0C891NEV8Dso2diLaucZ5ZD"
+$PAYPAL_CLIENT_SECRET = "EAiFPObWbJqFFRKjYwl0WCb6kfIZLu9XxsTHMjqGyT2X1izr7hiA67fQrlVU7u4iugE17-vJTEcWRPDA"
 
 Write-Host "  - Setting PAYPAL_CLIENT_ID..." -ForegroundColor Gray
 supabase secrets set PAYPAL_CLIENT_ID="$PAYPAL_CLIENT_ID"
@@ -48,25 +48,25 @@ Write-Host "  - Setting DB_URL..." -ForegroundColor Gray
 supabase secrets set DB_URL="https://nngkmekxgljtnouazdql.supabase.co"
 
 Write-Host "  - Setting DB_ANON_KEY..." -ForegroundColor Gray
-supabase secrets set DB_ANON_KEY="your-anon-key-here"
+supabase secrets set DB_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uZ2ttZWt4Z2xqdG5vdWF6ZHFsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE4MjI0NjMsImV4cCI6MjA4NzM5ODQ2M30.d6-FzyT8WcWpro7Y4eONStso0XM3bkxiHhb6TqxEkjE"
 
 Write-Host "  - Setting DB_SERVICE_ROLE_KEY..." -ForegroundColor Gray
-supabase secrets set DB_SERVICE_ROLE_KEY="your-service-role-key-here"
+supabase secrets set DB_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5uZ2ttZWt4Z2xqdG5vdWF6ZHFsIiwicm9sZSI6InNlcnZpY2Vfcm9yZSIsImlhdCI6MTc3MTgyMjQ2MywiZXhwIjoyMDg3Mzk4NDYzfQ.zEVpokhxFlp6qT7kH2rWIGVsuQfyfRJseYRiwKdzTlU"
 
-Write-Host "  - Setting RESEND_API_KEY (optional for now)..." -ForegroundColor Gray  
-supabase secrets set RESEND_API_KEY="placeholder"
+# Write-Host "  - Setting RESEND_API_KEY (optional for now)..." -ForegroundColor Gray  
+# supabase secrets set RESEND_API_KEY="placeholder"
 
-Write-Host "  - Setting MS Graph Secrets..." -ForegroundColor Gray
-supabase secrets set AZURE_TENANT_ID="your-tenant-id"
-supabase secrets set AZURE_CLIENT_ID="your-client-id"
-supabase secrets set AZURE_CLIENT_SECRET="your-client-secret"
-supabase secrets set SENDER_EMAIL_ADDRESS="Support@teluguwalajobs.com"
+# Write-Host "  - Setting MS Graph Secrets..." -ForegroundColor Gray
+# supabase secrets set AZURE_TENANT_ID="your-tenant-id"
+# supabase secrets set AZURE_CLIENT_ID="your-client-id"
+# supabase secrets set AZURE_CLIENT_SECRET="your-client-secret"
+# supabase secrets set SENDER_EMAIL_ADDRESS="Support@teluguwalajobs.com"
 
-Write-Host "  - Setting FROM_EMAIL..." -ForegroundColor Gray
-supabase secrets set FROM_EMAIL="noreply@h1bwagelevellinks.com"
+# Write-Host "  - Setting FROM_EMAIL..." -ForegroundColor Gray
+# supabase secrets set FROM_EMAIL="noreply@h1bwagelevellinks.com"
 
-Write-Host "  - Setting APP_URL..." -ForegroundColor Gray
-supabase secrets set APP_URL="your-app-url"
+# Write-Host "  - Setting APP_URL..." -ForegroundColor Gray
+# supabase secrets set APP_URL="your-app-url"
 
 Write-Host "✅ Secrets set (except SERVICE_ROLE_KEY - set this manually)" -ForegroundColor Green
 Write-Host ""

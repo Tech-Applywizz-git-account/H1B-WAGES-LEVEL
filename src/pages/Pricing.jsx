@@ -131,7 +131,7 @@ const Pricing = () => {
                                                     currency: "USD",
                                                     intent: "capture",
                                                     components: "buttons",
-                                                    environment: import.meta.env.VITE_PAYPAL_ENVIRONMENT || "sandbox"
+                                                    environment: import.meta.env.VITE_PAYPAL_ENVIRONMENT === "live" ? "production" : "sandbox"
                                                 }}
                                             >
                                                 <PaypalButton amount={import.meta.env.VITE_PAYMENT_AMOUNT || '30.00'} />
