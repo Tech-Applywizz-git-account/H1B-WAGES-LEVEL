@@ -59,7 +59,7 @@ const Navbar = () => {
                     <Link to="/" className="flex items-center gap-2 flex-shrink-0">
                         <div className="flex items-center gap-1.5">
                             <div className="w-8 h-8 bg-[#FDB913] rounded-md flex items-center justify-center">
-                                <span className="text-black font-bold text-sm">H1B</span>
+                                <span className="text-black font-bold text-sm">H1-B</span>
                             </div>
                             <span className="font-bold text-lg text-white tracking-tight">Wage Level</span>
                         </div>
@@ -154,7 +154,7 @@ const Navbar = () => {
                 <div className="md:hidden flex justify-between items-center h-14">
                     <Link to="/" className="flex items-center gap-1.5">
                         <div className="w-8 h-8 bg-[#FDB913] rounded-md flex items-center justify-center">
-                            <span className="text-black font-bold text-sm">H1B</span>
+                            <span className="text-black font-bold text-sm">H1-B</span>
                         </div>
                         <span className="font-bold text-base text-white tracking-tight">Wage Level</span>
                     </Link>

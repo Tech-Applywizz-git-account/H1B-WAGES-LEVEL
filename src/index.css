@@ -58,3 +58,25 @@
 .animate-fadeIn {
   animation: fadeIn 0.8s ease-out forwards;
 }
+
+/* Hide ALL scrollbars globally (keep scroll functionality) */
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+/* Utility class (kept for legacy) */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

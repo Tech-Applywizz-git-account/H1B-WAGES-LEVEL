@@ -224,7 +224,7 @@ const Signup = () => {
                     <Link to="/" className="inline-flex items-center gap-2 group">
                         <div className="relative">
                             <div className="w-10 h-10 bg-[#24385E] rounded-xl flex items-center justify-center transform rotate-12 transition-transform group-hover:rotate-0 shadow-lg">
-                                <span className="text-white font-black text-xl italic tracking-tighter">W</span>
+                                <span className="text-white font-black text-xs tracking-tighter">H1-B</span>
                             </div>
                             <div className="absolute -top-1 -right-1 w-4 h-4 bg-[#FDB913] rounded-full border-2 border-white"></div>
                         </div>

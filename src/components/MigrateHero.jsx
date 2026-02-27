@@ -1,226 +1,202 @@
-import React, { useState } from 'react';
-import { Search, Star, Sliders, MapPin, X, Building, Briefcase, GraduationCap, Clock, Mail, Info } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, Star, Sliders, X, Building, Info, Loader2, ChevronLeft, ChevronRight, ArrowUpDown, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import { supabase } from '../supabaseClient';
+import CompanyCard from './CompanyCard';
+import CompanyJobCard from './CompanyJobCard';
 
-const JOBS_DATA = [
-    {
-        id: 1,
-        company: "Medical University of South Carolina",
-        logo: "https://www.google.com/s2/favicons?domain=musc.edu&sz=128",
-        title: "Registered Nurse",
-        location: "Florence, South Carolina",
-        time: "New 2h ago",
-        functions: ["Nursing", "Healthcare Administration", "Patient Services & Wellbeing"],
-        type: "On Site",
-        education: "Associate's",
-        commitment: "Full Time",
-        email: "hr-visa@musc.edu",
-        sponsorshipCount: "28+",
-        visas: ["H-1B", "E-3", "F-1 OPT", "F-1 CPT"],
-        note: "If you are an F-1 student on CPT, OPT or STEM OPT, you have work authorization in the U.S. and do not require employer visa sponsorship for this role."
-    },
-    {
-        id: 2,
-        company: "Amazon",
-        logo: "https://www.google.com/s2/favicons?domain=amazon.com&sz=128",
-        title: "Cloud Solutions Architect",
-        location: "Seattle, WA",
-        time: "4h ago",
-        functions: ["Cloud Computing", "Solutions Architecture", "Software Development"],
-        type: "Hybrid",
-        education: "Bachelor's",
-        commitment: "Full Time",
-        email: "sponsorship@amazon.com",
-        sponsorshipCount: "12,000+",
-        visas: ["H-1B", "Green Card", "L-1"],
-        note: "Amazon provides comprehensive sponsorship for technical roles. Candidates with active OPT are encouraged to apply."
-    },
-    {
-        id: 3,
-        company: "Google",
-        logo: "https://www.google.com/s2/favicons?domain=google.com&sz=128",
-        title: "UX Architecture Lead",
-        location: "Mountain View, CA",
-        time: "1h ago",
-        functions: ["UX Design", "Product Strategy", "User Research"],
-        type: "On Site",
-        education: "Master's",
-        commitment: "Full Time",
-        email: "global-talent@google.com",
-        sponsorshipCount: "8,500+",
-        visas: ["H-1B", "Green Card", "O-1"],
-        note: "Google is a leading sponsor of international talent. We handle all visa processing costs for eligible H1B candidates."
-    }
-];
-
-const CompanyLogo = ({ logo, company, className = "w-8 h-8" }) => {
-    const [imgSrc, setImgSrc] = useState(logo);
-    const [hasError, setHasError] = useState(false);
-    const [useFallback, setUseFallback] = useState(false);
-
-    const getInitials = (name) => {
-        if (!name) return '??';
-        return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-    };
-
-    const handleError = () => {
-        if (!useFallback) {
-            // Try Google Favicon service as a first fallback
-            const domain = logo.split('/').pop();
-            setImgSrc(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`);
-            setUseFallback(true);
-        } else {
-            setHasError(true);
-        }
-    };
-
-    if (hasError) {
-        return (
-            <div className={`${className} bg-gray-100 rounded-lg flex items-center justify-center text-[10px] font-black text-gray-400 uppercase tracking-tighter`}>
-                {getInitials(company)}
-            </div>
-        );
-    }
-
-    return (
-        <img
-            src={imgSrc}
-            alt={company}
-            className={`${className} object-contain`}
-            onError={handleError}
-        />
-    );
-};
-
-const JobCard = ({ job, isSelected, onClick }) => (
-    <div
-        onClick={() => onClick(job)}
-        className={`p-5 rounded-2xl border transition-all cursor-pointer group ${isSelected
-            ? 'bg-white border-yellow-400 shadow-lg ring-1 ring-yellow-400/20'
-            : 'bg-white border-gray-100 hover:border-[#24385E]/30 hover:shadow-md'
-            }`}
-    >
-        <div className="flex gap-4 items-start">
-            <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center shrink-0 border border-gray-50 overflow-hidden">
-                <CompanyLogo logo={job.logo} company={job.company} className="w-8 h-8" />
-            </div>
-            <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <p className="text-[13px] font-bold text-gray-500 mb-0.5">{job.company}</p>
-                        <h3 className="text-base font-black text-[#24385E] leading-tight mb-2 group-hover:text-yellow-600 transition-colors">{job.title}</h3>
-                    </div>
-                </div>
-                <div className="flex flex-wrap gap-2 items-center mb-3">
-                    <div className="flex items-center gap-1 text-[11px] text-gray-400 font-bold uppercase tracking-wider">
-                        <MapPin size={12} /> {job.location}
-                    </div>
-                    <span className="text-[11px] font-black text-emerald-500 uppercase">{job.time}</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    {job.visas.slice(0, 3).map(v => (
-                        <span key={v} className="px-2 py-0.5 bg-gray-50 text-gray-400 text-[9px] font-black rounded uppercase tracking-widest">{v}</span>
-                    ))}
-                </div>
-            </div>
-        </div>
-    </div>
-);
-
-const JobDetailView = ({ job, onClose }) => {
-    if (!job) return null;
-
-    return (
-        <div className="bg-white rounded-[32px] border border-gray-100 shadow-2xl p-8 sticky top-24 animate-fadeIn text-left">
-            <div className="flex justify-between items-start mb-8">
-                <div className="flex gap-4 items-center">
-                    <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center border border-gray-50 overflow-hidden">
-                        <CompanyLogo logo={job.logo} company={job.company} className="w-12 h-12" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-bold text-gray-400 mb-1 leading-none">{job.company}</p>
-                        <h2 className="text-2xl font-black text-[#24385E] leading-tight mb-1">{job.title}</h2>
-                        <p className="text-sm font-bold text-gray-500 flex items-center gap-1.5 uppercase tracking-wider">
-                            <MapPin size={14} className="text-yellow-500" /> {job.location}
-                        </p>
-                    </div>
-                </div>
-                <button onClick={onClose} className="p-2 bg-gray-50 hover:bg-gray-100 rounded-full text-gray-400 transition-colors">
-                    <X size={20} />
-                </button>
-            </div>
-
-            <div className="space-y-8">
-                {/* Job Functions */}
-                <div>
-                    <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-3">Job Functions</h4>
-                    <div className="flex flex-wrap gap-2">
-                        {job.functions.map(f => (
-                            <span key={f} className="px-3 py-1.5 bg-white border border-gray-100 text-gray-500 text-[12px] font-bold rounded-lg shadow-sm">{f}</span>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Logistics Grid */}
-                <div className="grid grid-cols-2 gap-y-4">
-                    <div className="flex items-center gap-2.5 text-[#24385E] text-sm font-bold">
-                        <Building size={16} className="text-yellow-500" /> {job.type}
-                    </div>
-                    <div className="flex items-center gap-2.5 text-[#24385E] text-sm font-bold">
-                        <GraduationCap size={16} className="text-yellow-500" /> {job.education}
-                    </div>
-                    <div className="flex items-center gap-2.5 text-[#24385E] text-sm font-bold">
-                        <Clock size={16} className="text-yellow-500" /> {job.commitment}
-                    </div>
-                    <div className="flex items-center gap-2.5 text-[#24385E] text-sm font-bold">
-                        <Mail size={16} className="text-yellow-500" /> {job.email}
-                    </div>
-                </div>
-
-                {/* Sponsorship Stats */}
-                <div className="pt-4 border-t border-gray-50">
-                    <h4 className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">{job.sponsorshipCount} total visas sponsored in the last year</h4>
-                    <div className="flex flex-wrap gap-3">
-                        {job.visas.map(v => (
-                            <span key={v} className="px-4 py-2 bg-[#fafafa] text-[#24385E] text-[12px] font-black rounded-xl border border-gray-100 uppercase tracking-widest">{v}</span>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Work Auth Note */}
-                <div className="p-5 bg-yellow-50/30 rounded-2xl border border-yellow-100/50">
-                    <h4 className="text-sm font-black text-[#24385E] flex items-center gap-2 mb-2 uppercase tracking-tight">
-                        <Info size={16} className="text-yellow-500" /> Work authorization note
-                    </h4>
-                    <p className="text-[13px] text-gray-500 font-medium leading-relaxed">
-                        {job.note}
-                    </p>
-                </div>
-
-                <button className="w-full py-4 bg-[#24385E] hover:bg-[#1a2a47] text-white font-black text-lg rounded-full shadow-xl transition-all transform hover:scale-[1.02]">
-                    Apply for this role
-                </button>
-            </div>
-        </div>
-    );
-};
+const COMPANIES_PER_PAGE = 3;
+const JOBS_PER_PAGE = 2;
 
 const MigrateHero = () => {
-    const [selectedJob, setSelectedJob] = useState(JOBS_DATA[0]);
     const { user } = useAuth();
     const navigate = useNavigate();
 
+    // Data states
+    const [companies, setCompanies] = useState([]);
+    const [companiesLoading, setCompaniesLoading] = useState(false);
+    const [selectedCompany, setSelectedCompany] = useState(null);
+    const [selectedCompanyData, setSelectedCompanyData] = useState(null);
+    const [companyJobs, setCompanyJobs] = useState([]);
+    const [jobsLoading, setJobsLoading] = useState(false);
+    const [jobPage, setJobPage] = useState(1);
+    const [totalCompanyJobs, setTotalCompanyJobs] = useState(0);
+
+    // Search & Filter states
+    const [companySearch, setCompanySearch] = useState('');
+    const [debouncedCompanySearch, setDebouncedCompanySearch] = useState('');
+    const [companyPage, setCompanyPage] = useState(1);
+    const [totalCompanies, setTotalCompanies] = useState(0);
+    const [sortBy, setSortBy] = useState('most_jobs');
+
+    // Debounce company search
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedCompanySearch(companySearch), 400);
+        return () => clearTimeout(t);
+    }, [companySearch]);
+
+    // Fetch Companies Logic (Mirrors Homepage but without forced auth check for viewing)
+    const fetchCompanies = useCallback(async () => {
+        setCompaniesLoading(true);
+        try {
+            // 1. Get ALL confirmed company names (Paginated + Cached)
+            if (!window._confirmedCompaniesCache) {
+                let auditData = [];
+                const PAGE_COUNT = 30;
+                const CONCURRENCY = 5;
+
+                for (let i = 0; i < PAGE_COUNT; i += CONCURRENCY) {
+                    const tasks = [];
+                    for (let j = 0; j < CONCURRENCY && (i + j) < PAGE_COUNT; j++) {
+                        const p = i + j;
+                        tasks.push(supabase
+                            .from('audit_reviews_sync')
+                            .select('company')
+                            .eq('tl_confirmation', 'yes')
+                            .range(p * 1000, (p + 1) * 1000 - 1)
+                        );
+                    }
+                    const results = await Promise.all(tasks);
+                    let shouldBreak = false;
+                    results.forEach(res => {
+                        if (res.error) throw res.error;
+                        if (res.data) auditData.push(...res.data);
+                        if (!res.data || res.data.length < 1000) shouldBreak = true;
+                    });
+                    if (shouldBreak) break;
+                }
+                window._confirmedCompaniesCache = Array.from(new Set(auditData.map(r => r.company)));
+            }
+
+            const confirmedNames = window._confirmedCompaniesCache;
+
+            // 2. Filter companies if searching before fetching jobs to save bandwidth
+            const filteredConfirmed = debouncedCompanySearch
+                ? confirmedNames.filter(n => n.toLowerCase().includes(debouncedCompanySearch.toLowerCase()))
+                : confirmedNames;
+
+            // 3. Fetch jobs count and info
+            const BATCH_SIZE = 50;
+            let jobData = [];
+            for (let i = 0; i < filteredConfirmed.length; i += BATCH_SIZE) {
+                const chunk = filteredConfirmed.slice(i, i + BATCH_SIZE);
+                let jobPageNum = 0;
+                while (true) {
+                    let q = supabase
+                        .from('job_jobrole_sponsored_sync')
+                        .select('company, job_role_name, wage_level, wage_num')
+                        .in('company', chunk)
+                        .range(jobPageNum * 1000, (jobPageNum + 1) * 1000 - 1);
+
+                    const { data: chunkData, error: jobError } = await q;
+                    if (jobError) throw jobError;
+                    if (!chunkData || chunkData.length === 0) break;
+
+                    jobData.push(...chunkData);
+                    jobPageNum++;
+                    if (jobPageNum > 5) break;
+                }
+            }
+
+            const companyStats = new Map();
+            jobData.forEach(j => {
+                const name = j.company;
+                if (!companyStats.has(name)) {
+                    companyStats.set(name, {
+                        company: name,
+                        jobCount: 0,
+                        maxWageNum: 0,
+                        wageLevel: 'Lv 1',
+                        industries: new Set()
+                    });
+                }
+                const stats = companyStats.get(name);
+                stats.jobCount++;
+
+                if ((j.wage_num || 0) > stats.maxWageNum) {
+                    stats.maxWageNum = j.wage_num;
+                    stats.wageLevel = j.wage_level || 'Lv 1';
+                }
+
+                if (j.job_role_name) stats.industries.add(j.job_role_name);
+            });
+
+            let arr = Array.from(companyStats.values()).map(c => ({
+                ...c,
+                industries: Array.from(c.industries).slice(0, 3)
+            }));
+
+            // Sorting
+            if (sortBy === 'most_jobs') arr.sort((a, b) => b.jobCount - a.jobCount);
+            else if (sortBy === 'highest_wage') arr.sort((a, b) => b.maxWageNum - a.maxWageNum);
+            else arr.sort((a, b) => a.company.localeCompare(b.company));
+
+            setTotalCompanies(arr.length);
+            const from = (companyPage - 1) * COMPANIES_PER_PAGE;
+            const pagedArr = arr.slice(from, from + COMPANIES_PER_PAGE);
+            setCompanies(pagedArr);
+
+            // Auto-select first company on load if none selected
+            if (!selectedCompany && pagedArr.length > 0) {
+                setSelectedCompany(pagedArr[0].company);
+                setSelectedCompanyData(pagedArr[0]);
+            }
+        } catch (err) {
+            console.error('Error fetching companies:', err);
+        } finally {
+            setCompaniesLoading(false);
+        }
+    }, [debouncedCompanySearch, sortBy, companyPage, selectedCompany]);
+
+    // Fetch Jobs for selected company
+    const fetchCompanyJobs = useCallback(async () => {
+        if (!selectedCompany) return;
+        setJobsLoading(true);
+        try {
+            const from = (jobPage - 1) * JOBS_PER_PAGE;
+            const { data, error, count } = await supabase
+                .from('job_jobrole_sponsored_sync')
+                .select('*', { count: 'exact' })
+                .eq('company', selectedCompany)
+                .order('date_posted', { ascending: false })
+                .range(from, from + JOBS_PER_PAGE - 1);
+
+            if (error) throw error;
+
+            // Map for compatibility with CompanyJobCard
+            const mappedData = (data || []).map(j => ({
+                ...j,
+                job_id: j.id,
+                role: j.job_role_name
+            }));
+
+            setCompanyJobs(mappedData);
+            setTotalCompanyJobs(count || 0);
+        } catch (err) {
+            console.error('Error fetching jobs:', err);
+        } finally {
+            setJobsLoading(false);
+        }
+    }, [selectedCompany, jobPage]);
+
+    useEffect(() => { fetchCompanies(); }, [debouncedCompanySearch, sortBy, companyPage]);
+    useEffect(() => { fetchCompanyJobs(); }, [selectedCompany, jobPage]);
+
+    const handleCompanySelect = (co) => {
+        setSelectedCompany(co.company);
+        setSelectedCompanyData(co);
+        setJobPage(1);
+    };
+
+    const getInitials = (n) => n ? n.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase() : '??';
+
     return (
         <section className="relative overflow-hidden text-center">
-            {/* Hero Header Area - Self-contained background */}
+            {/* Hero Header Area */}
             <div className="relative pt-24 pb-16 px-6 overflow-hidden">
                 <div className="absolute top-0 left-0 right-0 bottom-0 z-0">
-                    <img
-                        src="/hero-bg.png"
-                        alt="Times Square Wage Level"
-                        className="w-full h-full object-cover object-center"
-                    />
+                    <img src="/hero-bg.png" alt="Hero Background" className="w-full h-full object-cover object-center" />
                     <div className="absolute inset-0 bg-[#24385E]/40"></div>
                 </div>
 
@@ -232,82 +208,169 @@ const MigrateHero = () => {
                     <h1 className="text-[28px] md:text-[44px] font-[900] text-white leading-[1.1] tracking-tight mb-6 drop-shadow-lg max-w-2xl mx-auto">
                         Land your dream job in the U.S.
                     </h1>
-                    {/* {user ? (
-                        <button
-                            onClick={() => navigate('/dashboard')}
-                            className="inline-block px-7 py-3 bg-[#24385E] hover:bg-[#1a2a47] text-white font-black text-sm rounded-full shadow-2xl transition-all transform hover:scale-105"
-                        >
-                            Go to Dashboard
-                        </button>
-                    ) : (
-                        <Link to="/signup" className="inline-block px-7 py-3 bg-[#24385E] hover:bg-[#1a2a47] text-white font-black text-sm rounded-full shadow-2xl transition-all transform hover:scale-105">
-                            Get Access Today
-                        </Link>
-                    )} */}
                 </div>
             </div>
 
-            {/* Content Area: Search & Jobs */}
-            <div className="relative z-20 mt-12 max-w-6xl mx-auto px-6 pb-20">
-                <div className="bg-[#fafafa] rounded-[32px] md:rounded-[48px] shadow-2xl overflow-hidden">
-                    <div className="pt-10 pb-12 px-6 md:px-10">
-                        <h2 className="text-xl md:text-2xl font-black text-[#24385E] mb-2 tracking-tight">Search for your perfect role.</h2>
+            {/* Content Area: Exact App Clone Dashboard */}
+            <div className="relative z-20 mt-12 max-w-7xl mx-auto px-6 pb-20">
+                <div className="bg-[#f5f5f7] rounded-[32px] md:rounded-[48px] shadow-2xl overflow-hidden border border-white/50">
+                    <div className="pt-10 pb-4 px-8 md:px-10 text-left">
+                        <h2 className="text-xl md:text-2xl font-black text-[#24385E] mb-1 tracking-tight">Search for your perfect role.</h2>
                         <p className="text-gray-400 font-bold text-xs mb-8 uppercase tracking-widest">Data verified by the U.S. Government.</p>
+                    </div>
 
-                        <div className="max-w-3xl mx-auto mb-10">
-                            <div className="bg-white rounded-full p-2 shadow-lg border border-white flex items-center pr-3">
-                                <div className="pl-4 text-gray-300">
-                                    <Search size={18} strokeWidth={3} />
-                                </div>
+                    <div style={{ display: 'flex', borderTop: '1px solid #ebebeb', minHeight: '700px' }}>
+                        {/* LEFT: Company list (Matches App Left Panel) */}
+                        <div style={{ width: '420px', minWidth: '420px', background: '#f5f5f7', padding: '24px 20px', borderRight: '1px solid #e8e8e8', display: 'flex', flexDirection: 'column', gap: '0' }}>
+                            {/* Search bar clone */}
+                            <div style={{ background: '#fff', borderRadius: '60px', border: '1.5px solid #d8d8d8', display: 'flex', alignItems: 'center', gap: '10px', padding: '0 16px', height: '52px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', marginBottom: '16px' }}>
+                                <Search size={18} color="#aaa" strokeWidth={2.5} />
                                 <input
-                                    type="text"
-                                    placeholder="Search & find your dream job"
-                                    className="flex-1 bg-transparent border-none outline-none px-3 text-sm font-bold text-[#1F2937] placeholder:text-gray-300"
+                                    value={companySearch}
+                                    onChange={(e) => { setCompanySearch(e.target.value); setCompanyPage(1); }}
+                                    placeholder="Search companies"
+                                    style={{ flex: 1, border: 'none', outline: 'none', fontSize: '14px', fontWeight: 600, color: '#333', background: 'transparent' }}
                                 />
-                                <button className="bg-[#24385E] hover:bg-[#1a2a47] text-white font-black px-6 py-3 rounded-full transition-all text-sm">
-                                    Search
+                                <div style={{ height: '32px', padding: '0 14px', background: '#fff', border: '1.5px solid #ebebeb', borderRadius: '40px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 700, color: '#444' }}>
+                                    <Sliders size={14} className="text-yellow-500" /> Filters
+                                </div>
+                            </div>
+
+                            <div style={{ padding: '0 4px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ fontSize: '12px', color: '#888', fontWeight: 500 }}>{totalCompanies.toLocaleString()} companies</span>
+                                <button onClick={() => setSortBy(p => p === 'most_jobs' ? 'highest_wage' : 'most_jobs')} style={{ fontSize: '12px', fontWeight: 700, color: '#24385E', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                    {sortBy === 'most_jobs' ? 'Most visas ↑' : 'Highest wage ↑'} <ArrowUpDown size={12} />
                                 </button>
+                            </div>
+
+                            {/* Company list scrollable area */}
+                            <div style={{ flex: 1, overflowY: 'auto', marginBottom: '12px', paddingRight: '4px' }} className="custom-scrollbar">
+                                {companiesLoading ? (
+                                    <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}><Loader2 className="animate-spin text-[#24385E]" /></div>
+                                ) : companies.map((co) => (
+                                    <CompanyCard
+                                        key={co.company}
+                                        company={co.company}
+                                        jobCount={co.jobCount}
+                                        industries={co.industries}
+                                        wageLevel={co.wageLevel}
+                                        isSelected={selectedCompany === co.company}
+                                        onClick={() => handleCompanySelect(co)}
+                                    />
+                                ))}
+                            </div>
+
+                            {/* CTA to Signup instead of Pagination */}
+                            <div style={{ marginTop: 'auto', paddingTop: '24px', textAlign: 'center' }}>
+                                <Link
+                                    to="/signup"
+                                    style={{
+                                        display: 'block',
+                                        padding: '12px',
+                                        background: '#fff',
+                                        border: '1.5px solid #24385E',
+                                        borderRadius: '12px',
+                                        color: '#24385E',
+                                        fontSize: '13px',
+                                        fontWeight: 700,
+                                        textDecoration: 'none',
+                                        transition: 'all 0.2s ease'
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = '#24385E'; e.currentTarget.style.color = '#fff'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.color = '#24385E'; }}
+                                >
+                                    Get access to all companies →
+                                </Link>
                             </div>
                         </div>
 
-                        {/* Main Split Interface */}
-                        <div className="grid lg:grid-cols-2 gap-10 items-start text-left">
-                            {/* List Column */}
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between mb-5 px-1">
-                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
-                                        Showing <span className="text-[#24385E] underline decoration-yellow-400 decoration-2">3 of 500,000+ jobs</span>
-                                    </span>
-                                    <button className="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-100 rounded-full shadow-sm text-xs font-black text-[#24385E]">
-                                        <Sliders size={14} strokeWidth={3} className="text-yellow-500" /> Filters <span className="w-4 h-4 bg-[#24385E] text-white rounded-full flex items-center justify-center text-[9px]">2</span>
-                                    </button>
-                                </div>
-
-                                <div className="space-y-4">
-                                    {JOBS_DATA.map(job => (
-                                        <JobCard
-                                            key={job.id}
-                                            job={job}
-                                            isSelected={selectedJob?.id === job.id}
-                                            onClick={setSelectedJob}
-                                        />
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Details Column (The Screenshot Part) */}
-                            <div className="hidden lg:block">
-                                {selectedJob ? (
-                                    <JobDetailView
-                                        job={selectedJob}
-                                        onClose={() => setSelectedJob(null)}
-                                    />
-                                ) : (
-                                    <div className="h-full min-h-[500px] border-2 border-dashed border-gray-200 rounded-[32px] flex items-center justify-center text-gray-400 bg-gray-50/50">
-                                        <p className="font-bold">Select a job to view details</p>
+                        {/* RIGHT: Job detail (Matches App Right Panel) */}
+                        <div style={{ flex: 1, background: '#fff', padding: '40px', textAlign: 'left', display: 'flex', flexDirection: 'column' }}>
+                            {selectedCompany ? (
+                                <>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '32px' }}>
+                                        <div style={{ width: '64px', height: '64px', borderRadius: '18px', background: '#24385E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: 900, color: '#fff' }}>
+                                            {getInitials(selectedCompany)}
+                                        </div>
+                                        <div>
+                                            <h3 style={{ fontSize: '24px', fontWeight: 800, color: '#111', margin: '0 0 5px' }}>{selectedCompany}</h3>
+                                            <p style={{ fontSize: '14px', color: '#24385E', fontWeight: 600, margin: 0 }}>{selectedCompany.toLowerCase().replace(/\s+/g, '')}.com</p>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
+
+                                    {/* Company Info row */}
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '32px', marginBottom: '32px' }}>
+                                        <div>
+                                            <p style={{ fontSize: '11px', color: '#aaa', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Industries</p>
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                {selectedCompanyData?.industries?.map(f => <span key={f} style={{ fontSize: '13px', fontWeight: 700, background: '#fff', border: '1px solid #ebebeb', borderRadius: '10px', padding: '6px 14px' }}>{f}</span>)}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <p style={{ fontSize: '11px', color: '#aaa', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Visa Sponsorship</p>
+                                            <p style={{ fontSize: '15px', fontWeight: 700, color: '#333' }}>{selectedCompanyData?.jobCount}+ roles found</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Work authorization note from app */}
+                                    <div style={{ background: '#f9fafb', border: '1px solid #f1f1f1', borderRadius: '20px', padding: '24px', marginBottom: '32px' }}>
+                                        <h4 style={{ fontSize: '14px', fontWeight: 800, color: '#24385E', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                            <Info size={18} className="text-yellow-500" /> Work authorization note
+                                        </h4>
+                                        <p style={{ fontSize: '13px', color: '#666', lineHeight: 1.6, fontWeight: 500 }}>
+                                            This company historically sponsors work visas. Wage level <b>{selectedCompanyData?.wageLevel}</b> indicates high salary percentiles relative to prevailing wages.
+                                        </p>
+                                    </div>
+
+                                    <h4 style={{ fontSize: '20px', fontWeight: 800, color: '#111', marginBottom: '20px' }}>Open Jobs at {selectedCompany}</h4>
+
+                                    {/* Job list scrollable */}
+                                    <div style={{ flex: 1, overflowY: 'auto', marginBottom: '16px' }} className="custom-scrollbar">
+                                        {jobsLoading ? (
+                                            <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}><Loader2 className="animate-spin text-[#24385E]" size={32} /></div>
+                                        ) : companyJobs.length > 0 ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                {companyJobs.map(job => (
+                                                    <CompanyJobCard key={job.id} job={job} isLandingPage={true} />
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div style={{ textAlign: 'center', padding: '60px 0', color: '#999' }}>No job data found for this company view.</div>
+                                        )}
+                                    </div>
+
+                                    {/* CTA to Signup instead of Job Pagination */}
+                                    <div style={{ marginTop: 'auto', paddingTop: '24px', textAlign: 'center' }}>
+                                        <Link
+                                            to="/signup"
+                                            style={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                padding: '14px 32px',
+                                                background: '#24385E',
+                                                borderRadius: '60px',
+                                                color: '#fff',
+                                                fontSize: '15px',
+                                                fontWeight: 800,
+                                                textDecoration: 'none',
+                                                boxShadow: '0 4px 12px rgba(36,56,94,0.25)',
+                                                transition: 'all 0.2s ease'
+                                            }}
+                                            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 16px rgba(36,56,94,0.35)'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(36,56,94,0.25)'; }}
+                                        >
+                                            Get access to all jobs <ChevronRight size={18} />
+                                        </Link>
+                                    </div>
+                                </>
+                            ) : (
+                                <div style={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#ccc', textAlign: 'center' }}>
+                                    <Building size={48} style={{ marginBottom: '16px', opacity: 0.5 }} />
+                                    <p style={{ fontWeight: 700, fontSize: '18px' }}>Select a company</p>
+                                    <p style={{ fontSize: '14px' }}>to view open role sponsorships and wage levels</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

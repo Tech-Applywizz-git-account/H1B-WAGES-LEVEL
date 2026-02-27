@@ -80,14 +80,14 @@ async function syncMissingJobs() {
     const existingRecords = await fetchAllPaginated(mainDb, 'job_jobrole_sponsored_sync', 'id', 'url, job_role_name');
     console.log(`\n   ✅ Main DB: ${existingRecords.length} existing records\n`);
 
-    // Step 3: Build set of existing composite keys
-    const existingKeys = new Set(
-        existingRecords.map(r => `${r.url}|||${r.job_role_name}`)
+    // Step 3: Build set of existing IDs for robust matching
+    const existingIds = new Set(
+        existingRecords.map(r => r.id)
     );
 
-    // Step 4: Filter to find only missing records
+    // Step 4: Filter to find only missing records by ID
     const missingData = sourceData.filter(record =>
-        !existingKeys.has(`${record.url}|||${record.job_role_name}`)
+        !existingIds.has(record.id)
     );
 
     console.log(`🔍 Step 3: Comparison results:`);
@@ -118,8 +118,8 @@ async function syncMissingJobs() {
             synced_at: new Date().toISOString()
         }));
 
-        // Remove the source DB's 'id' field — let our DB auto-generate serial ids
-        batch.forEach(record => { delete record.id; });
+        // Rule: Preserve the source DB's 'id' field
+        // batch.forEach(record => { delete record.id; });
 
         const { error } = await mainDb
             .from('job_jobrole_sponsored_sync')

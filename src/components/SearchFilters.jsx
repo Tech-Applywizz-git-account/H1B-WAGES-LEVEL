@@ -61,7 +61,7 @@ const SearchFilters = ({ onFilterChange }) => {
             }
 
             const columnMap = {
-                role: 'job_role_name',
+                role: 'role', // Use the shorter 'role' column from the view
                 location: 'location',
                 company: 'company',
                 experience: 'years_exp_required'
@@ -70,7 +70,7 @@ const SearchFilters = ({ onFilterChange }) => {
 
             try {
                 const { data, error } = await supabase
-                    .from('job_jobrole_sponsored_sync')
+                    .from('confirmed_jobs_view')
                     .select(column)
                     .ilike(column, `%${value}%`)
                     .limit(50);
