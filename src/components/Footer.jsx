@@ -10,7 +10,7 @@ const Footer = () => {
             <div className="bg-gray-900 py-16">
                 <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
                     <h2 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-4 leading-tight">
-                        We built H1B Wage Level for ourselves,<br className="hidden md:block" />
+                        We built H1-B Wage Level for ourselves,<br className="hidden md:block" />
                         now we're sharing it with the world.
                     </h2>
                     <p className="text-gray-400 mb-8 text-lg">Get closer to landing your dream job today.</p>
@@ -45,8 +45,8 @@ const Footer = () => {
                         <h3 className="font-semibold text-white mb-4 text-sm">About Us</h3>
                         <ul className="space-y-2.5 text-sm">
                             <li><a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">About Us</a></li>
-                            <li><a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">Is H1B Wage Level Legit?</a></li>
-                            <li><a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">How to Use H1B Wage Level</a></li>
+                            <li><a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">Is H1-B Wage Level Legit?</a></li>
+                            <li><a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">How to Use H1-B Wage Level</a></li>
                         </ul>
                     </div>
 
@@ -79,13 +79,13 @@ const Footer = () => {
                         <a href="#" className="text-gray-400 hover:text-white transition-colors">Careers</a>
                         <a href="#" className="text-gray-400 hover:text-white transition-colors">Blog</a>
                     </div>
-                    <p className="text-gray-500 text-[13px]">© 2026 H1B Wage Level. All Rights Reserved.</p>
+                    <p className="text-gray-500 text-[13px]">© 2026 H1-B Wage Level. All Rights Reserved.</p>
                 </div>
 
                 {/* Legal Disclaimer */}
                 <div className="mt-8 p-6 bg-white/5 rounded-2xl border border-white/5">
                     <p className="text-[11px] text-gray-500 leading-relaxed text-center md:text-left">
-                        <strong className="text-gray-400">Legal Disclaimer:</strong> H1B Wage Level is a technology platform that provides general immigration information and tools and is not a law firm. Nothing on this website constitutes legal advice or creates an attorney-client relationship. Any legal services are provided independently by licensed immigration attorneys, who are solely responsible for the advice they provide. Immigration outcomes depend on individual circumstances and government decisions and are not guaranteed. For advice specific to your situation, consult a qualified immigration attorney.
+                        <strong className="text-gray-400">Legal Disclaimer:</strong> H1-B Wage Level is a technology platform that provides general immigration information and tools and is not a law firm. Nothing on this website constitutes legal advice or creates an attorney-client relationship. Any legal services are provided independently by licensed immigration attorneys, who are solely responsible for the advice they provide. Immigration outcomes depend on individual circumstances and government decisions and are not guaranteed. For advice specific to your situation, consult a qualified immigration attorney.
                     </p>
                 </div>
             </div>

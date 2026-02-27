@@ -11,7 +11,7 @@ const MigrateFooterSections = () => {
             <section className="py-12 md:py-20">
                 <div className="max-w-4xl mx-auto px-6 text-center">
                     <h2 className="text-xl md:text-2xl font-black text-[#24385E] mb-14 leading-tight mx-auto">
-                        Watch why thousands trust Wage Level
+                        Watch why thousands trust H1-B Wage Level
                     </h2>
 
                     <div className="relative group cursor-pointer mb-8 max-w-2xl mx-auto">
@@ -102,7 +102,7 @@ const MigrateFooterSections = () => {
 
                     <div className="pt-12 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6">
                         <p className="text-xs font-black text-gray-300 uppercase tracking-widest">
-                            © 2026 Wage Level. All rights reserved.
+                            © 2026 H1-B Wage Level. All rights reserved.
                         </p>
                         <div className="flex gap-8">
                             <span className="text-xs font-black text-gray-300 uppercase tracking-widest cursor-pointer hover:text-gray-400 transition-colors">US SPONSORSHIP VERIFIED</span>

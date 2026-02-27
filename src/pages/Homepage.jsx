@@ -287,7 +287,7 @@ const Homepage = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => navigate('/')}>
             <div style={{ position: 'relative' }}>
               <div style={{ width: '42px', height: '42px', background: '#24385E', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'rotate(12deg)', transition: 'transform 0.2s' }}>
-                <span style={{ color: '#fff', fontWeight: 900, fontSize: '20px', fontStyle: 'italic', letterSpacing: '-1px' }}>W</span>
+                <span style={{ color: '#fff', fontWeight: 900, fontSize: '10px', tracking: 'tighter' }}>H1-B</span>
               </div>
               <div style={{ position: 'absolute', top: '-4px', right: '-4px', width: '14px', height: '14px', background: '#EAB308', borderRadius: '50%', border: '2px solid #fff' }}></div>
             </div>

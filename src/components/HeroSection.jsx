@@ -55,7 +55,7 @@ const HeroSection = () => {
                             </h1>
 
                             <p className="text-center lg:text-left text-sm md:text-lg text-gray-400 mb-10 leading-relaxed max-w-xl mx-auto lg:mx-0 font-medium px-2 sm:px-0">
-                                That's why we built H1B Wage Level. Now you can easily search & find currently open jobs at companies who sponsor visas. We've done the work so you can skip the painful hours of doom scrolling and rejection emails.
+                                That's why we built H1-B Wage Level. Now you can easily search & find currently open jobs at companies who sponsor visas. We've done the work so you can skip the painful hours of doom scrolling and rejection emails.
                             </p>
 
                             <div className="flex flex-col sm:flex-row gap-4 px-2 sm:px-0 max-w-md mx-auto lg:mx-0">

@@ -14,7 +14,7 @@ const Pricing = () => {
     const faqs = [
         {
             question: 'How does the subscription work?',
-            answer: 'H1B Wage Level costs $30/month. You get immediate access to all 500,000+ verified jobs, direct company contact emails, and all premium features. Your subscription renews automatically each month until you cancel.'
+            answer: 'H1-B Wage Level costs $30/month. You get immediate access to all 500,000+ verified jobs, direct company contact emails, and all premium features. Your subscription renews automatically each month until you cancel.'
         },
         {
             question: 'Can I cancel anytime?',
@@ -52,7 +52,7 @@ const Pricing = () => {
                             </div>
                         </div>
                         <h1 className="text-3xl md:text-5xl font-black mb-5 tracking-tight leading-tight">
-                            Simple, Transparent Pricing
+                            H1-B Wage Level
                         </h1>
                         <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto font-medium">
                             Unlimited access to 500,000+ visa-sponsored jobs for just $30/month.
@@ -177,7 +177,7 @@ const Pricing = () => {
                             <Link to="/" className="flex items-center gap-2 mb-6 group">
                                 <div className="relative">
                                     <div className="w-10 h-10 bg-[#24385E] rounded-xl flex items-center justify-center transform rotate-12 transition-transform group-hover:rotate-0 shadow-lg">
-                                        <span className="text-white font-black text-xl italic tracking-tighter">W</span>
+                                        <span className="text-white font-black text-xs tracking-tighter">H1-B</span>
                                     </div>
                                     <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white"></div>
                                 </div>
@@ -228,7 +228,7 @@ const Pricing = () => {
 
                     <div className="pt-12 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6">
                         <p className="text-xs font-black text-gray-300 uppercase tracking-widest">
-                            © 2026 Wage Level. All rights reserved.
+                            © 2026 H1-B Wage Level. All rights reserved.
                         </p>
                         <div className="flex gap-8">
                             <span className="text-xs font-black text-gray-300 uppercase tracking-widest cursor-pointer hover:text-gray-400 transition-colors">US SPONSORSHIP VERIFIED</span>

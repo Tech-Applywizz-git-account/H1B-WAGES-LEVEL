@@ -3,19 +3,19 @@ import { Star } from 'lucide-react';
 
 const testimonials = [
     {
-        content: "Definitely worth subscribing. I was a bit hesitant at first to subscribe but realised that I really had no other options out there to find currently open jobs that sponsor visas so I thought I'd give H1B Wage Level a try. I'm so happy I did because I've heard back from multiple job openings. This is by far the best job platform I've used.",
+        content: "Definitely worth subscribing. I was a bit hesitant at first to subscribe but realised that I really had no other options out there to find currently open jobs that sponsor visas so I thought I'd give H1-B Wage Level a try. I'm so happy I did because I've heard back from multiple job openings. This is by far the best job platform I've used.",
         rating: 5,
         initials: 'A',
         color: 'from-orange-400 to-red-500',
     },
     {
-        content: "Perfect for international students. I'm an international student and have been looking for graduate jobs for a while at companies that'll sponsor me on an H-1B after my OPT ends. It's been really difficult to find this information so when I saw an ad on Instagram for H1B Wage Level I thought this could be perfect for me and it really was.",
+        content: "Perfect for international students. I'm an international student and have been looking for graduate jobs for a while at companies that'll sponsor me on an H-1B after my OPT ends. It's been really difficult to find this information so when I saw an ad on Instagram for H1-B Wage Level I thought this could be perfect for me and it really was.",
         rating: 5,
         initials: 'B',
         color: 'from-blue-400 to-indigo-500',
     },
     {
-        content: "Have had a brilliant experience with H1B Wage Level, the team are very easy to get in touch with if need be, the website is very easy to direct and navigate through every step of the way. Not to mention it is very cheap to use their services. Things have genuinely changed and I am in a much better space to get sponsored.",
+        content: "Have had a brilliant experience with H1-B Wage Level, the team are very easy to get in touch with if need be, the website is very easy to direct and navigate through every step of the way. Not to mention it is very cheap to use their services. Things have genuinely changed and I am in a much better space to get sponsored.",
         rating: 5,
         initials: 'C',
         color: 'from-green-400 to-teal-500',
