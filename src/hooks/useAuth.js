@@ -424,7 +424,7 @@ export function AuthProvider({ children }) {
             endDate = new Date(profile.subscription_end_date);
           } else if (profile.created_at) {
             endDate = new Date(profile.created_at);
-            endDate.setMonth(endDate.getMonth() + 1);
+            endDate.setMonth(endDate.getMonth() + 6);
           }
 
           if (endDate) {
@@ -474,7 +474,7 @@ export function AuthProvider({ children }) {
               endDate = new Date(emailProfile.subscription_end_date);
             } else if (emailProfile.created_at) {
               endDate = new Date(emailProfile.created_at);
-              endDate.setMonth(endDate.getMonth() + 1);
+              endDate.setMonth(endDate.getMonth() + 6);
             }
             isExpired = endDate ? (now > endDate) : true;
           }
@@ -595,7 +595,8 @@ export function AuthProvider({ children }) {
 
       switch (event) {
         case 'SIGNED_OUT':
-          console.log("🚫 User signed out");
+          // Signed out silenced
+
           setUser(null);
           setRole(null);
           localStorage.removeItem("userRole");
@@ -608,7 +609,7 @@ export function AuthProvider({ children }) {
         case 'TOKEN_REFRESHED':
         case 'INITIAL_SESSION': // Handle initial session event
           if (session?.user) {
-            console.log("🔄 Auth event:", event, "for user:", session.user.email);
+
             setUser(session.user);
             // Load role in background without blocking
             setTimeout(() => loadUserRole(session.user), 100);
@@ -616,7 +617,8 @@ export function AuthProvider({ children }) {
           break;
 
         default:
-          console.log("ℹ️ Unhandled auth event:", event);
+        // Unhandled event silenced
+
       }
     });
 
@@ -637,7 +639,8 @@ export function AuthProvider({ children }) {
   };
 
   const signOut = async () => {
-    console.log("🚨 SignOut called from AuthContext");
+    // Signout logic silenced
+
     setLoggingOut(true);
     try {
       // Clear cache and storage first for immediate UI feedback

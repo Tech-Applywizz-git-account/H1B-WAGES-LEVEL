@@ -71,7 +71,7 @@ const PaymentDetailsTab = () => {
                     <div>
                         <span className="inline-block px-3 py-1 bg-[#FDB913] text-[#24385E] text-[10px] font-black uppercase tracking-widest rounded-full mb-3">Active Subscription</span>
                         <h3 className="text-3xl font-black mb-1">Premium Plan</h3>
-                        <p className="text-white/70 font-bold">$39.99 / Month</p>
+                        <p className="text-white/70 font-bold">$39.99 / 6 Months</p>
                     </div>
                     <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20">
                         <p className="text-white/60 text-xs font-black uppercase tracking-widest mb-1">Upcoming Renewal</p>
@@ -81,7 +81,7 @@ const PaymentDetailsTab = () => {
                                 {payments.length > 0 ? (
                                     (() => {
                                         const d = new Date(payments[0].time_of_payment);
-                                        d.setDate(d.getDate() + 30);
+                                        d.setMonth(d.getMonth() + 6);
                                         return d.toLocaleDateString();
                                     })()
                                 ) : 'N/A'}

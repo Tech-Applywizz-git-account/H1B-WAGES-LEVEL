@@ -1,5 +1,6 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import LogoBox from './LogoBox';
 
 const jobExamples = [
     { title: 'Financial Systems Manager', company: 'Coca-Cola', contact: 'jularevalo@cocacola.com', name: 'Jula' },
@@ -106,9 +107,7 @@ const HeroSection = () => {
                                             <h3 className="font-bold text-gray-900 text-base">{job.title}</h3>
                                             <p className="text-sm text-gray-500">{job.company}</p>
                                         </div>
-                                        <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
-                                            {job.company[0]}
-                                        </div>
+                                        <LogoBox name={job.company} size={40} fontSize={14} />
                                     </div>
                                     <div className="flex gap-2 flex-wrap">
                                         <span className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full font-medium">H-1B</span>

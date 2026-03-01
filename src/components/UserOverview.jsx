@@ -40,14 +40,14 @@ const PaymentModal = ({ job, onClose }) => {
                     Unlock Full Access
                 </h2>
                 <p className="text-gray-500 text-sm text-center font-medium mb-6">
-                    Get access to <strong>500,000+ verified H-1B sponsoring</strong> jobs including{' '}
+                    Get access to <strong>verified H-1B sponsoring</strong> jobs including{' '}
                     <span className="text-[#24385E] font-bold">{job?.title}</span> at{' '}
                     <span className="text-[#24385E] font-bold">{job?.company}</span>.
                 </p>
 
                 <div className="bg-[#24385E]/5 rounded-2xl p-5 mb-6 space-y-2.5">
                     {[
-                        '500,000+ verified open roles',
+                        'Verified open roles',
                         'H-1B, OPT/CPT, TN, E-3, J-1 & Green Cards',
                         'Salary & company info for every role',
                         'Verified contact emails',
@@ -153,6 +153,7 @@ const UserOverview = () => {
 
     const fetchStats = async () => {
         try {
+            await new Promise(r => setTimeout(r, 250)); // Stagger to avoid 525 
             const { count: appliedCount } = await supabase
                 .from('applied_jobs').select('*', { count: 'exact', head: true }).eq('user_id', user.id);
 
@@ -279,7 +280,7 @@ const UserOverview = () => {
                     <div className="w-16 h-16 bg-[#FDB913]/20 rounded-2xl flex items-center justify-center mb-6">
                         <Lock size={28} className="text-[#24385E]" />
                     </div>
-                    <h3 className="text-[20px] font-black text-[#24385E] mb-3">Unlock 500,000+ Jobs</h3>
+                    <h3 className="text-[20px] font-black text-[#24385E] mb-3">Unlock More Jobs</h3>
                     <p className="text-gray-500 text-sm max-w-[240px] mb-8 font-medium">
                         Get full access to every H-1B sponsoring company and all open roles with salary & contact info.
                     </p>

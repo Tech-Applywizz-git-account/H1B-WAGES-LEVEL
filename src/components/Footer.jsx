@@ -36,7 +36,7 @@ const Footer = () => {
                             <span className="font-bold text-xl text-white tracking-tight">Wage Level</span>
                         </div>
                         <p className="text-gray-400 text-sm leading-relaxed max-w-sm">
-                            Access 500,000+ verified U.S. jobs with visa sponsorship. Find H-1B, Green Card, E-3, TN, CPT/OPT, H-1B1, and J-1 friendly roles.
+                            Access verified U.S. jobs with visa sponsorship. Find H-1B, Green Card, E-3, TN, CPT/OPT, H-1B1, and J-1 friendly roles.
                         </p>
                     </div>
 

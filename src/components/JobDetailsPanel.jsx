@@ -48,7 +48,7 @@ const JobDetailsPanel = ({ job, onClose }) => {
           <div className="flex items-center justify-between mb-2">
             <h4 className="font-bold text-gray-900 text-xl">{job.company}</h4>
             <span className="text-[10px] text-emerald-600 font-black uppercase tracking-widest bg-emerald-50 px-2.5 py-1 rounded-md">
-              Verified
+              Human Verified
             </span>
           </div>
 

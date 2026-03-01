@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Home, LogOut, ChevronDown } from 'lucide-react';
+import { User, Home, LogOut, ChevronDown, Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 
-const AppHeader = ({ title = "Job Board" }) => {
+const AppHeader = ({ title = "Job Board", onMenuClick }) => {
     const { user, signOut } = useAuth();
     const navigate = useNavigate();
     const [showDropdown, setShowDropdown] = useState(false);
@@ -26,9 +26,15 @@ const AppHeader = ({ title = "Job Board" }) => {
     };
 
     return (
-        <header className="h-[70px] bg-white border-b border-[#f0f0f0] flex items-center justify-between px-8 sticky top-0 z-40">
-            <div className="flex items-center gap-6">
-                <h1 className="text-[15px] font-black text-[#24385E] tracking-tight">{title}</h1>
+        <header className="h-[70px] bg-white border-b border-[#f0f0f0] flex items-center justify-between px-4 md:px-8 sticky top-0 z-40">
+            <div className="flex items-center gap-4 md:gap-6">
+                <button
+                    onClick={onMenuClick}
+                    className="p-2 -ml-2 hover:bg-gray-100 rounded-lg md:hidden text-[#24385E]"
+                >
+                    <Menu size={24} />
+                </button>
+                <h1 className="text-[14px] md:text-[15px] font-black text-[#24385E] tracking-tight truncate max-w-[150px] md:max-w-none">{title}</h1>
             </div>
 
             <div className="flex items-center gap-4 relative" ref={dropdownRef}>

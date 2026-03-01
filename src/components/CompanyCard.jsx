@@ -1,10 +1,7 @@
 import React from 'react';
+import LogoBox from './LogoBox';
 
-const CompanyCard = ({ company, jobCount, wageLevel, industries, isSelected, onClick }) => {
-    const getInitials = (name) => {
-        if (!name) return '??';
-        return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-    };
+const CompanyCard = ({ company, jobCount, wageLevel, industries, isSelected, onClick, isMobile }) => {
     const level = parseInt(wageLevel?.match(/\d/)?.[0] || '2');
 
     const cardStyle = {
@@ -12,8 +9,8 @@ const CompanyCard = ({ company, jobCount, wageLevel, industries, isSelected, onC
         width: '100%',
         background: '#ffffff',
         borderRadius: '20px',
-        padding: '22px 24px',
-        marginBottom: '14px',
+        padding: isMobile ? '16px 18px' : '22px 24px',
+        marginBottom: '10px',
         border: isSelected ? '1.5px solid rgba(36,56,94,0.25)' : '1.5px solid #ebebeb',
         boxShadow: isSelected
             ? '0 4px 24px rgba(36,56,94,0.12)'
@@ -41,58 +38,43 @@ const CompanyCard = ({ company, jobCount, wageLevel, industries, isSelected, onC
             }}
         >
             {/* Row 1: Logo + Name + Job count */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', marginBottom: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', minWidth: 0 }}>
-                    {/* Logo */}
-                    <div style={{
-                        width: '44px', height: '44px', borderRadius: '12px', flexShrink: 0,
-                        background: isSelected ? '#24385E' : '#f0f0f0',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '14px', fontWeight: 800, color: isSelected ? '#fff' : '#888',
-                    }}>
-                        {getInitials(company)}
-                    </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
+                    <LogoBox name={company} size={isMobile ? 36 : 44} fontSize={isMobile ? 12 : 14} className={isSelected ? 'bg-navy-select' : ''} />
+
                     <div style={{ minWidth: 0 }}>
-                        <p style={{ fontSize: '17px', fontWeight: 700, color: '#111', margin: '0 0 3px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <p style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: 700, color: '#111', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {company}
                         </p>
-                        <p style={{ fontSize: '12px', color: '#aaa', margin: 0 }}>
-                            Visa inquiries: <span style={{ color: '#24385E', fontWeight: 500 }}>{company?.toLowerCase().replace(/\s+/g, '')}@careers.com</span>
-                        </p>
+                        {!isMobile && (
+                            <p style={{ fontSize: '12px', color: '#aaa', margin: 0 }}>
+                                Visa inquiries: <span style={{ color: '#24385E', fontWeight: 500 }}>{company?.toLowerCase().replace(/\s+/g, '')}@careers.com</span>
+                            </p>
+                        )}
                     </div>
                 </div>
-                <span style={{ fontSize: '14px', fontWeight: 700, color: '#24385E', whiteSpace: 'nowrap', flexShrink: 0, marginTop: '2px' }}>
+                <span style={{ fontSize: isMobile ? '12px' : '14px', fontWeight: 700, color: '#24385E', whiteSpace: 'nowrap', flexShrink: 0, marginTop: '2px' }}>
                     {jobCount?.toLocaleString()} jobs
                 </span>
             </div>
 
             {/* Row 2: Industry chips */}
             {industries && industries.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
-                    {industries.slice(0, 3).map((ind, i) => (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '10px' }}>
+                    {industries.slice(0, isMobile ? 2 : 3).map((ind, i) => (
                         <span key={i} style={{
-                            fontSize: '12px', color: '#555', border: '1px solid #e0e0e0',
-                            borderRadius: '8px', padding: '4px 12px', background: '#fff',
+                            fontSize: '11px', color: '#555', border: '1px solid #e0e0e0',
+                            borderRadius: '8px', padding: '3px 10px', background: '#fff',
                         }}>{ind}</span>
                     ))}
-                    {industries.length > 3 && (
-                        <span style={{ fontSize: '12px', color: '#aaa', border: '1px solid #e8e8e8', borderRadius: '8px', padding: '4px 10px', background: '#fff' }}>
-                            +{industries.length - 3}
-                        </span>
-                    )}
                 </div>
             )}
 
-            {/* Row 3: Sponsored count */}
-            <p style={{ fontSize: '12px', color: '#999', margin: '0 0 12px' }}>
-                {jobCount?.toLocaleString()}+ total visas sponsored in the last 12 months
-            </p>
-
             {/* Row 4: Wage badges */}
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
                 {['Lv 1', 'Lv 2', 'Lv 3', 'Lv 4'].map((lbl, i) => (
                     <span key={lbl} style={{
-                        fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '7px',
+                        fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px',
                         background: i + 1 <= level ? '#24385E' : '#fff',
                         color: i + 1 <= level ? '#fff' : '#ccc',
                         border: i + 1 <= level ? '1px solid #24385E' : '1px solid #e0e0e0',

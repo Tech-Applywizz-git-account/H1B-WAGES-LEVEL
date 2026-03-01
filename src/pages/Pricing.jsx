@@ -18,11 +18,7 @@ const Pricing = () => {
     const faqs = [
         {
             question: 'How does the subscription work?',
-            answer: `H1-B Wage Level costs $${import.meta.env.VITE_PAYMENT_AMOUNT || '30.00'}/month. You get immediate access to all 500,000+ verified jobs, direct company contact emails, and all premium features. Your subscription renews automatically each month until you cancel.`
-        },
-        {
-            question: 'Can I cancel anytime?',
-            answer: 'Yes! You can cancel your subscription at any time from your account settings. When you cancel, you will not be charged for the next month. However, the current month\'s payment is non-refundable and your access continues until the end of the billing period.'
+            answer: `H1-B Wage Level costs $39.99 for 6 months (limited-time offer for the first 1,000 users). You get immediate access to all verified jobs, direct company contact emails, and all premium features.`
         },
         {
             question: 'Do you offer refunds?',
@@ -34,7 +30,7 @@ const Pricing = () => {
         },
         {
             question: 'Will the price increase later?',
-            answer: `Your price is locked in at $${import.meta.env.VITE_PAYMENT_AMOUNT || '30.00'}/month as long as you remain a subscriber. We may adjust pricing for new members in the future, but existing members keep their current rate.`
+            answer: `Your price is locked in at $39.99 for 6 months as long as you sign up during our first 1,000 users launch offer. Future pricing may adjust for new members, but existing members keep their launch rate.`
         }
     ];
 
@@ -59,7 +55,7 @@ const Pricing = () => {
                             H1-B Wage Level
                         </h1>
                         <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto font-medium">
-                            Unlimited access to 500,000+ visa-sponsored jobs for just ${import.meta.env.VITE_PAYMENT_AMOUNT || '30.00'}/month.
+                            Unlimited access to visa-sponsored jobs for just $39.99 for 6 months.
                         </p>
                     </div>
                 </div>
@@ -69,37 +65,44 @@ const Pricing = () => {
                     <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
                         {/* Ribbon */}
                         <div className="bg-[#FDB913] text-[#24385E] text-center py-3.5 font-black text-sm uppercase tracking-widest">
-                            ★ MOST POPULAR PLAN ★
+                            ★ MOST POPULAR PLAN · LIMITED TIME OFFER ★
                         </div>
 
                         <div className="p-8 md:p-14">
                             {/* Price */}
                             <div className="text-center mb-10">
-                                <div className="inline-flex items-center justify-center gap-1 font-black text-[#24385E]">
-                                    <span className="text-6xl md:text-7xl opacity-20">$</span>
-                                    <span className="text-6xl md:text-7xl tracking-tight">
-                                        {import.meta.env.VITE_PAYMENT_AMOUNT || '39.99'}
-                                    </span>
-                                    <span className="text-6xl md:text-7xl opacity-20 ml-2">/mo</span>
+                                {/* Strikethrough Price */}
+                                <div className="flex justify-center mb-1">
+                                    <div className="relative inline-block">
+                                        <span className="text-5xl md:text-6xl font-black text-[#24385E] opacity-90 tracking-tight">
+                                            $80/6 months
+                                        </span>
+                                        <div className="absolute top-1/2 left-0 w-full h-1.5 bg-[#24385E] -translate-y-1/2"></div>
+                                    </div>
                                 </div>
-                                <p className="text-base text-gray-400 font-bold mt-2">billed monthly · cancel anytime</p>
-                                <div className="mt-4 inline-flex items-center gap-2 px-4 py-2 bg-[#24385E]/5 rounded-full">
-                                    <Zap size={16} className="text-[#FDB913]" />
-                                    <span className="text-sm font-bold text-[#24385E]">Instant access to all jobs</span>
+
+                                {/* Actual Price */}
+                                <div className="flex justify-center mb-6">
+                                    <span className="text-6xl md:text-7xl font-black text-[#24385E] tracking-tight">
+                                        $39.99/6 months
+                                    </span>
+                                </div>
+
+                                <div className="inline-flex items-center gap-2 px-6 py-2.5 border border-gray-200 rounded-full bg-white shadow-sm">
+                                    <span className="text-[15px] font-bold text-[#24385E] tracking-tight">50% Launch Discount — Limited to First 1,000 Users</span>
                                 </div>
                             </div>
 
                             {/* Features Grid */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-10 mb-12">
                                 {[
-                                    '500,000+ verified open roles',
+                                    'Verified open roles',
                                     'All visa types (H-1B, TN, etc.)',
                                     'Daily job updates',
                                     'Full salary information',
                                     'Advanced search & filters',
                                     'Save unlimited jobs',
-                                    'Email job alerts',
-                                    'Cancel anytime'
+                                    'Email job alerts'
                                 ].map((feature, index) => (
                                     <div key={index} className="flex items-center gap-3 group">
                                         <div className="w-6 h-6 bg-[#FDB913]/15 rounded-full flex items-center justify-center shrink-0 group-hover:bg-[#FDB913]/30 transition-colors">
@@ -159,7 +162,7 @@ const Pricing = () => {
                     {/* Trust Badges */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8 mt-14 mb-20 md:mb-24">
                         {[
-                            { icon: Star, value: '500K+', label: 'Active Jobs' },
+                            { icon: Star, value: 'All', label: 'Verified Jobs' },
                             { icon: Shield, value: '30,000+', label: 'Active Users' },
                             { icon: Zap, value: '8', label: 'Visa Types' }
                         ].map((badge, i) => (

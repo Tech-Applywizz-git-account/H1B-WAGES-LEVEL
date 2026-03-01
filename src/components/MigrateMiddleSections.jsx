@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, X, CheckCircle, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getCompanyLogo } from '../utils/logoHelper';
 
 const MigrateMiddleSections = () => {
     return (
@@ -51,9 +52,10 @@ const MigrateMiddleSections = () => {
                         ].map((company) => (
                             <div key={`a-${company.name}`} className="flex items-center gap-3 shrink-0">
                                 <img
-                                    src={`https://www.google.com/s2/favicons?domain=${company.domain}&sz=64`}
+                                    src={getCompanyLogo(company.name)}
                                     alt={company.name}
                                     className="w-8 h-8 object-contain grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all"
+                                    onError={(e) => { e.target.style.display = 'none'; }}
                                 />
                                 <span className="text-[15px] font-bold text-gray-400">{company.name}</span>
                             </div>
@@ -75,9 +77,10 @@ const MigrateMiddleSections = () => {
                         ].map((company) => (
                             <div key={`b-${company.name}`} className="flex items-center gap-3 shrink-0">
                                 <img
-                                    src={`https://www.google.com/s2/favicons?domain=${company.domain}&sz=64`}
+                                    src={getCompanyLogo(company.name)}
                                     alt={company.name}
                                     className="w-8 h-8 object-contain grayscale opacity-60 hover:grayscale-0 hover:opacity-100 transition-all"
+                                    onError={(e) => { e.target.style.display = 'none'; }}
                                 />
                                 <span className="text-[15px] font-bold text-gray-400">{company.name}</span>
                             </div>
@@ -126,7 +129,7 @@ const MigrateMiddleSections = () => {
                                 <AccordionItem
                                     number="2"
                                     title="Filter by Sponsor History"
-                                    content="Access our massive database of 500k+ roles from companies historically verified for sponsorship."
+                                    content="Access our massive database of roles from companies historically verified for sponsorship."
                                     isOpenDefault={true}
                                 />
                                 <AccordionItem
@@ -172,7 +175,7 @@ const MigrateMiddleSections = () => {
                                 <ul className="space-y-5 mb-10">
                                     {[
                                         '7-day unlimited search trial',
-                                        '500,000+ verified open roles',
+                                        'Verified open roles',
                                         'Wage Level filters (L1, L2, L3, L4)',
                                         'Direct recruiter email access',
                                         'Cancel any time, no lock-in'

@@ -18,7 +18,7 @@ const SimpleHowItWorks = () => {
                             </svg>
                         </div>
                         <h3 className="text-xl font-black text-white mb-4">Find open jobs that are perfect for you</h3>
-                        <p className="text-gray-400 font-medium leading-relaxed">Search 500,000+ verified open roles filtered by your visa type, role, and location.</p>
+                        <p className="text-gray-400 font-medium leading-relaxed">Search verified open roles filtered by your visa type, role, and location.</p>
                     </div>
 
                     {/* Step 2 */}

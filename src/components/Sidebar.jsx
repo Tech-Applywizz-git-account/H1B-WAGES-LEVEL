@@ -11,7 +11,8 @@ import {
     Shield,
     PlayCircle,
     HelpCircle,
-    LogOut
+    LogOut,
+    ListFilter
 } from "lucide-react";
 import useAuth from '../hooks/useAuth';
 
@@ -42,6 +43,7 @@ const Sidebar = ({ className = "", showHeader = true }) => {
 
     const tabs = [
         { id: "overview", label: "Overview", icon: LayoutDashboard },
+        { id: "all_jobs", label: "All Jobs", icon: ListFilter },
         { id: "saved", label: "Saved Jobs", icon: Heart },
         { id: "applied", label: "Applied Jobs", icon: Briefcase },
         { id: "profile", label: "Profile", icon: User },

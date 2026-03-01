@@ -146,7 +146,8 @@ export const syncAuditReviews = async () => {
             }
         }
 
-        console.log(`✅ Synced ${totalInserted} audit reviews`);
+        // Silence inserted log
+
         return { success: true, recordsSynced: totalInserted };
 
     } catch (error) {
@@ -217,9 +218,10 @@ export const syncSponsoredJobs = async () => {
         // Helper to fix invalid "null" strings in timestamps
         const fixTimestamp = (ts) => (ts === 'null' || !ts) ? null : ts;
 
-        // Insert in smaller batches to handle parallel wage lookups
-        const batchSize = 100;
+        // Insert in smaller batches to handle parallel wage lookups safely
+        const batchSize = 5;
         let totalInserted = 0;
+        const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
         for (let i = 0; i < newData.length; i += batchSize) {
             const batchRaw = newData.slice(i, i + batchSize);
@@ -259,9 +261,15 @@ export const syncSponsoredJobs = async () => {
             } else {
                 totalInserted += batch.length;
             }
+
+            // Small cooldown to prevent rate limiting/525 errors
+            if (i + batchSize < newData.length) {
+                await delay(200);
+            }
         }
 
-        console.log(`✅ Synced ${totalInserted} sponsored jobs`);
+        // Silence spawned sync log
+
         return { success: true, recordsSynced: totalInserted };
 
     } catch (error) {
@@ -302,7 +310,8 @@ export const runFullSync = async (force = false) => {
         return { skipped: true };
     }
 
-    console.log('🚀 Starting full data sync from external database...');
+    // Silence full sync log
+
     const results = {};
 
     // Sync audit reviews

@@ -8,6 +8,7 @@ import Sidebar from "../components/Sidebar";
 import AppHeader from "../components/AppHeader";
 import AdminOverview from "../components/AdminOverview";
 import UserOverview from "../components/UserOverview";
+import AllJobsTab from "../components/AllJobsTab";
 import SavedJobsTab from "../components/SavedJobsTab";
 import AppliedJobsTab from "../components/AppliedJobsTab";
 import BillingTab from "../components/BillingTab";
@@ -19,6 +20,7 @@ const Dashboard = () => {
     const { user, loading, isAdmin, checkingSub } = useAuth();
 
     const [activeTab, setActiveTab] = useState(location.state?.initialTab || "overview");
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
     useEffect(() => {
         if (location.state?.initialTab && location.state.initialTab !== activeTab) {
@@ -31,6 +33,11 @@ const Dashboard = () => {
             navigate("/login");
         }
     }, [loading, user, navigate]);
+
+    // Close sidebar on tab change (mobile)
+    useEffect(() => {
+        setMobileSidebarOpen(false);
+    }, [activeTab]);
 
     if (loading || checkingSub) {
         return (
@@ -45,6 +52,8 @@ const Dashboard = () => {
             case "overview":
             case "dashboard":
                 return isAdmin ? <AdminOverview /> : <UserOverview />;
+            case "all_jobs":
+                return <AllJobsTab />;
             case "saved":
                 return <SavedJobsTab />;
             case "applied":
@@ -65,6 +74,7 @@ const Dashboard = () => {
         const labels = {
             overview: 'Dashboard Overview',
             dashboard: 'Dashboard Overview',
+            all_jobs: 'All Sponsored Jobs',
             saved: 'Saved Jobs',
             applied: 'Applied Jobs',
             profile: 'Profile Settings',
@@ -76,17 +86,34 @@ const Dashboard = () => {
     };
 
     return (
-        <div className="flex h-screen bg-[#fafafa] overflow-hidden">
-            {/* Sidebar with restored functional tabs */}
-            <Sidebar />
+        <div className="flex h-screen bg-[#fafafa] overflow-hidden relative">
+            {/* Sidebar with mobile support */}
+            <div className={`
+                fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out bg-white 
+                md:relative md:translate-x-0
+                ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+            `}>
+                <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+            </div>
+
+            {/* Mobile Sidebar Overlay */}
+            {mobileSidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black/20 z-40 md:hidden backdrop-blur-sm"
+                    onClick={() => setMobileSidebarOpen(false)}
+                />
+            )}
 
             {/* Main Content */}
-            <div className="flex-1 flex flex-col min-w-0">
-                <AppHeader title={getTitle()} />
+            <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+                <AppHeader
+                    title={getTitle()}
+                    onMenuClick={() => setMobileSidebarOpen(true)}
+                />
 
                 {/* Scrollable Container */}
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    <div className="p-8 max-w-7xl mx-auto">
+                <div className="flex-1 overflow-y-auto custom-scrollbar bg-[#fcfcfc]">
+                    <div className="p-4 md:p-8 max-w-7xl mx-auto w-full">
                         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                             {renderContent()}
                         </div>

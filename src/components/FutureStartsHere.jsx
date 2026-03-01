@@ -3,7 +3,7 @@ import { ArrowRight, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const features = [
-    '500,000+ verified open roles',
+    'Verified open roles',
     'H-1B, F-1 (OPT/CPT), TN, E-3, J-1 & Green Cards',
     'Constantly updated with new jobs',
     'Salary & company info for every role',

@@ -3,7 +3,6 @@ import {
     MapPin,
     Clock,
     Briefcase,
-    ExternalLink,
     Bookmark,
     BookmarkCheck,
     CheckCircle,
@@ -13,6 +12,7 @@ import {
 import { supabase } from '../supabaseClient';
 import useAuth from '../hooks/useAuth';
 import { getWageLevel } from '../dataSyncService';
+import LogoBox from './LogoBox';
 
 const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onApplyToggle }) => {
     const { user, subscriptionExpired } = useAuth();
@@ -26,7 +26,7 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
     useEffect(() => {
         if (job.wage_level) {
             setWageInfo({
-                level: job.wage_level,
+                level: job.wage_level.replace(/^Level\s+/i, 'Lv '),
                 yearly: (job.salary || '').replace(/[^0-9]/g, ''),
                 loading: false
             });
@@ -43,7 +43,7 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                 if (results && results.length > 0) {
                     const match = results[0];
                     setWageInfo({
-                        level: match['Wage Level'] || 'Lv 2',
+                        level: match['Wage Level'] || 'Level 2',
                         hourly: match['Hourly'],
                         yearly: match['Yearly'],
                         loading: false
@@ -82,11 +82,6 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
         }
     };
 
-    const getCompanyInitials = (name) => {
-        if (!name) return '??';
-        return name.split(' ').map(n => n[0]).join('').substring(0, 3).toUpperCase();
-    };
-
     const formatDate = (dateStr) => {
         if (!dateStr) return 'Recently';
         try {
@@ -105,14 +100,13 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
 
                 {/* 1. Brand Section */}
                 <div className="flex items-center gap-5 lg:min-w-[280px]">
-                    <div className="w-16 h-16 border border-gray-100 rounded-2xl bg-[#fafafa] flex items-center justify-center text-xl font-black text-[#24385E]/30 shrink-0 group-hover:scale-105 transition-transform duration-300">
-                        {getCompanyInitials(job.company)}
-                    </div>
+                    <LogoBox name={job.company} size={64} fontSize={20} />
+
                     <div className="flex flex-col min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                             <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full uppercase tracking-widest flex items-center gap-1.5 border border-emerald-100/50">
                                 <CheckCircle size={10} className="fill-emerald-600 text-white" />
-                                Verified
+                                Human Verified
                             </span>
                             <span className="text-[10px] font-black text-[#24385E] bg-orange-50 px-2.5 py-1 rounded-full uppercase tracking-widest border border-orange-100/50">
                                 Sponsored
@@ -149,7 +143,6 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                 {/* 3. Wage & Actions Section */}
                 <div className="flex items-center gap-5 shrink-0 lg:pl-6 lg:border-l border-gray-50">
 
-                    {/* Wage Level Minimalist Badge */}
                     <div className="bg-[#24385E] rounded-2xl p-4 flex flex-col items-center justify-center text-white min-w-[110px] shadow-lg shadow-[#24385E]/10 relative group-hover:bg-[#1a2b4a] transition-colors border border-white/5">
                         <div className="flex gap-0.5 mb-1.5">
                             {[1, 2, 3, 4].map((star) => {
@@ -158,16 +151,16 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                                     <Star
                                         key={star}
                                         size={10}
-                                        className={star <= level ? "fill-[#FDB913] text-[#FDB913]" : "text-white/10"}
+                                        className={star <= level ? "fill-[#FDB913] text-[#FDB913]" : "text-[#4a5e7a]"}
                                     />
                                 );
                             })}
                         </div>
-                        <div className="text-2xl font-black leading-none mb-1">
+                        <div className="text-2xl font-black italic leading-none mb-1">
                             {wageInfo.loading ? '...' : (wageInfo.level || 'Lv 2')}
                         </div>
-                        <div className="text-[8px] font-black text-white/50 uppercase tracking-[2px]">
-                            Wage Level
+                        <div className="text-[8px] font-black text-[#7a9bbf] uppercase tracking-[2px]">
+                            WAGE LEVEL
                         </div>
                     </div>
 

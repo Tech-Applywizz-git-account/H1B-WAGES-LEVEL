@@ -4,7 +4,7 @@ import { CheckCircle, Globe, DollarSign, Mail, Shield, Clock } from 'lucide-reac
 const features = [
     {
         icon: <Globe className="w-8 h-8 text-accent-blue" />,
-        title: '500,000+ Verified Open Roles',
+        title: 'Verified Open Roles',
         description: 'Access a massive database of job opportunities updated daily',
     },
     {

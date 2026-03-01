@@ -124,7 +124,7 @@ const JobSearch = () => {
                                 </h1>
 
                                 <p className="text-base sm:text-xl md:text-2xl text-gray-200 mb-6 sm:mb-8 max-w-3xl mx-auto">
-                                    500,000+ verified roles with H-1B, OPT, Green Card, and other visa sponsorships
+                                    Verified roles with H-1B, OPT, Green Card, and other visa sponsorships
                                 </p>
 
                                 <form onSubmit={(e) => e.preventDefault()} className="max-w-2xl mx-auto mb-6 sm:mb-8">
@@ -241,7 +241,7 @@ const JobSearch = () => {
                 {/* Results Section */}
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
                     <p className="text-sm sm:text-base text-gray-600 mb-4 sm:mb-6">
-                        Showing {mockJobs.length} of 500,000+ open jobs
+                        Showing {mockJobs.length} open jobs
                     </p>
 
                     <div className="grid lg:grid-cols-2 gap-4 sm:gap-6">
