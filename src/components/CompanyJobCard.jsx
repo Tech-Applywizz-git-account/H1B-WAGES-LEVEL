@@ -124,15 +124,17 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{
-                            fontSize: '9px', fontWeight: 800, color: '#16a34a',
-                            background: '#f0fdf4', border: '1px solid #bbf7d0',
-                            borderRadius: '6px', padding: '3px 8px',
-                            display: 'inline-flex', alignItems: 'center', gap: '5px',
-                            textTransform: 'uppercase', letterSpacing: '0.5px'
-                        }}>
-                            Human Verified <svg width="12" height="12" viewBox="0 0 100 100"><path d="M50 4 L57 16 L70 10 L70 24 L84 24 L78 37 L91 44 L81 55 L88 68 L74 69 L70 83 L57 78 L50 90 L43 78 L30 83 L26 69 L12 68 L19 55 L9 44 L22 37 L16 24 L30 24 L30 10 L43 16 Z" fill="#22c55e" /><polyline points="33,52 44,63 68,38" fill="none" stroke="white" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        </span>
+                        {job.isVerified && (
+                            <span style={{
+                                fontSize: '9px', fontWeight: 800, color: '#16a34a',
+                                background: '#f0fdf4', border: '1px solid #bbf7d0',
+                                borderRadius: '6px', padding: '3px 8px',
+                                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                textTransform: 'uppercase', letterSpacing: '0.5px'
+                            }}>
+                                Human Verified <svg width="12" height="12" viewBox="0 0 100 100"><path d="M50 4 L57 16 L70 10 L70 24 L84 24 L78 37 L91 44 L81 55 L88 68 L74 69 L70 83 L57 78 L50 90 L43 78 L30 83 L26 69 L12 68 L19 55 L9 44 L22 37 L16 24 L30 24 L30 10 L43 16 Z" fill="#22c55e" /><polyline points="33,52 44,63 68,38" fill="none" stroke="white" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            </span>
+                        )}
                     </div>
                 </div>
             </div>

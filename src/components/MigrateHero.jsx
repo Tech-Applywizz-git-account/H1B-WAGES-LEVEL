@@ -174,7 +174,10 @@ const MigrateHero = () => {
                 }
             }
         } catch (err) {
-            console.error('Error fetching companies:', err);
+            const isNetworkError = err.message?.includes('fetch') || !window.navigator.onLine;
+            if (!isNetworkError) {
+                console.error('Error fetching companies:', err);
+            }
             setCompanies([]);
         } finally {
             setCompaniesLoading(false);
@@ -223,7 +226,10 @@ const MigrateHero = () => {
                 total: count || 0
             };
         } catch (err) {
-            console.error('Error fetching jobs:', err);
+            const isNetworkError = err.message?.includes('fetch') || !window.navigator.onLine;
+            if (!isNetworkError) {
+                console.error('Error fetching jobs:', err);
+            }
         } finally {
             setJobsLoading(false);
         }

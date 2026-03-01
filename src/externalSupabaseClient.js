@@ -26,7 +26,8 @@ const customFetch = async (url, options) => {
         } catch (err) {
             const isRetryable = err.message.includes('525') ||
                 err.message.includes('Failed to fetch') ||
-                err.name === 'TypeError'; // Often network disconnected error
+                err.name === 'TypeError' || // Often network disconnected error
+                err.name === 'AuthRetryableFetchError';
 
             if (isRetryable && retries < maxRetries && isDev) {
                 retries++;
@@ -37,9 +38,12 @@ const customFetch = async (url, options) => {
                 continue;
             }
 
-            // Log only on final failure to maintain a clean console
+            // Only log on the absolute final failure if NOT a standard network disconnect
             if (retries >= maxRetries) {
-                console.error('❌ External DB final failure:', err.message, url);
+                const isNetworkDisconnect = err.message.includes('Failed to fetch') || err.message.includes('network') || !window.navigator.onLine;
+                if (!isNetworkDisconnect) {
+                    console.error('❌ External DB final failure:', err.message, url);
+                }
             }
             throw err;
         }

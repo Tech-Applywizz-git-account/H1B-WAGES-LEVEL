@@ -524,38 +524,39 @@ export function AuthProvider({ children }) {
 
     const init = async () => {
       try {
-
-
         // Set a loading timeout to prevent infinite loading
         initTimeout = setTimeout(() => {
           if (isMounted && !isAuthInitialized.current) {
-            // Only fallback if we haven't initialized yet
             const storedRole = localStorage.getItem("userRole");
-            if (storedRole && !role) {
-              setRole(storedRole);
-            }
+            if (storedRole && !role) setRole(storedRole);
             setLoading(false);
           }
         }, 8000);
 
-        // Get session and user in parallel for faster load
-        const [sessionPromise, userPromise] = await Promise.allSettled([
-          supabase.auth.getSession(),
-          supabase.auth.getUser()
-        ]);
+        // 1. Get session first (usually from local storage, very fast)
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-        let currentUser = null;
+        if (sessionError) throw sessionError;
 
-        // Prefer fresh user data, fallback to session
-        if (userPromise.status === 'fulfilled' && userPromise.value?.data?.user) {
-          currentUser = userPromise.value.data.user;
-        } else if (sessionPromise.status === 'fulfilled' && sessionPromise.value?.data?.session?.user) {
-          currentUser = sessionPromise.value.data.session.user;
+        let currentUser = session?.user || null;
+
+        // 2. ONLY if we have a session, verify it with getUser() to prevent 403 logs
+        if (currentUser) {
+          try {
+            const { data: { user: freshUser }, error: userError } = await supabase.auth.getUser();
+            if (userError) {
+              // If getUser fails (e.g. 403/expired), we rely on state being cleared by onAuthStateChange
+            } else if (freshUser) {
+              currentUser = freshUser;
+            }
+          } catch (e) {
+            // Silence getUser verification errors to keep console clean
+          }
         }
 
         if (currentUser && isMounted) {
           setUser(currentUser);
-          // Load role but don't wait for it to finish before setting loading to false
+          // Load role in background
           loadUserRole(currentUser).finally(() => {
             if (isMounted) {
               isAuthInitialized.current = true;
@@ -575,7 +576,11 @@ export function AuthProvider({ children }) {
         }
 
       } catch (err) {
-        console.error("💥 Error during auth init:", err);
+        const isNetworkError = err.message?.includes('fetch') || !window.navigator.onLine;
+        if (!isNetworkError) {
+          // Only log unexpected non-network errors
+          console.error("💥 Error during auth init:", err);
+        }
         if (isMounted) {
           isAuthInitialized.current = true;
           clearTimeout(initTimeout);

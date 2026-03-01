@@ -41,9 +41,15 @@ const Login = () => {
             navigate("/app", { replace: true });
 
         } catch (err) {
-            console.error("💥 Login error:", err);
+            const isNetworkError = err.message?.includes('fetch') || !window.navigator.onLine;
+            if (!isNetworkError) {
+                console.error("💥 Login error:", err);
+            }
             setError(err.message || "Login failed. Try again.");
-            await supabase.auth.signOut();
+            // Only sign out if we genuinely had an auth error, and do it quietly
+            if (!isNetworkError) {
+                supabase.auth.signOut().catch(() => { });
+            }
         } finally {
             setLoading(false);
         }

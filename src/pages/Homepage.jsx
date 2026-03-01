@@ -30,11 +30,13 @@ import AllJobsTab from '../components/AllJobsTab';
 // ─── Teaser Dashboard (unpaid users) ─────────────────────────────────────────
 
 // ─── Teaser Dashboard (unpaid users) ─────────────────────────────────────────
-const TeaserDashboard = ({ user, signOut, navigate }) => {
+const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
   const [teaserCompanies, setTeaserCompanies] = useState([]);
   const [selectedTeaserCompany, setSelectedTeaserCompany] = useState(null);
   const [teaserJobs, setTeaserJobs] = useState([]);
   const [teaserLoading, setTeaserLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileActiveCol, setMobileActiveCol] = useState('left'); // 'left' or 'right'
 
   const TARGET_NAMES = ['Google', 'Microsoft'];
   const LOGOS = {
@@ -93,25 +95,57 @@ const TeaserDashboard = ({ user, signOut, navigate }) => {
   const handleSelect = (c) => {
     setSelectedTeaserCompany(c);
     setTeaserJobs(c.jobs);
+    if (isMobile) setMobileActiveCol('right');
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#f8fafc', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#f8fafc', fontFamily: "'Inter', sans-serif", position: 'relative' }}>
+
+      {/* Sidebar Overlay for Mobile */}
+      {isMobile && mobileMenuOpen && (
+        <div
+          onClick={() => setMobileMenuOpen(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 90 }}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside style={{ width: 260, background: '#fff', borderRight: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => navigate('/')}>
-            <div style={{ width: 40, height: 40, background: '#24385E', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ color: '#fff', fontWeight: 900, fontSize: 12 }}>H1-B</span>
+      <aside style={{
+        width: isMobile ? (mobileMenuOpen ? '280px' : '0') : '260px',
+        minWidth: isMobile ? (mobileMenuOpen ? '280px' : '0') : '260px',
+        background: '#fff',
+        borderRight: '1px solid #e2e8f0',
+        display: 'flex',
+        flexDirection: 'column',
+        position: isMobile ? 'fixed' : 'relative',
+        zIndex: 100,
+        height: '100vh',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        overflow: 'hidden'
+      }}>
+        <div style={{ padding: '24px', minWidth: '260px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => navigate('/')}>
+              <div style={{ width: 40, height: 40, background: '#24385E', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ color: '#fff', fontWeight: 900, fontSize: 12 }}>H1-B</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
+                <span style={{ fontSize: 18, fontWeight: 800, color: '#24385E' }}>Wage</span>
+                <span style={{ fontSize: 18, fontWeight: 800, color: '#FDB913' }}>Level</span>
+              </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
-              <span style={{ fontSize: 18, fontWeight: 800, color: '#24385E' }}>Wage</span>
-              <span style={{ fontSize: 18, fontWeight: 800, color: '#FDB913' }}>Level</span>
-            </div>
+            {isMobile && (
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                style={{ background: 'transparent', border: 'none', color: '#666' }}
+              >
+                <X size={24} />
+              </button>
+            )}
           </div>
         </div>
 
-        <nav style={{ flex: 1, padding: '0 12px' }}>
+        <nav style={{ flex: 1, padding: '0 12px', minWidth: '260px' }}>
           {[
             { label: 'Dashboard', icon: Building2, active: true },
             { label: 'Pricing Plans', icon: Gift, onClick: () => navigate('/pricing') },
@@ -136,7 +170,7 @@ const TeaserDashboard = ({ user, signOut, navigate }) => {
           })}
         </nav>
 
-        <div style={{ padding: '16px', borderTop: '1px solid #e2e8f0' }}>
+        <div style={{ padding: '16px', borderTop: '1px solid #e2e8f0', minWidth: '260px' }}>
           <button onClick={signOut} style={{
             width: '100%', display: 'flex', alignItems: 'center', gap: 10,
             padding: '10px', borderRadius: 8, fontSize: 14, color: '#ef4444',
@@ -148,23 +182,44 @@ const TeaserDashboard = ({ user, signOut, navigate }) => {
       </aside>
 
       {/* Main Content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <header style={{ background: '#fff', borderBottom: '1px solid #e2e8f0', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+        <header style={{
+          background: '#fff',
+          borderBottom: '1px solid #e2e8f0',
+          padding: isMobile ? '0 16px' : '16px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: isMobile ? 'space-between' : 'space-between',
+          height: isMobile ? '60px' : 'auto',
+          flexShrink: 0
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {isMobile && (
+              <button onClick={() => setMobileMenuOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', marginLeft: '-8px' }}>
+                <Menu size={24} color="#24385E" />
+              </button>
+            )}
             <Building2 size={20} color="#24385E" />
-            <span style={{ fontWeight: 600 }}>Limited Preview</span>
+            <span style={{ fontWeight: 600, fontSize: isMobile ? '14px' : '16px' }}>Limited Preview</span>
           </div>
           <button onClick={() => navigate('/pricing')} style={{
             background: '#FDB913', color: '#24385E', border: 'none',
-            padding: '8px 20px', borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: 'pointer'
+            padding: isMobile ? '8px 12px' : '8px 20px', borderRadius: 8, fontWeight: 700, fontSize: isMobile ? '12px' : '13px', cursor: 'pointer'
           }}>
             Unlock Full Access
           </button>
         </header>
 
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
           {/* Company List */}
-          <div style={{ width: 380, background: '#f8fafc', borderRight: '1px solid #e2e8f0', overflowY: 'auto', padding: '16px' }}>
+          <div style={{
+            width: isMobile ? '100%' : '380px',
+            background: '#f8fafc',
+            borderRight: isMobile ? 'none' : '1px solid #e2e8f0',
+            overflowY: 'auto',
+            padding: '16px',
+            display: (isMobile && mobileActiveCol === 'right') ? 'none' : 'block'
+          }}>
             <h3 style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 16, textTransform: 'uppercase' }}>Featured Companies</h3>
             {teaserLoading ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Loader2 className="animate-spin" color="#24385E" /></div>
@@ -204,35 +259,47 @@ const TeaserDashboard = ({ user, signOut, navigate }) => {
           </div>
 
           {/* Job Details */}
-          <div style={{ flex: 1, background: '#fff', overflowY: 'auto', padding: '32px' }}>
+          <div style={{
+            flex: 1,
+            background: '#fff',
+            overflowY: 'auto',
+            padding: isMobile ? '20px' : '32px',
+            display: (isMobile && mobileActiveCol === 'left') ? 'none' : 'block'
+          }}>
             {selectedTeaserCompany ? (
               <>
+                {isMobile && mobileActiveCol === 'right' && (
+                  <button onClick={() => setMobileActiveCol('left')} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', padding: '0 0 16px', color: '#24385E', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
+                    <ChevronLeft size={18} /> Back to companies
+                  </button>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-                  <LogoBox name={selectedTeaserCompany.name} size={60} fontSize={18} />
+                  <LogoBox name={selectedTeaserCompany.name} size={isMobile ? 50 : 60} fontSize={isMobile ? 16 : 18} />
                   <div>
-                    <h2 style={{ fontSize: 24, fontWeight: 800, color: '#24385E', margin: 0 }}>{selectedTeaserCompany.name}</h2>
-                    <p style={{ color: '#64748b', margin: '4px 0 0' }}>{selectedTeaserCompany.count}+ Visa Opportunities Found</p>
+                    <h2 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: '#24385E', margin: 0 }}>{selectedTeaserCompany.name}</h2>
+                    <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: isMobile ? 13 : 14 }}>{selectedTeaserCompany.count}+ Visa Opportunities Found</p>
                   </div>
                 </div>
 
                 <div style={{ marginBottom: 32 }}>
                   <h4 style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', marginBottom: 12 }}>Current Openings</h4>
                   {teaserJobs.map((job, idx) => (
-                    <CompanyJobCard key={idx} job={job} />
+                    <CompanyJobCard key={idx} job={job} isMobile={isMobile} />
                   ))}
                 </div>
 
                 <div style={{
-                  padding: '32px', background: 'linear-gradient(135deg, #24385E 0%, #1e293b 100%)',
+                  padding: isMobile ? '24px' : '32px', background: 'linear-gradient(135deg, #24385E 0%, #1e293b 100%)',
                   borderRadius: 24, textAlign: 'center', color: '#fff', boxShadow: '0 12px 32px rgba(36,56,94,0.25)',
                   position: 'relative', overflow: 'hidden'
                 }}>
                   <div style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, background: 'rgba(253,185,19,0.1)', borderRadius: '50%' }}></div>
-                  <h3 style={{ fontSize: 24, fontWeight: 900, marginBottom: 12, position: 'relative' }}>Unlock Premium Access</h3>
-                  <p style={{ color: '#cbd5e1', marginBottom: 28, fontSize: 15, position: 'relative', maxWidth: 460, margin: '0 auto 28px' }}>
+                  <h3 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 900, marginBottom: 12, position: 'relative' }}>Unlock Premium Access</h3>
+                  <p style={{ color: '#cbd5e1', marginBottom: 28, fontSize: isMobile ? 14 : 15, position: 'relative', maxWidth: 460, margin: '0 auto 28px' }}>
                     Get the full wage levels, historic sponsorship records, and direct application links for every company.
                   </p>
                   <button onClick={() => navigate('/pricing')} style={{
+                    width: isMobile ? '100%' : 'auto',
                     padding: '14px 40px', background: '#FDB913', color: '#24385E',
                     border: 'none', borderRadius: 12, fontWeight: 900, cursor: 'pointer',
                     fontSize: 15, transition: 'all 0.2s', boxShadow: '0 4px 15px rgba(253,185,19,0.4)',
@@ -243,7 +310,7 @@ const TeaserDashboard = ({ user, signOut, navigate }) => {
                 </div>
               </>
             ) : (
-              <div style={{ textAlign: 'center', padding: 100, color: '#64748b' }}>
+              <div style={{ textAlign: 'center', padding: isMobile ? 40 : 100, color: '#64748b' }}>
                 <Building2 size={48} style={{ marginBottom: 16, opacity: 0.2 }} />
                 <p>Select a company to view available roles</p>
               </div>
@@ -396,7 +463,9 @@ const Homepage = () => {
       buildAndSetCompanies(confirmedNames, jobData, false);
 
     } catch (err) {
-      console.error("fetchCompanies Error:", err);
+      if (!err.message?.includes('fetch') && window.navigator.onLine) {
+        console.error("fetchCompanies Error:", err);
+      }
     } finally {
       setCompaniesLoading(false);
     }
@@ -501,7 +570,11 @@ const Homepage = () => {
           }));
         }
       }
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      if (!err.message?.includes('fetch') && window.navigator.onLine) {
+        console.error("fetchCompanyJobs Error:", err);
+      }
+    }
     finally { setJobsLoading(false); }
   }, [user, selectedCompany, subscriptionExpired, debouncedJobSearch, jobPage, jobLevelFilter, paymentStatus, selectedCompanyData]);
 
@@ -523,15 +596,29 @@ const Homepage = () => {
 
   const fetchSavedJobIds = async () => {
     if (!user) return;
-    await new Promise(r => setTimeout(r, 100)); // Stagger load to prevent 525
-    const { data } = await supabase.from('saved_jobs').select('job_id').eq('user_id', user.id);
-    if (data) setSavedJobIds(new Set(data.map(i => String(i.job_id))));
+    try {
+      await new Promise(r => setTimeout(r, 100)); // Stagger load to prevent 525
+      const { data, error } = await supabase.from('saved_jobs').select('job_id').eq('user_id', user.id);
+      if (error) throw error;
+      if (data) setSavedJobIds(new Set(data.map(i => String(i.job_id))));
+    } catch (err) {
+      if (!err.message?.includes('fetch') && window.navigator.onLine) {
+        console.error("fetchSavedJobIds Error:", err);
+      }
+    }
   };
   const fetchAppliedJobIds = async () => {
     if (!user) return;
-    await new Promise(r => setTimeout(r, 200)); // Stagger load to prevent 525
-    const { data } = await supabase.from('applied_jobs').select('job_id').eq('user_id', user.id);
-    if (data) setAppliedJobIds(new Set(data.map(i => String(i.job_id))));
+    try {
+      await new Promise(r => setTimeout(r, 200)); // Stagger load to prevent 525
+      const { data, error } = await supabase.from('applied_jobs').select('job_id').eq('user_id', user.id);
+      if (error) throw error;
+      if (data) setAppliedJobIds(new Set(data.map(i => String(i.job_id))));
+    } catch (err) {
+      if (!err.message?.includes('fetch') && window.navigator.onLine) {
+        console.error("fetchAppliedJobIds Error:", err);
+      }
+    }
   };
 
   const handleSaveJob = async (job) => {
@@ -563,7 +650,7 @@ const Homepage = () => {
 
   // ── Payment gate: show teaser if not paid ──
   const isPaid = paymentStatus === 'paid' || paymentStatus === 'active';
-  if (!isPaid) return <TeaserDashboard user={user} signOut={handleLogout} navigate={navigate} />;
+  if (!isPaid) return <TeaserDashboard user={user} signOut={handleLogout} navigate={navigate} isMobile={isMobile} />;
 
   const navItems = [
     { id: 'all_jobs', label: 'All Jobs', icon: Briefcase },
@@ -859,6 +946,7 @@ const Homepage = () => {
                   ) : companies.length > 0 ? companies.map((c, i) => (
                     <CompanyCard key={c.company + i} company={c.company} jobCount={c.jobCount}
                       isMobile={isMobile}
+                      isVerified={true}
                       wageLevel={c.wageLevel} industries={c.industries}
                       isSelected={selectedCompany === c.company} onClick={() => handleCompanySelect(c)} />
                   )) : (
@@ -1007,7 +1095,7 @@ const Homepage = () => {
                       ) : companyJobs.length > 0 ? (
                         <>
                           {companyJobs.map((job, i) => (
-                            <CompanyJobCard key={job.url || job.id || i} job={job}
+                            <CompanyJobCard key={job.url || job.id || i} job={{ ...job, isVerified: true }}
                               isMobile={isMobile}
                               isSaved={savedJobIds.has(String(job.id || job.job_id || job.audit_id))}
                               onSave={handleSaveJob} />

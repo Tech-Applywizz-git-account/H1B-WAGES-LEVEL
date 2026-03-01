@@ -98,92 +98,95 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
         <div className="group bg-white rounded-[24px] border border-gray-100 p-5 mb-5 shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-all duration-300 relative overflow-hidden">
             <div className="flex flex-col lg:flex-row lg:items-center gap-6">
 
-                {/* 1. Brand Section */}
-                <div className="flex items-center gap-5 lg:min-w-[280px]">
-                    <LogoBox name={job.company} size={64} fontSize={20} />
+                {/* 1. Brand & Info Section */}
+                <div className="flex gap-6 flex-1 min-w-0">
+                    <div className="shrink-0 pt-1">
+                        <LogoBox name={job.company} size={64} fontSize={20} />
+                    </div>
 
-                    <div className="flex flex-col min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full uppercase tracking-widest flex items-center gap-1.5 border border-emerald-100/50">
-                                <CheckCircle size={10} className="fill-emerald-600 text-white" />
-                                Human Verified
-                            </span>
-                            <span className="text-[10px] font-black text-[#24385E] bg-orange-50 px-2.5 py-1 rounded-full uppercase tracking-widest border border-orange-100/50">
-                                Sponsored
-                            </span>
+                    <div className="flex-1 min-w-0">
+                        {/* Row 1: Company + Date */}
+                        <div className="flex items-center justify-between mb-1.5 pr-4">
+                            <span className="text-[14px] font-bold text-[#a0aec0] tracking-tight">{job.company || 'Company Name'}</span>
+                            <span className="text-[13px] font-bold text-[#a0aec0]">{formatDate(job.date_posted)}</span>
                         </div>
-                        <h2 className="text-[20px] font-black text-[#24385E] leading-tight truncate px-0.5">
-                            {job.company || 'Company Name'}
+
+                        {/* Row 2: Title */}
+                        <h2 className="text-[24px] font-black text-[#111] leading-tight mb-2.5 truncate">
+                            {job.title || job.role || 'Not Specified'}
                         </h2>
+
+                        {/* Row 3: Location */}
+                        <div className="flex items-center gap-1.5 mb-4 text-[#a0aec0]">
+                            <MapPin size={16} color="#cbd5e0" />
+                            <span className="text-[14px] font-bold">{job.location || 'United States'}</span>
+                        </div>
+
+                        {/* Row 4: Meta info pills */}
+                        <div className="flex flex-wrap items-center gap-3 mb-4">
+                            <div className="inline-flex items-center px-4 py-2 bg-white rounded-xl border border-[#edf2f7] text-[#718096]">
+                                <span className="text-[13px] font-bold">{job.years_exp_required || 'Open exp.'}</span>
+                            </div>
+                        </div>
+
+                        {/* Row 5: Badges */}
+                        <div className="flex items-center gap-3">
+                            {job.isVerified && (
+                                <span className="text-[11px] font-black text-[#059669] bg-[#f0fdf4] px-3.5 py-2 rounded-xl uppercase tracking-widest flex items-center gap-2 border border-[#dcfce7]">
+                                    HUMAN VERIFIED <CheckCircle size={14} />
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                {/* 2. Role Details Section */}
-                <div className="flex-1 min-w-0">
-                    <h3 className="text-[17px] font-bold text-[#24385E] mb-3 truncate">
-                        {job.title || job.role || 'Not Specified'}
-                    </h3>
 
-                    <div className="flex flex-wrap items-center gap-3">
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#fafafa] rounded-xl border border-gray-100/80 text-gray-500">
-                            <MapPin size={14} className="text-[#FDB913]" />
-                            <span className="text-[12px] font-bold">{job.location || 'United States'}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#fafafa] rounded-xl border border-gray-100/80 text-gray-500">
-                            <Briefcase size={14} className="text-[#FDB913]" />
-                            <span className="text-[12px] font-bold">{job.years_exp_required || 'Open exp.'}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#fafafa] rounded-xl border border-gray-100/80 text-gray-500">
-                            <Clock size={14} className="text-[#FDB913]" />
-                            <span className="text-[12px] font-bold">{formatDate(job.date_posted)}</span>
-                        </div>
-                    </div>
-                </div>
 
                 {/* 3. Wage & Actions Section */}
                 <div className="flex items-center gap-5 shrink-0 lg:pl-6 lg:border-l border-gray-50">
 
-                    <div className="bg-[#24385E] rounded-2xl p-4 flex flex-col items-center justify-center text-white min-w-[110px] shadow-lg shadow-[#24385E]/10 relative group-hover:bg-[#1a2b4a] transition-colors border border-white/5">
-                        <div className="flex gap-0.5 mb-1.5">
+                    <div className="bg-[#1a2b4b] rounded-3xl p-6 flex flex-col items-center justify-center text-white w-full shadow-xl shadow-[#1a2b4b]/15 transition-all duration-300">
+                        <div className="flex gap-1 mb-2">
                             {[1, 2, 3, 4].map((star) => {
                                 const level = parseInt(wageInfo.level?.match(/\d/)?.[0] || '2');
                                 return (
                                     <Star
                                         key={star}
-                                        size={10}
-                                        className={star <= level ? "fill-[#FDB913] text-[#FDB913]" : "text-[#4a5e7a]"}
+                                        size={14}
+                                        className={star <= level ? "fill-[#FDB913] text-[#FDB913]" : "text-[#3d4d6b]"}
+                                        strokeWidth={2.5}
                                     />
                                 );
                             })}
                         </div>
-                        <div className="text-2xl font-black italic leading-none mb-1">
+                        <div className="text-4xl font-black italic leading-none mb-1.5">
                             {wageInfo.loading ? '...' : (wageInfo.level || 'Lv 2')}
                         </div>
-                        <div className="text-[8px] font-black text-[#7a9bbf] uppercase tracking-[2px]">
+                        <div className="text-[10px] font-black text-[#718096] uppercase tracking-[2px]">
                             WAGE LEVEL
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-2 min-w-[140px]">
+                    <div className="flex gap-2 w-full">
                         <a
                             href={job.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center gap-2 w-full py-3 bg-[#FDB913] text-[#24385E] text-[13px] font-black rounded-xl hover:bg-[#24385E] hover:text-white transition-all duration-300 shadow-sm active:scale-95"
+                            className="flex-1 inline-flex items-center justify-center gap-2 py-4 bg-[#FDB913] text-[#1a1a1a] text-[16px] font-black rounded-2xl hover:bg-[#e5a607] transition-all duration-200 shadow-lg shadow-[#FDB913]/25 active:scale-95"
                         >
-                            Apply Link
-                            <ArrowUpRight size={16} />
+                            Apply Now
+                            <ArrowUpRight size={18} />
                         </a>
 
                         <button
                             onClick={handleSaveToggle}
                             disabled={saving}
-                            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all text-[11px] font-black uppercase tracking-wider border ${saved
-                                ? 'bg-[#FDB913]/10 border-[#FDB913]/30 text-[#24385E]'
-                                : 'bg-white border-gray-100 text-gray-400 hover:border-[#24385E]/20 hover:text-[#24385E]'
+                            className={`p-4 rounded-2xl transition-all border shrink-0 ${saved
+                                ? 'bg-[#fff7ed] border-[#FDB913]/30 text-[#FDB913]'
+                                : 'bg-white border-[#f1f5f9] text-[#cbd5e0] hover:text-[#24385E] hover:border-[#24385E]/20'
                                 }`}
                         >
-                            {saved ? 'Bookmarked' : 'Save Link'}
+                            {saved ? <BookmarkCheck size={22} /> : <Bookmark size={22} />}
                         </button>
                     </div>
                 </div>

@@ -47,112 +47,164 @@ const JobRow = ({ job, isSaved, onSave }) => {
         <div
             style={{
                 background: '#fff',
-                borderRadius: '24px',
-                border: '1px solid #f0f0f0',
-                padding: isMobile ? '20px' : '24px',
+                borderRadius: isMobile ? '16px' : '22px',
+                border: '1.2px solid #f1f5f9',
+                padding: isMobile ? '16px' : '24px',
                 marginBottom: '16px',
                 display: 'flex',
                 flexDirection: isMobile ? 'column' : 'row',
-                gap: '20px',
-                transition: 'all 0.3s ease',
-                boxShadow: hovered ? '0 12px 24px rgba(0,0,0,0.06)' : '0 2px 4px rgba(0,0,0,0.02)',
+                alignItems: isMobile ? 'stretch' : 'center',
+                gap: isMobile ? '12px' : '24px',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: hovered ? '0 12px 30px rgba(0,0,0,0.06)' : '0 2px 4px rgba(0,0,0,0.01)',
                 position: 'relative',
                 overflow: 'hidden'
             }}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {/* Left side: Logo + Info */}
-            <div style={{ display: 'flex', gap: '20px', flex: 1, minWidth: 0 }}>
-                <LogoBox name={job.company} size={isMobile ? 50 : 64} fontSize={18} />
-
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#666' }}>{job.company}</span>
-                        <span style={{ fontSize: '12px', color: '#ccc' }}>•</span>
-                        <span style={{ fontSize: '12px', color: '#888' }}>{formatDate(job.date_posted)}</span>
-                    </div>
-
-                    <h3 style={{
-                        fontSize: isMobile ? '18px' : '22px',
-                        fontWeight: 900,
-                        color: '#111',
-                        margin: '0 0 12px',
-                        lineHeight: 1.2
+            {/* Header Area for Mobile: Logo + Wage Level */}
+            {isMobile && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                    <LogoBox name={job.company} size={48} fontSize={16} />
+                    <div style={{
+                        background: '#1a2b4b',
+                        borderRadius: '12px',
+                        padding: '8px 12px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        minWidth: '70px',
+                        boxShadow: '0 4px 12px rgba(26, 43, 75, 0.1)'
                     }}>
-                        {job.title || job.job_role_name || 'Job Position'}
-                    </h3>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', padding: '6px 12px', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-                            <MapPin size={14} color="#FDB913" />
-                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>{job.location || 'United States'}</span>
+                        <div style={{ display: 'flex', gap: '2px', marginBottom: '2px' }}>
+                            {[1, 2, 3, 4].map(i => (
+                                <Star key={i} size={8}
+                                    fill={i <= level ? '#FDB913' : 'none'}
+                                    color={i <= level ? '#FDB913' : '#3d4d6b'}
+                                    strokeWidth={3}
+                                />
+                            ))}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#f8fafc', padding: '6px 12px', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-                            <Briefcase size={14} color="#FDB913" />
-                            <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>{job.years_experience || '3-5 years'}</span>
-                        </div>
+                        <span style={{ fontSize: '18px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1 }}>Lv {level}</span>
+                        <span style={{ fontSize: '7px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.5px' }}>WAGE</span>
                     </div>
-
-                    {job._verified && (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#f0fdf4', color: '#16a34a', padding: '6px 12px', borderRadius: '10px', border: '1.5px solid #bbf7d0', fontSize: '11px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                            HUMAN VERIFIED <VerifiedSeal size={12} />
-                        </div>
-                    )}
                 </div>
+            )}
+
+            {/* Left side: Logo (Desktop Only) */}
+            {!isMobile && (
+                <div style={{ flexShrink: 0 }}>
+                    <LogoBox name={job.company} size={64} fontSize={20} />
+                </div>
+            )}
+
+            {/* Middle: Content */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+                {/* Row 1: Company + Date */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ fontSize: isMobile ? '12px' : '14px', fontWeight: 700, color: '#718096' }}>{job.company}</span>
+                    <span style={{ fontSize: '12px', color: '#a0aec0', fontWeight: 700 }}>{formatDate(job.date_posted)}</span>
+                </div>
+
+                {/* Row 2: Title */}
+                <h3 style={{
+                    fontSize: isMobile ? '18px' : '21px',
+                    fontWeight: 900,
+                    color: '#111',
+                    margin: '0 0 8px',
+                    lineHeight: 1.2,
+                    letterSpacing: '-0.3px'
+                }}>
+                    {job.title || job.job_role_name || 'Job Position'}
+                </h3>
+
+                {/* Row 3: Meta Info (Location + Exp) */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'center', marginBottom: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <MapPin size={14} color="#94a3b8" />
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>{job.location || 'United States'}</span>
+                    </div>
+                    <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        background: '#f8fafc',
+                        padding: '4px 10px',
+                        borderRadius: '8px',
+                        border: '1px solid #e2e8f0'
+                    }}>
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#475569' }}>
+                            {job.years_exp_required || job.years_experience || '3-5 years exp'}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Row 4: Verified Badge */}
+                {job.isVerified && (
+                    <div style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: '#f0fdf4',
+                        color: '#16a34a',
+                        padding: '6px 12px',
+                        borderRadius: '10px',
+                        border: '1px solid #dcfce7',
+                        fontSize: '10px',
+                        fontWeight: 900,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.8px'
+                    }}>
+                        HUMAN VERIFIED <VerifiedSeal size={13} />
+                    </div>
+                )}
             </div>
 
-            {/* Right side: Wage level + Action */}
+            {/* Right side: Wage level (Desktop) + Action */}
             <div style={{
                 display: 'flex',
                 flexDirection: isMobile ? 'row' : 'column',
-                alignItems: isMobile ? 'center' : 'flex-end',
-                justifyContent: 'space-between',
-                gap: '12px',
-                minWidth: isMobile ? '0' : '160px'
+                alignItems: 'center',
+                justifyContent: isMobile ? 'flex-end' : 'center',
+                gap: isMobile ? '12px' : '16px',
+                minWidth: isMobile ? '100%' : '180px',
+                marginTop: isMobile ? '4px' : '0',
+                borderLeft: isMobile ? 'none' : '1px solid #f1f5f9',
+                paddingLeft: isMobile ? '0' : '24px'
             }}>
-                <div style={{
-                    background: '#24385E',
-                    borderRadius: '20px',
-                    padding: '12px 24px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    width: isMobile ? 'auto' : '100%',
-                    minWidth: '120px',
-                    boxShadow: '0 8px 24px rgba(36, 56, 94, 0.12)'
-                }}>
-                    <div style={{ display: 'flex', gap: '3px', marginBottom: '4px' }}>
-                        {[1, 2, 3, 4].map(i => (
-                            <Star key={i} size={11}
-                                fill={i <= level ? '#FDB913' : 'none'}
-                                color={i <= level ? '#FDB913' : '#4a5e7a'}
-                                strokeWidth={2}
-                            />
-                        ))}
+                {!isMobile && (
+                    <div style={{
+                        background: '#1a2b4b',
+                        borderRadius: '16px',
+                        padding: '12px 16px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        width: '100%',
+                        boxShadow: '0 4px 12px rgba(26, 43, 75, 0.08)',
+                        marginBottom: '8px'
+                    }}>
+                        <div style={{ display: 'flex', gap: '3px', marginBottom: '4px' }}>
+                            {[1, 2, 3, 4].map(i => (
+                                <Star key={i} size={11}
+                                    fill={i <= level ? '#FDB913' : 'none'}
+                                    color={i <= level ? '#FDB913' : '#3d4d6b'}
+                                    strokeWidth={2.5}
+                                />
+                            ))}
+                        </div>
+                        <span style={{ fontSize: '28px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1, letterSpacing: '0.5px' }}>Lv {level}</span>
+                        <span style={{ fontSize: '8px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>WAGE LEVEL</span>
                     </div>
-                    <span style={{ fontSize: '28px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1 }}>Lv {level}</span>
-                    <span style={{ fontSize: '8px', fontWeight: 800, color: '#7a9bbf', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '4px' }}>WAGE LEVEL</span>
-                </div>
+                )}
 
-                <div style={{ display: 'flex', gap: '8px', width: isMobile ? 'auto' : '100%' }}>
-                    <button
-                        onClick={() => onSave(job)}
-                        style={{
-                            padding: '12px',
-                            borderRadius: '16px',
-                            border: '1.5px solid #efefef',
-                            background: isSaved ? '#fff7ed' : '#fff',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.2s',
-                            boxShadow: isSaved ? '0 4px 12px rgba(245, 158, 11, 0.1)' : 'none'
-                        }}
-                    >
-                        {isSaved ? <BookmarkCheck size={20} color="#f59e0b" /> : <Bookmark size={20} color="#ccc" />}
-                    </button>
+                <div style={{
+                    display: 'flex',
+                    flexDirection: isMobile ? 'row' : 'row',
+                    gap: '10px',
+                    width: '100%',
+                    alignItems: 'center'
+                }}>
                     <a
                         href={job.url || job.apply_url || '#'}
                         target="_blank" rel="noopener noreferrer"
@@ -162,21 +214,38 @@ const JobRow = ({ job, isSaved, onSave }) => {
                             alignItems: 'center',
                             justifyContent: 'center',
                             gap: '8px',
-                            padding: '14px 24px',
-                            borderRadius: '16px',
+                            padding: isMobile ? '14px 20px' : '12px 20px',
+                            borderRadius: '14px',
                             background: '#FDB913',
-                            color: '#24385E',
+                            color: '#111',
                             fontSize: '14px',
                             fontWeight: 900,
                             textDecoration: 'none',
                             transition: 'all 0.2s',
-                            boxShadow: '0 4px 12px rgba(253, 185, 19, 0.2)'
+                            boxShadow: '0 4px 12px rgba(253, 185, 19, 0.2)',
                         }}
-                        onMouseEnter={e => e.currentTarget.style.background = '#e5a607'}
-                        onMouseLeave={e => e.currentTarget.style.background = '#FDB913'}
                     >
-                        Apply Now <ExternalLink size={16} />
+                        Apply <ExternalLink size={14} />
                     </a>
+
+                    <button
+                        onClick={() => onSave(job)}
+                        style={{
+                            padding: isMobile ? '14px' : '12px',
+                            borderRadius: '14px',
+                            background: '#fff',
+                            border: '1.5px solid #e2e8f0',
+                            color: isSaved ? '#FDB913' : '#94a3b8',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.2s',
+                            flexShrink: 0
+                        }}
+                    >
+                        {isSaved ? <BookmarkCheck size={18} fill="#FDB913" /> : <Bookmark size={18} />}
+                    </button>
                 </div>
             </div>
         </div>
@@ -192,12 +261,19 @@ const AllJobsTab = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalJobs, setTotalJobs] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
-    const [activeFilter, setActiveFilter] = useState('all'); // 'all' | 'verified'
-    const [levelFilter, setLevelFilter] = useState('all'); // 'all' | 'Lv 1' | 'Lv 2' | 'Lv 3' | 'Lv 4'
+    const [activeFilter, setActiveFilter] = useState('all');
+    const [levelFilter, setLevelFilter] = useState('all');
     const [showFilters, setShowFilters] = useState(false);
     const [savedJobIds, setSavedJobIds] = useState(new Set());
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
-    const verifiedSet = useRef(null); // cache Set of confirmed company names
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const [verifiedSet, setVerifiedSet] = useState(null); // cache Set of confirmed company names
     const searchTimer = useRef(null);
     const [debouncedSearch, setDebouncedSearch] = useState('');
 
@@ -210,24 +286,27 @@ const AllJobsTab = () => {
         return () => clearTimeout(searchTimer.current);
     }, [searchTerm]);
 
-    // Load saved job IDs
+    // Load saved job IDs and pre-load verified set
     useEffect(() => {
-        if (!user) return;
-        const fetchIds = async () => {
-            await new Promise(r => setTimeout(r, 150)); // Stagger to avoid 525
-            const { data } = await supabase.from('saved_jobs').select('job_id').eq('user_id', user.id);
-            if (data) setSavedJobIds(new Set(data.map(r => String(r.job_id))));
+        const init = async () => {
+            if (user) {
+                await new Promise(r => setTimeout(r, 150));
+                const { data } = await supabase.from('saved_jobs').select('job_id').eq('user_id', user.id);
+                if (data) setSavedJobIds(new Set(data.map(r => String(r.job_id))));
+            }
+            await getVerifiedSet(); // Pre-load confirmed companies for "isVerified" badges
         };
-        fetchIds();
+        init();
     }, [user]);
 
-    // Load confirmed companies (runs once per session, cached in verifiedSet.current)
+    // Load confirmed companies (runs once per session, cached in verifiedSet state)
     const getVerifiedSet = async () => {
-        if (verifiedSet.current) return verifiedSet.current;
+        if (verifiedSet) return verifiedSet;
         // Use window cache if available
         if (window._confirmedCompaniesCache) {
-            verifiedSet.current = new Set(window._confirmedCompaniesCache);
-            return verifiedSet.current;
+            const s = new Set(window._confirmedCompaniesCache);
+            setVerifiedSet(s);
+            return s;
         }
         // Fetch from DB
         const names = [];
@@ -246,8 +325,9 @@ const AllJobsTab = () => {
         }
         const unique = Array.from(new Set(names));
         window._confirmedCompaniesCache = unique;
-        verifiedSet.current = new Set(unique);
-        return verifiedSet.current;
+        const s = new Set(unique);
+        setVerifiedSet(s);
+        return s;
     };
 
     // Main fetch function
@@ -304,7 +384,7 @@ const AllJobsTab = () => {
                 processedJobs = processedJobs.map(j => ({ ...j, _verified: true }));
             } else {
                 // Tag without extra fetch - use cache
-                const vSet = verifiedSet.current;
+                const vSet = verifiedSet;
                 processedJobs = processedJobs.map(j => ({
                     ...j,
                     _verified: vSet ? vSet.has(j.company) : false
@@ -335,7 +415,7 @@ const AllJobsTab = () => {
     useEffect(() => {
         fetchJobs(1, activeFilter, debouncedSearch, levelFilter);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [debouncedSearch, activeFilter, levelFilter]);
+    }, [debouncedSearch, activeFilter, levelFilter, verifiedSet]);
 
     const handlePageChange = (newPage) => {
         fetchJobs(newPage, activeFilter, debouncedSearch, levelFilter);
@@ -388,57 +468,71 @@ const AllJobsTab = () => {
                 </p>
             </div>
 
-            {/* ── Filter Tabs + Search row ── */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
-                {/* All Jobs tab */}
+            {/* ── Filter Tabs ── */}
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                overflowX: 'auto',
+                paddingBottom: '12px',
+                marginBottom: '16px',
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none'
+            }} className="no-scrollbar">
                 <button
                     onClick={() => { setActiveFilter('all'); setCurrentPage(1); }}
                     style={{
+                        flexShrink: 0,
                         display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        padding: '8px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: 700,
-                        cursor: 'pointer', transition: 'all 150ms', border: 'none',
-                        background: activeFilter === 'all' ? '#24385E' : '#f5f5f5',
-                        color: activeFilter === 'all' ? '#fff' : '#555',
-                        outline: activeFilter === 'all' ? 'none' : '1.5px solid #ebebeb',
+                        padding: '10px 20px', borderRadius: '12px', fontSize: '13px', fontWeight: 700,
+                        cursor: 'pointer', transition: 'all 200ms', border: 'none',
+                        background: activeFilter === 'all' ? '#24385E' : '#fff',
+                        color: activeFilter === 'all' ? '#fff' : '#475569',
+                        boxShadow: activeFilter === 'all' ? '0 4px 12px rgba(36, 56, 94, 0.2)' : '0 1px 2px rgba(0,0,0,0.05)',
+                        border: '1.5px solid',
+                        borderColor: activeFilter === 'all' ? '#24385E' : '#e2e8f0',
                     }}
                 >
                     <Briefcase size={14} />
                     All Jobs
                 </button>
 
-                {/* Human Verified tab */}
                 <button
                     onClick={() => { setActiveFilter('verified'); setCurrentPage(1); }}
                     style={{
+                        flexShrink: 0,
                         display: 'inline-flex', alignItems: 'center', gap: '8px',
-                        padding: '8px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: 800,
-                        cursor: 'pointer', transition: 'all 150ms', border: 'none',
-                        background: activeFilter === 'verified' ? '#f0fdf4' : '#f5f5f5',
-                        color: activeFilter === 'verified' ? '#16a34a' : '#555',
-                        outline: activeFilter === 'verified' ? '1.5px solid #22c55e' : '1.5px solid #ebebeb',
-                        boxShadow: activeFilter === 'verified' ? '0 2px 8px rgba(34,197,94,0.18)' : 'none',
+                        padding: '10px 20px', borderRadius: '12px', fontSize: '13px', fontWeight: 800,
+                        cursor: 'pointer', transition: 'all 200ms', border: 'none',
+                        background: activeFilter === 'verified' ? '#f0fdf4' : '#fff',
+                        color: activeFilter === 'verified' ? '#16a34a' : '#475569',
+                        border: '1.5px solid',
+                        borderColor: activeFilter === 'verified' ? '#22c55e' : '#e2e8f0',
+                        boxShadow: activeFilter === 'verified' ? '0 4px 12px rgba(34,197,94,0.15)' : 'none',
                         textTransform: 'uppercase', letterSpacing: '0.3px',
                     }}
                 >
                     Human Verified
-                    <VerifiedSeal size={17} />
+                    <VerifiedSeal size={16} />
                 </button>
 
-                {/* Filters Toggle Button */}
-                <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '8px',
-                        padding: '8px 18px', borderRadius: '10px', fontSize: '13px', fontWeight: 700,
-                        cursor: 'pointer', transition: 'all 150ms', border: 'none',
-                        background: showFilters ? '#24385E' : '#f5f5f5',
-                        color: showFilters ? '#fff' : '#555',
-                        outline: showFilters ? 'none' : '1.5px solid #ebebeb',
-                    }}
-                >
-                    <SlidersHorizontal size={14} />
-                    Filters {levelFilter !== 'all' ? `(${levelFilter})` : ''}
-                </button>
+                {!isMobile && (
+                    <button
+                        onClick={() => setShowFilters(!showFilters)}
+                        style={{
+                            flexShrink: 0,
+                            display: 'inline-flex', alignItems: 'center', gap: '8px',
+                            padding: '10px 20px', borderRadius: '12px', fontSize: '13px', fontWeight: 700,
+                            cursor: 'pointer', transition: 'all 200ms', border: '1.5px solid',
+                            background: showFilters ? '#24385E' : '#fff',
+                            color: showFilters ? '#fff' : '#475569',
+                            borderColor: showFilters ? '#24385E' : '#e2e8f0',
+                        }}
+                    >
+                        <SlidersHorizontal size={14} />
+                        Filters {levelFilter !== 'all' ? `(${levelFilter})` : ''}
+                    </button>
+                )}
             </div>
 
             {/* ── Level Filter Row (Collapsed inside Filter Option) ── */}
@@ -477,25 +571,31 @@ const AllJobsTab = () => {
             )}
 
             {/* ── Search row ── */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '20px' }}>
+            <div style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'stretch' : 'center',
+                gap: '12px',
+                marginBottom: '24px'
+            }}>
                 <div style={{
                     flex: 1, display: 'flex', alignItems: 'center', gap: '12px',
-                    background: '#fff', border: '1.5px solid #e5e7eb', borderRadius: '60px',
-                    padding: '0 20px', height: '52px', maxWidth: '500px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                    background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '16px',
+                    padding: '0 16px', height: isMobile ? '56px' : '52px',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
                 }}>
-                    <Search size={18} color="#999" style={{ flexShrink: 0 }} />
+                    <Search size={18} color="#94a3b8" style={{ flexShrink: 0 }} />
                     <input
                         type="text"
                         value={searchTerm}
                         onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                         onKeyDown={e => e.key === 'Enter' && fetchJobs(1, activeFilter, searchTerm, levelFilter)}
-                        placeholder="Search for roles (e.g. Data Engineer)..."
-                        style={{ border: 'none', outline: 'none', fontSize: '15px', color: '#111', background: 'transparent', width: '100%', fontWeight: 500 }}
+                        placeholder={isMobile ? "Search roles..." : "Search for roles (e.g. Data Engineer)..."}
+                        style={{ border: 'none', outline: 'none', fontSize: '15px', color: '#1e293b', background: 'transparent', width: '100%', fontWeight: 500 }}
                     />
                     {searchTerm && (
                         <button onClick={() => setSearchTerm('')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
-                            <X size={16} color="#aaa" />
+                            <X size={16} color="#94a3b8" />
                         </button>
                     )}
                 </div>
@@ -504,26 +604,29 @@ const AllJobsTab = () => {
                     <button
                         onClick={() => setShowFilters(!showFilters)}
                         style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '8px',
-                            padding: '0 20px', borderRadius: '60px', fontSize: '14px', fontWeight: 600,
-                            height: '52px', cursor: 'pointer', transition: 'all 200ms', border: '1.5px solid',
-                            borderColor: showFilters ? '#24385E' : '#e5e7eb',
+                            flex: 1,
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+                            padding: '0 20px', borderRadius: '16px', fontSize: '14px', fontWeight: 700,
+                            height: isMobile ? '56px' : '52px', cursor: 'pointer', transition: 'all 200ms', border: '1.5px solid',
+                            borderColor: showFilters ? '#24385E' : '#e2e8f0',
                             background: showFilters ? '#24385E' : '#fff',
-                            color: showFilters ? '#fff' : '#555',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                            color: showFilters ? '#fff' : '#475569',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                            minWidth: isMobile ? '0' : '140px'
                         }}
                     >
-                        <SlidersHorizontal size={16} color={showFilters ? '#fff' : '#777'} />
+                        <SlidersHorizontal size={16} />
                         Filters
                     </button>
 
                     <button
                         onClick={() => fetchJobs(1, activeFilter, searchTerm, levelFilter)}
                         style={{
-                            padding: '0 32px', borderRadius: '60px', background: '#24385E',
+                            flex: 1,
+                            padding: '0 32px', borderRadius: '16px', background: '#24385E',
                             color: '#fff', fontSize: '14px', fontWeight: 800, border: 'none',
-                            height: '52px', cursor: 'pointer', transition: 'all 200ms',
-                            boxShadow: '0 4px 12px rgba(36, 56, 94, 0.25)'
+                            height: isMobile ? '56px' : '52px', cursor: 'pointer', transition: 'all 200ms',
+                            boxShadow: '0 4px 12px rgba(36, 56, 94, 0.2)',
                         }}
                     >
                         Search
@@ -576,7 +679,10 @@ const AllJobsTab = () => {
                     {jobs.map((job, i) => (
                         <JobRow
                             key={job.id || job.url || i}
-                            job={job}
+                            job={{
+                                ...job,
+                                isVerified: job._verified || verifiedSet?.has(job.company)
+                            }}
                             isSaved={savedJobIds.has(String(job.id || job.job_id || ''))}
                             onSave={handleSave}
                         />
@@ -584,32 +690,43 @@ const AllJobsTab = () => {
 
                     {/* ── Pagination ── */}
                     {totalPages > 1 && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #f0f0f0' }}>
-                            <span style={{ fontSize: '12px', color: '#aaa' }}>
-                                Page {currentPage} of {totalPages.toLocaleString()} · {totalJobs.toLocaleString()} jobs total
+                        <div style={{
+                            display: 'flex',
+                            flexDirection: isMobile ? 'column' : 'row',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            marginTop: '24px',
+                            paddingTop: '20px',
+                            borderTop: '1px solid #f1f5f9',
+                            gap: isMobile ? '16px' : '0'
+                        }}>
+                            <span style={{ fontSize: '13px', color: '#718096', fontWeight: 500 }}>
+                                Page {currentPage} of {totalPages.toLocaleString()}
                             </span>
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', overflowX: 'auto', maxWidth: '100%', padding: '4px' }} className="no-scrollbar">
                                 <button
                                     onClick={() => handlePageChange(currentPage - 1)}
                                     disabled={currentPage === 1}
-                                    style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid #e0e0e0', background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.3 : 1, display: 'flex', alignItems: 'center' }}
+                                    style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.3 : 1, display: 'flex', alignItems: 'center' }}
                                 >
-                                    <ChevronLeft size={14} />
+                                    <ChevronLeft size={16} />
                                 </button>
 
                                 {getPageNumbers().map((pg, idx) =>
                                     pg === '...' ? (
-                                        <span key={`e${idx}`} style={{ padding: '0 4px', color: '#aaa', fontSize: '13px' }}>…</span>
+                                        <span key={`e${idx}`} style={{ padding: '0 4px', color: '#cbd5e0', fontSize: '14px' }}>…</span>
                                     ) : (
                                         <button
                                             key={pg}
                                             onClick={() => handlePageChange(pg)}
                                             style={{
-                                                padding: '5px 10px', borderRadius: '8px', fontSize: '13px', fontWeight: 600,
-                                                cursor: 'pointer', minWidth: '34px', textAlign: 'center',
-                                                border: currentPage === pg ? '1.5px solid #24385E' : '1px solid #e0e0e0',
+                                                padding: '8px 14px', borderRadius: '10px', fontSize: '13px', fontWeight: 700,
+                                                cursor: 'pointer', minWidth: '38px', textAlign: 'center', transition: 'all 0.2s',
+                                                border: '1.5px solid',
+                                                borderColor: currentPage === pg ? '#24385E' : '#e2e8f0',
                                                 background: currentPage === pg ? '#24385E' : '#fff',
-                                                color: currentPage === pg ? '#fff' : '#555',
+                                                color: currentPage === pg ? '#fff' : '#475569',
+                                                boxShadow: currentPage === pg ? '0 4px 10px rgba(36, 56, 94, 0.15)' : 'none'
                                             }}
                                         >
                                             {pg}
@@ -620,9 +737,9 @@ const AllJobsTab = () => {
                                 <button
                                     onClick={() => handlePageChange(currentPage + 1)}
                                     disabled={currentPage === totalPages}
-                                    style={{ padding: '6px 10px', borderRadius: '8px', border: '1px solid #e0e0e0', background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.3 : 1, display: 'flex', alignItems: 'center' }}
+                                    style={{ padding: '8px 12px', borderRadius: '10px', border: '1px solid #e2e8f0', background: '#fff', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.3 : 1, display: 'flex', alignItems: 'center' }}
                                 >
-                                    <ChevronRight size={14} />
+                                    <ChevronRight size={16} />
                                 </button>
                             </div>
                         </div>

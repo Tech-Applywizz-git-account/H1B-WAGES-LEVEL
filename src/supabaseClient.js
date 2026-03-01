@@ -22,7 +22,8 @@ const customFetch = async (url, options) => {
     } catch (err) {
       const isRetryable = err.message.includes('525') ||
         err.message.includes('Failed to fetch') ||
-        err.name === 'TypeError'; // Often network disconnected error
+        err.name === 'TypeError' || // Often network disconnected error
+        err.name === 'AuthRetryableFetchError';
 
       if (isRetryable && retries < maxRetries && isDev) {
         retries++;
@@ -33,9 +34,12 @@ const customFetch = async (url, options) => {
         continue;
       }
 
-      // Only log on the absolute final failure to keep console clean as requested
+      // Only log on the absolute final failure if NOT a standard network disconnect to keep console clean
       if (retries >= maxRetries) {
-        console.error('❌ Supabase final failure after retries:', err.message, url);
+        const isNetworkDisconnect = err.message.includes('Failed to fetch') || err.message.includes('network') || !window.navigator.onLine;
+        if (!isNetworkDisconnect) {
+          console.error('❌ Supabase final failure:', err.message, url);
+        }
       }
       throw err;
     }
