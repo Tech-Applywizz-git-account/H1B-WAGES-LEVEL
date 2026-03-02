@@ -3,11 +3,13 @@ import { supabase } from '../supabaseClient';
 import { externalSupabase } from '../externalSupabaseClient';
 import useAuth from '../hooks/useAuth';
 import LogoBox from './LogoBox';
+import { fetchJobRoles, filterRoles } from '../utils/rolesSuggestions';
 import {
     ChevronLeft, ChevronRight, Search, Loader2, AlertCircle,
     Briefcase, ExternalLink, MapPin, Clock, Star, Bookmark, BookmarkCheck,
     SlidersHorizontal, X
 } from 'lucide-react';
+import { isFamous } from '../utils/famousCompanies';
 
 const JOBS_PER_PAGE = 15;
 
@@ -101,22 +103,29 @@ const JobRow = ({ job, isSaved, onSave }) => {
 
             {/* Middle: Content */}
             <div style={{ flex: 1, minWidth: 0 }}>
-                {/* Row 1: Company + Date */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
                     <span style={{ fontSize: isMobile ? '12px' : '14px', fontWeight: 700, color: '#718096' }}>{job.company}</span>
-                    <span style={{ fontSize: '12px', color: '#a0aec0', fontWeight: 700 }}>{formatDate(job.date_posted)}</span>
                 </div>
 
                 {/* Row 2: Title */}
                 <h3 style={{
                     fontSize: isMobile ? '18px' : '21px',
                     fontWeight: 900,
-                    color: '#111',
                     margin: '0 0 8px',
                     lineHeight: 1.2,
                     letterSpacing: '-0.3px'
                 }}>
-                    {job.title || job.job_role_name || 'Job Position'}
+                    <a
+                        href={job.url || job.apply_url || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: '#111', textDecoration: 'none', transition: 'color 150ms ease' }}
+                        onMouseEnter={e => e.currentTarget.style.color = '#FDB913'}
+                        onMouseLeave={e => e.currentTarget.style.color = '#111'}
+                        onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); }}
+                    >
+                        {job.title || job.job_role_name || 'Job Position'}
+                    </a>
                 </h3>
 
                 {/* Row 3: Meta Info (Location + Exp) */}
@@ -125,18 +134,7 @@ const JobRow = ({ job, isSaved, onSave }) => {
                         <MapPin size={14} color="#94a3b8" />
                         <span style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>{job.location || 'United States'}</span>
                     </div>
-                    <div style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        background: '#f8fafc',
-                        padding: '4px 10px',
-                        borderRadius: '8px',
-                        border: '1px solid #e2e8f0'
-                    }}>
-                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#475569' }}>
-                            {job.years_exp_required || job.years_experience || '3-5 years exp'}
-                        </span>
-                    </div>
+
                 </div>
 
                 {/* Row 4: Verified Badge */}
@@ -252,6 +250,8 @@ const JobRow = ({ job, isSaved, onSave }) => {
     );
 };
 
+// SUGGESTED_ROLES is now fetched dynamically from Supabase via rolesSuggestions utility
+
 // ── Main Component ─────────────────────────────────────────────────────────
 const AllJobsTab = () => {
     const { user } = useAuth();
@@ -266,11 +266,19 @@ const AllJobsTab = () => {
     const [showFilters, setShowFilters] = useState(false);
     const [savedJobIds, setSavedJobIds] = useState(new Set());
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+    const [filteredSuggestions, setFilteredSuggestions] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [allRoles, setAllRoles] = useState([]);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 1024);
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // Load job roles from Supabase on mount (cached globally)
+    useEffect(() => {
+        fetchJobRoles().then(setAllRoles);
     }, []);
 
     const [verifiedSet, setVerifiedSet] = useState(null); // cache Set of confirmed company names
@@ -279,10 +287,12 @@ const AllJobsTab = () => {
 
     const totalPages = Math.ceil(totalJobs / JOBS_PER_PAGE);
 
-    // Debounce search
+    // Debounce search (only for Supabase querying)
     useEffect(() => {
         clearTimeout(searchTimer.current);
-        searchTimer.current = setTimeout(() => setDebouncedSearch(searchTerm), 400);
+        searchTimer.current = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+        }, 400);
         return () => clearTimeout(searchTimer.current);
     }, [searchTerm]);
 
@@ -341,16 +351,16 @@ const AllJobsTab = () => {
             let query = supabase
                 .from('job_jobrole_sponsored_sync')
                 .select('*', { count: 'exact' })
+                .order('wage_num', { ascending: false, nullsFirst: false })
                 .order('date_posted', { ascending: false });
 
-            // Search filter: Use strict multi-word matching to ensure roles like "Staff" don't match "Data"
+            // Search filter: Strict Column-level AND (Each column must have ALL words separately)
             if (search && search.trim()) {
-                const words = search.trim().split(/\s+/).filter(w => w.length > 1);
+                const words = search.trim().split(/\s+/).filter(w => w.length >= 1);
                 if (words.length > 0) {
-                    // Requirement: Title must have ALL words OR Role Name must have ALL words
-                    const titleAnd = `and(${words.map(w => `title.ilike.%${w}%`).join(',')})`;
-                    const roleAnd = `and(${words.map(w => `job_role_name.ilike.%${w}%`).join(',')})`;
-                    query = query.or(`${titleAnd},${roleAnd}`);
+                    const titleCond = `and(${words.map(w => `title.ilike.%${w}%`).join(',')})`;
+                    const roleCond = `and(${words.map(w => `job_role_name.ilike.%${w}%`).join(',')})`;
+                    query = query.or(`${titleCond},${roleCond}`);
                 }
             }
 
@@ -391,6 +401,24 @@ const AllJobsTab = () => {
                 }));
             }
 
+            // Priority Sort: (1) Visible Salary First, (2) Apply Link, (3) Freshness
+            processedJobs.sort((a, b) => {
+                const aHasSal = !!(a.salary && a.salary.trim().length > 0);
+                const bHasSal = !!(b.salary && b.salary.trim().length > 0);
+                const aHasUrl = !!(a.url || a.apply_url);
+                const bHasUrl = !!(b.url || b.apply_url);
+
+                const aScore = (aHasSal ? 100 : 0) + (aHasUrl ? 1 : 0);
+                const bScore = (bHasSal ? 100 : 0) + (bHasUrl ? 1 : 0);
+
+                if (aScore !== bScore) return bScore - aScore;
+
+                // Tie-breaker: Newest first
+                const dateA = new Date(a.date_posted || 0).getTime();
+                const dateB = new Date(b.date_posted || 0).getTime();
+                return dateB - dateA;
+            });
+
             // Filter duplicates using URL
             const seen = new Set();
             processedJobs = processedJobs.filter(j => {
@@ -420,6 +448,21 @@ const AllJobsTab = () => {
     const handlePageChange = (newPage) => {
         fetchJobs(newPage, activeFilter, debouncedSearch, levelFilter);
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleSearchChange = (e) => {
+        const val = e.target.value;
+        setSearchTerm(val);
+        setCurrentPage(1);
+
+        if (val.trim().length > 0) {
+            const filtered = filterRoles(allRoles, val, 8);
+            setFilteredSuggestions(filtered);
+            setShowSuggestions(filtered.length > 0);
+        } else {
+            setFilteredSuggestions([]);
+            setShowSuggestions(false);
+        }
     };
 
     const handleSave = async (job) => {
@@ -579,24 +622,113 @@ const AllJobsTab = () => {
                 marginBottom: '24px'
             }}>
                 <div style={{
-                    flex: 1, display: 'flex', alignItems: 'center', gap: '12px',
-                    background: '#fff', border: '1.5px solid #e2e8f0', borderRadius: '16px',
-                    padding: '0 16px', height: isMobile ? '56px' : '52px',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                    flex: 1, position: 'relative'
                 }}>
-                    <Search size={18} color="#94a3b8" style={{ flexShrink: 0 }} />
-                    <input
-                        type="text"
-                        value={searchTerm}
-                        onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                        onKeyDown={e => e.key === 'Enter' && fetchJobs(1, activeFilter, searchTerm, levelFilter)}
-                        placeholder={isMobile ? "Search roles..." : "Search for roles (e.g. Data Engineer)..."}
-                        style={{ border: 'none', outline: 'none', fontSize: '15px', color: '#1e293b', background: 'transparent', width: '100%', fontWeight: 500 }}
-                    />
-                    {searchTerm && (
-                        <button onClick={() => setSearchTerm('')} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}>
-                            <X size={16} color="#94a3b8" />
-                        </button>
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: '12px',
+                        background: (showSuggestions && filteredSuggestions.length > 0) ? '#24385E' : '#fff',
+                        border: (showSuggestions && filteredSuggestions.length > 0) ? '1.5px solid rgba(255,255,255,0.1)' : '1.5px solid #e2e8f0',
+                        borderRadius: (showSuggestions && filteredSuggestions.length > 0) ? '24px 24px 0 0' : '50px',
+                        padding: '0 16px', height: isMobile ? '56px' : '52px',
+                        boxShadow: (showSuggestions && filteredSuggestions.length > 0) ? 'none' : '0 1px 3px rgba(0,0,0,0.05)',
+                        position: 'relative', zIndex: 2010,
+                        transition: 'all 0.2s'
+                    }}>
+                        <Search size={18} color={(showSuggestions && filteredSuggestions.length > 0) ? '#94a3b8' : '#94a3b8'} style={{ flexShrink: 0 }} />
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={handleSearchChange}
+                            onFocus={() => {
+                                if (searchTerm.trim().length > 0) setShowSuggestions(true);
+                            }}
+                            onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                            onKeyDown={e => e.key === 'Enter' && fetchJobs(1, activeFilter, searchTerm, levelFilter)}
+                            placeholder={isMobile ? "Search roles..." : "Search for roles (e.g. Data Engineer)..."}
+                            style={{
+                                border: 'none',
+                                outline: 'none',
+                                fontSize: '15px',
+                                color: (showSuggestions && filteredSuggestions.length > 0) ? '#fff' : '#1e293b',
+                                background: 'transparent',
+                                width: '100%',
+                                fontWeight: 500,
+                                transition: 'color 0.2s'
+                            }}
+                        />
+                        {searchTerm.length > 0 && (
+                            <button
+                                onClick={() => {
+                                    setSearchTerm('');
+                                    setFilteredSuggestions([]);
+                                    setShowSuggestions(false);
+                                }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                            >
+                                <X size={20} color={(showSuggestions && filteredSuggestions.length > 0) ? '#94a3b8' : '#94a3b8'} />
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Suggestions Dropdown (Google Chrome Style) */}
+                    {showSuggestions && filteredSuggestions.length > 0 && (
+                        <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            backgroundColor: '#24385E',
+                            borderRadius: '24px',
+                            boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+                            zIndex: 2000,
+                            overflow: 'hidden',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            animation: 'fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                            paddingTop: isMobile ? '56px' : '52px'
+                        }}>
+                            <div style={{ borderTop: '0.5px solid rgba(255,255,255,0.1)' }}>
+                                {filteredSuggestions.map((role, idx) => {
+                                    const searchLower = searchTerm.toLowerCase();
+                                    const roleLower = role.toLowerCase();
+                                    const matchIdx = roleLower.indexOf(searchLower);
+
+                                    return (
+                                        <div
+                                            key={role}
+                                            onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                setSearchTerm(role);
+                                                setDebouncedSearch(role); // Instant update on select
+                                                setShowSuggestions(false);
+                                                fetchJobs(1, activeFilter, role, levelFilter);
+                                            }}
+                                            style={{
+                                                padding: '12px 20px',
+                                                cursor: 'pointer',
+                                                fontSize: '15px',
+                                                color: '#fff',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '14px',
+                                                transition: 'all 0.15s ease',
+                                                background: 'transparent'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.backgroundColor = 'transparent';
+                                            }}
+                                        >
+                                            <Search size={16} color="#94a3b8" />
+                                            <span style={{ fontWeight: 400 }}>
+                                                {role}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
                     )}
                 </div>
 

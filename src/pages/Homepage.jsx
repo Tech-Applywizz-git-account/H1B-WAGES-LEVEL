@@ -25,6 +25,10 @@ import AppliedJobsTab from '../components/AppliedJobsTab';
 import PaymentDetailsTab from '../components/PaymentDetailsTab';
 import LogoBox from '../components/LogoBox';
 import AllJobsTab from '../components/AllJobsTab';
+import { fetchJobRoles, filterRoles } from '../utils/rolesSuggestions';
+import { isFamous } from '../utils/famousCompanies';
+
+// Roles fetched dynamically from Supabase via rolesSuggestions utility
 
 
 // ─── Teaser Dashboard (unpaid users) ─────────────────────────────────────────
@@ -371,6 +375,57 @@ const Homepage = () => {
   const [levelFilter, setLevelFilter] = useState('all'); // 'all' | 'Lv 1' | 'Lv 2' | 'Lv 3' | 'Lv 4'
   const [showCompanyFilters, setShowCompanyFilters] = useState(false);
   const [showJobFilters, setShowJobFilters] = useState(false);
+  const [filteredSuggestions, setFilteredSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [allRoles, setAllRoles] = useState([]);
+  const [jobFilteredSuggestions, setJobFilteredSuggestions] = useState([]);
+  const [showJobSuggestions, setShowJobSuggestions] = useState(false);
+
+  // Fetch job roles from Supabase on mount (globally cached)
+  useEffect(() => { fetchJobRoles().then(setAllRoles); }, []);
+
+  const handleCompanySearchChange = (e) => {
+    const val = e.target.value;
+    setCompanySearch(val);
+    setCompanyPage(1);
+    if (val.trim().length > 0) {
+      const filtered = filterRoles(allRoles, val, 8);
+      setFilteredSuggestions(filtered);
+      setShowSuggestions(filtered.length > 0);
+    } else {
+      setFilteredSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleJobSearchChange = (e) => {
+    const val = e.target.value;
+    setJobSearch(val);
+    setJobPage(1);
+    if (val.trim().length > 0) {
+      const filtered = filterRoles(allRoles, val, 8);
+      setJobFilteredSuggestions(filtered);
+      setShowJobSuggestions(filtered.length > 0);
+    } else {
+      setJobFilteredSuggestions([]);
+      setShowJobSuggestions(false);
+    }
+  };
+
+  const handleSuggestionClick = (role) => {
+    setCompanySearch(role);
+    setDebouncedCompanySearch(role); // Instant update on select
+    setShowSuggestions(false);
+    setCompanyPage(1);
+  };
+
+  const handleJobSuggestionClick = (role) => {
+    setJobSearch(role);
+    setDebouncedJobSearch(role); // Instant update on select
+    setShowJobSuggestions(false);
+    setJobPage(1);
+    fetchCompanyJobs(1, role, jobLevelFilter); // Explicit call to avoid a 'nothing' moment
+  };
 
   useEffect(() => { const t = setTimeout(() => setDebouncedCompanySearch(companySearch), 400); return () => clearTimeout(t); }, [companySearch]);
   useEffect(() => { const t = setTimeout(() => setDebouncedJobSearch(jobSearch), 400); return () => clearTimeout(t); }, [jobSearch]);
@@ -381,13 +436,35 @@ const Homepage = () => {
     // ── 1. In-memory cache hit (fastest — no re-render needed) ──────────────
     if (isInitialLoadDone && allProcessedCompanies.length > 0) {
       let arr = [...allProcessedCompanies];
-      if (debouncedCompanySearch) arr = arr.filter(n => n.company.toLowerCase().includes(debouncedCompanySearch.toLowerCase()));
+      if (debouncedCompanySearch && debouncedCompanySearch.trim()) {
+        const words = debouncedCompanySearch.toLowerCase().trim().split(/\s+/).filter(w => w.length >= 1);
+        arr = arr.filter(n => {
+          const name = n.company.toLowerCase();
+          const words = debouncedCompanySearch.toLowerCase().trim().split(/\s+/).filter(w => w.length >= 1);
+          // Rule: (Title contains ALL words) OR (At least one Role contains ALL words)
+          const nameMatches = words.every(w => name.includes(w));
+          const roleMatches = (n.industries || []).some(role => {
+            const r = role.toLowerCase();
+            return words.every(w => r.includes(w));
+          });
+          return nameMatches || roleMatches;
+        });
+      }
       if (levelFilter !== 'all') {
         arr = arr.filter(n => n.wageLevel === levelFilter);
       }
-      if (sortBy === 'most_jobs') arr.sort((a, b) => b.jobCount - a.jobCount);
-      else if (sortBy === 'highest_wage') arr.sort((a, b) => b.maxWageNum - a.maxWageNum);
-      else arr.sort((a, b) => a.company.localeCompare(b.company));
+      // Consolidated filter logic above replaces the redundant blocks here
+      // Primary sort: Famous first. Secondary sort: Selected criteria.
+      arr.sort((a, b) => {
+        const aFamous = isFamous(a.company);
+        const bFamous = isFamous(b.company);
+        if (aFamous && !bFamous) return -1;
+        if (!aFamous && bFamous) return 1;
+
+        if (sortBy === 'most_jobs') return b.jobCount - a.jobCount;
+        if (sortBy === 'highest_wage') return b.maxWageNum - a.maxWageNum;
+        return a.company.localeCompare(b.company);
+      });
       setTotalCompanies(arr.length);
       const from = (companyPage - 1) * COMPANIES_PER_PAGE;
       const paginated = arr.slice(from, from + COMPANIES_PER_PAGE);
@@ -406,12 +483,31 @@ const Homepage = () => {
           setAllProcessedCompanies(parsed);
           setIsInitialLoadDone(true);
           let arr = [...parsed];
-          if (debouncedCompanySearch) arr = arr.filter(n => n.company.toLowerCase().includes(debouncedCompanySearch.toLowerCase()));
+          if (debouncedCompanySearch && debouncedCompanySearch.trim()) {
+            const words = debouncedCompanySearch.toLowerCase().trim().split(/\s+/).filter(w => w.length >= 1);
+            arr = arr.filter(n => {
+              const name = n.company.toLowerCase();
+              const nameMatches = words.every(w => name.includes(w));
+              const roleMatches = (n.industries || []).some(role => {
+                const r = role.toLowerCase();
+                return words.every(w => r.includes(w));
+              });
+              return nameMatches || roleMatches;
+            });
+          }
           if (levelFilter !== 'all') {
             arr = arr.filter(n => n.wageLevel === levelFilter);
           }
-          if (sortBy === 'most_jobs') arr.sort((a, b) => b.jobCount - a.jobCount);
-          else if (sortBy === 'highest_wage') arr.sort((a, b) => b.maxWageNum - a.maxWageNum);
+          // Priority Sort: Famous First
+          arr.sort((a, b) => {
+            const aFamous = isFamous(a.company);
+            const bFamous = isFamous(b.company);
+            if (aFamous && !bFamous) return -1;
+            if (!aFamous && bFamous) return 1;
+            if (sortBy === 'most_jobs') return b.jobCount - a.jobCount;
+            if (sortBy === 'highest_wage') return b.maxWageNum - a.maxWageNum;
+            return a.company.localeCompare(b.company);
+          });
           setTotalCompanies(arr.length);
           const paginated = arr.slice(0, COMPANIES_PER_PAGE);
           setCompanies(paginated);
@@ -478,14 +574,48 @@ const Homepage = () => {
           const s = companyStats.get(j.company);
           s.jobCount++;
           if ((j.wage_num || 0) > s.maxWageNum) { s.maxWageNum = j.wage_num; s.wageLevel = j.wage_level || 'Lv 1'; }
-          if (j.job_role_name) s.industries.add(j.job_role_name);
+          if (j.job_role_name) {
+            // Split comma-separated role names for cleaner tags
+            const roles = j.job_role_name.split(',').map(r => r.trim()).filter(Boolean);
+            roles.forEach(r => s.industries.add(r));
+          }
         }
       });
 
-      let finalArr = Array.from(companyStats.values()).map(c => ({ ...c, industries: Array.from(c.industries).slice(0, 4) }));
-      if (sortBy === 'most_jobs') finalArr.sort((a, b) => b.jobCount - a.jobCount);
-      else if (sortBy === 'highest_wage') finalArr.sort((a, b) => b.maxWageNum - a.maxWageNum);
-      else finalArr.sort((a, b) => a.company.localeCompare(b.company));
+      let finalArr = Array.from(companyStats.values());
+
+      if (debouncedCompanySearch && debouncedCompanySearch.trim()) {
+        const words = debouncedCompanySearch.toLowerCase().trim().split(/\s+/).filter(w => w.length >= 1);
+        finalArr.forEach(c => {
+          const industriesArr = Array.from(c.industries);
+          industriesArr.sort((a, b) => {
+            const aLower = a.toLowerCase();
+            const bLower = b.toLowerCase();
+            const aMatch = words.every(w => aLower.includes(w));
+            const bMatch = words.every(w => bLower.includes(w));
+            if (aMatch && !bMatch) return -1;
+            if (!aMatch && bMatch) return 1;
+            return 0;
+          });
+          c.industries = industriesArr; // Keep full list for strict filtering
+        });
+      } else {
+        finalArr.forEach(c => {
+          c.industries = Array.from(c.industries); // Keep full list
+        });
+      }
+
+      // Final sorting with Famous Priority
+      finalArr.sort((a, b) => {
+        const aFamous = isFamous(a.company);
+        const bFamous = isFamous(b.company);
+        if (aFamous && !bFamous) return -1;
+        if (!aFamous && bFamous) return 1;
+
+        if (sortBy === 'most_jobs') return b.jobCount - a.jobCount;
+        if (sortBy === 'highest_wage') return b.maxWageNum - a.maxWageNum;
+        return a.company.localeCompare(b.company);
+      });
 
       window._allProcessedCompanies = finalArr;
       setAllProcessedCompanies(finalArr);
@@ -495,8 +625,17 @@ const Homepage = () => {
       }
 
       let viewArr = finalArr;
-      if (debouncedCompanySearch) {
-        viewArr = viewArr.filter(n => n.company.toLowerCase().includes(debouncedCompanySearch.toLowerCase()));
+      if (debouncedCompanySearch && debouncedCompanySearch.trim()) {
+        const words = debouncedCompanySearch.toLowerCase().trim().split(/\s+/).filter(w => w.length >= 1);
+        viewArr = viewArr.filter(n => {
+          const name = n.company.toLowerCase();
+          const nameMatches = words.every(w => name.includes(w));
+          const roleMatches = (n.industries || []).some(role => {
+            const r = role.toLowerCase();
+            return words.every(w => r.includes(w));
+          });
+          return nameMatches || roleMatches;
+        });
       }
       if (levelFilter !== 'all') {
         viewArr = viewArr.filter(n => n.wageLevel === levelFilter);
@@ -509,33 +648,46 @@ const Homepage = () => {
     }
   }, [user, subscriptionExpired, paymentStatus, paymentLoading, debouncedCompanySearch, sortBy, companyPage, isInitialLoadDone, allProcessedCompanies, selectedCompany, levelFilter]);
 
-  const fetchCompanyJobs = useCallback(async () => {
+  const fetchCompanyJobs = useCallback(async (pageOverride, searchOverride, levelOverride) => {
     if (!user || !selectedCompany || (paymentStatus !== 'paid' && paymentStatus !== 'pending' && paymentStatus !== 'active') || subscriptionExpired) return;
 
-    // --- Cache check: skip fetch if we already have this company's jobs ---
+    const page = pageOverride || jobPage;
+    // Use the specific right-panel job search IF it exists, otherwise use the main left-panel company filter
+    const search = (searchOverride !== undefined) ? searchOverride : (jobSearch || debouncedCompanySearch);
+    const level = levelOverride || jobLevelFilter;
+
+    // --- Cache check ---
     if (!window._companyJobsCache) window._companyJobsCache = new Map();
-    const cacheKey = `${selectedCompany}|${jobPage}|${debouncedJobSearch}|${jobLevelFilter}`;
+    const cacheKey = `${selectedCompany}|${page}|${search}|${level}`;
     const cached = window._companyJobsCache.get(cacheKey);
     if (cached) {
       setCompanyJobs(cached.jobs);
       setTotalCompanyJobs(cached.total);
-      return; // instant, no spinner
+      return;
     }
+
     setJobsLoading(true);
     try {
-      const from = (jobPage - 1) * JOBS_PER_PAGE;
+      const from = (page - 1) * JOBS_PER_PAGE;
       let q = supabase.from('job_jobrole_sponsored_sync').select('*', { count: 'exact' }).eq('company', selectedCompany);
-      if (debouncedJobSearch) {
-        const words = debouncedJobSearch.trim().split(/\s+/).filter(w => w.length > 1);
+
+      if (search && search.trim()) {
+        const words = search.trim().split(/\s+/).filter(w => w.length >= 1);
         if (words.length > 0) {
-          // Requirement: Ensure all keywords are present together in either title or role
-          const titleAnd = `and(${words.map(w => `title.ilike.%${w}%`).join(',')})`;
-          const roleAnd = `and(${words.map(w => `job_role_name.ilike.%${w}%`).join(',')})`;
-          q = q.or(`${titleAnd},${roleAnd}`);
+          // Rule: (Title has ALL words) OR (Job Role has ALL words)
+          // This is the "Strict AND" rule.
+          const titleCond = `and(${words.map(w => `title.ilike.%${w}%`).join(',')})`;
+          const roleCond = `and(${words.map(w => `job_role_name.ilike.%${w}%`).join(',')})`;
+          q = q.or(`${titleCond},${roleCond}`);
         }
       }
-      if (jobLevelFilter !== 'all') q = q.eq('wage_level', jobLevelFilter);
-      const { data, error, count } = await q.order('wage_num', { ascending: false }).order('date_posted', { ascending: false }).range(from, from + JOBS_PER_PAGE - 1);
+
+      if (level !== 'all') q = q.eq('wage_level', level);
+
+      const { data, error, count } = await q
+        .order('wage_num', { ascending: false, nullsFirst: false })
+        .order('date_posted', { ascending: false })
+        .range(from, from + JOBS_PER_PAGE - 1);
       if (error) throw error;
 
       const seen = new Set();
@@ -552,31 +704,36 @@ const Homepage = () => {
       });
 
       const total = paymentStatus === 'pending' ? Math.min(2, count || 0) : (count || 0);
+
+      // Final Priority Sort: (1) Visible Salary First, (2) Apply Link, (3) Freshness
+      unique.sort((a, b) => {
+        const aHasSal = !!(a.salary && a.salary.trim().length > 0);
+        const bHasSal = !!(b.salary && b.salary.trim().length > 0);
+        const aHasUrl = !!(a.url || a.apply_url);
+        const bHasUrl = !!(b.url || b.apply_url);
+
+        const aScore = (aHasSal ? 100 : 0) + (aHasUrl ? 1 : 0);
+        const bScore = (bHasSal ? 100 : 0) + (bHasUrl ? 1 : 0);
+
+        if (aScore !== bScore) return bScore - aScore;
+
+        // Tie-breaker: Newest first
+        const dateA = new Date(a.date_posted || 0).getTime();
+        const dateB = new Date(b.date_posted || 0).getTime();
+        return dateB - dateA;
+      });
+
       setCompanyJobs(unique);
       setTotalCompanyJobs(total);
-
-      // Store in cache
       window._companyJobsCache.set(cacheKey, { jobs: unique, total });
-
-      if (unique.length > 0) {
-        const topJob = unique[0];
-        const jobMaxWageNum = parseInt(topJob.wage_num || '1');
-        const currentDataMax = parseInt(selectedCompanyData?.wageLevel?.match(/\d/)?.[0] || '1');
-        if (jobMaxWageNum > currentDataMax || count > (selectedCompanyData?.jobCount || 0)) {
-          setSelectedCompanyData(prev => ({
-            ...prev,
-            wageLevel: topJob.wage_level || prev?.wageLevel || 'Lv 2',
-            jobCount: Math.max(count, prev?.jobCount || 0)
-          }));
-        }
-      }
     } catch (err) {
-      if (!err.message?.includes('fetch') && window.navigator.onLine) {
-        console.error("fetchCompanyJobs Error:", err);
-      }
+      console.error("fetchCompanyJobs Error:", err);
+    } finally {
+      setJobsLoading(false);
     }
-    finally { setJobsLoading(false); }
-  }, [user, selectedCompany, subscriptionExpired, debouncedJobSearch, jobPage, jobLevelFilter, paymentStatus, selectedCompanyData]);
+  }, [user, selectedCompany, subscriptionExpired, debouncedJobSearch, debouncedCompanySearch, jobSearch, jobPage, jobLevelFilter, paymentStatus]);
+
+
 
   useEffect(() => {
     const isPaid = paymentStatus === 'paid' || paymentStatus === 'active';
@@ -877,15 +1034,80 @@ const Homepage = () => {
 
                 <div style={S.searchWrap}>
                   <div style={S.searchRow}>
-                    <div style={S.searchPill}>
-                      <Search size={18} color="#999" style={{ flexShrink: 0 }} />
-                      <input
-                        style={S.searchInput}
-                        type="text"
-                        value={companySearch}
-                        onChange={(e) => { setCompanySearch(e.target.value); setCompanyPage(1); }}
-                        placeholder="Search companies"
-                      />
+                    <div style={{ position: 'relative', flex: 1, display: 'flex' }}>
+                      <div style={{
+                        ...S.searchPill,
+                        background: showSuggestions && filteredSuggestions.length > 0 ? '#24385E' : '#fff',
+                        borderRadius: showSuggestions && filteredSuggestions.length > 0 ? '24px 24px 0 0' : '16px',
+                        borderBottom: showSuggestions && filteredSuggestions.length > 0 ? '1px solid rgba(255,255,255,0.1)' : '1px solid #e5e7eb',
+                        transition: 'all 0.2s',
+                        zIndex: 2010
+                      }}>
+                        <Search size={18} color={showSuggestions && filteredSuggestions.length > 0 ? '#94a3b8' : '#999'} style={{ flexShrink: 0 }} />
+                        <input
+                          style={{
+                            ...S.searchInput,
+                            color: showSuggestions && filteredSuggestions.length > 0 ? '#fff' : '#1a1a1a',
+                            transition: 'color 0.2s'
+                          }}
+                          type="text"
+                          value={companySearch}
+                          onChange={handleCompanySearchChange}
+                          onFocus={() => { if (companySearch.length > 0) setShowSuggestions(true); }}
+                          onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                          placeholder="Search companies"
+                        />
+                      </div>
+
+                      {/* Suggestions Dropdown (Google Chrome Style) */}
+                      {showSuggestions && filteredSuggestions.length > 0 && (
+                        <div style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          backgroundColor: '#24385E',
+                          borderRadius: '24px',
+                          boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                          zIndex: 2000,
+                          overflow: 'hidden',
+                          border: '1px solid rgba(255,255,255,0.1)',
+                          animation: 'fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                          paddingTop: '52px'
+                        }}>
+                          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '4px' }}>
+                            {filteredSuggestions.map((role, idx) => (
+                              <div
+                                key={role}
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  handleSuggestionClick(role);
+                                }}
+                                style={{
+                                  padding: '12px 20px',
+                                  cursor: 'pointer',
+                                  fontSize: '13px',
+                                  color: '#fff',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px',
+                                  transition: 'all 0.15s ease',
+                                  background: 'transparent'
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                              >
+                                <Search size={14} color="#94a3b8" />
+                                <span style={{ fontWeight: 400 }}>{role}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                     {!isMobile && (
                       <button
@@ -928,7 +1150,7 @@ const Homepage = () => {
 
                 {/* ── Count + Sort ── */}
                 <div style={S.countRow}>
-                  Showing <strong style={{ color: '#333' }}>{totalCompanies.toLocaleString()}</strong> verified companies
+                  Showing <strong style={{ color: '#333' }}>{totalCompanies.toLocaleString()}</strong> Human verified companies
                 </div>
                 <div style={{ padding: isMobile ? '0 12px 10px' : '0 20px 12px' }}>
                   <button onClick={() => { setSortBy(p => p === 'most_jobs' ? 'highest_wage' : p === 'highest_wage' ? 'name' : 'most_jobs'); setCompanyPage(1); }}
@@ -998,8 +1220,23 @@ const Homepage = () => {
                           <LogoBox name={selectedCompany} size={isMobile ? 44 : 56} fontSize={isMobile ? 15 : 18} />
                           <div style={{ minWidth: 0 }}>
                             <h2 style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 800, color: '#111', margin: '0 0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedCompany}</h2>
-                            <p style={{ fontSize: '12px', color: '#999', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <ExternalLink size={12} />{selectedCompanyData?.domain || `${selectedCompany.toLowerCase().replace(/\s+/g, '')}.com`}
+                            <p style={{ fontSize: '12px', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <ExternalLink size={12} color="#999" />
+                              <a
+                                href={`https://${selectedCompanyData?.domain || `${selectedCompany.toLowerCase().replace(/\s+/g, '')}.com`}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  color: '#24385E',
+                                  textDecoration: 'none',
+                                  fontWeight: 700,
+                                  transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline'; e.currentTarget.style.color = '#FDB913'; }}
+                                onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none'; e.currentTarget.style.color = '#24385E'; }}
+                              >
+                                {selectedCompanyData?.domain || `${selectedCompany.toLowerCase().replace(/\s+/g, '')}.com`}
+                              </a>
                             </p>
                           </div>
                         </div>
@@ -1015,10 +1252,10 @@ const Homepage = () => {
                         )}
                       </div>
 
-                      {/* ── Sponsored count ── */}
+                      {/* ── Sponsored count ──
                       <p style={{ fontSize: '14px', color: '#222', fontWeight: 600, margin: '0 0 14px' }}>
                         {selectedCompanyData?.jobCount || totalCompanyJobs}+ H-1B visas sponsored
-                      </p>
+                      </p> */}
 
                       {/* ── Wage badges ── */}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '20px' }}>
@@ -1061,13 +1298,85 @@ const Homepage = () => {
                         </div>
                       )}
 
-                      {/* ── Job search bar ── */}
+                      {/* ── Job search bar with live suggestions ── */}
                       <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: '10px', marginBottom: '16px' }}>
-                        <div style={S.jobSearchPill}>
-                          <Search size={16} color="#bbb" style={{ flexShrink: 0 }} />
-                          <input style={S.jobSearchInput} type="text" value={jobSearch}
-                            onChange={(e) => { setJobSearch(e.target.value); setJobPage(1); }}
-                            placeholder={`Search jobs at ${selectedCompany}`} />
+                        <div style={{ position: 'relative', flex: 1 }}>
+                          <div style={{
+                            ...S.jobSearchPill,
+                            background: (showJobSuggestions && jobFilteredSuggestions.length > 0) ? '#24385E' : '#fff',
+                            borderRadius: (showJobSuggestions && jobFilteredSuggestions.length > 0) ? '16px 16px 0 0' : (S.jobSearchPill.borderRadius || '50px'),
+                            borderBottom: (showJobSuggestions && jobFilteredSuggestions.length > 0) ? '1px solid rgba(255,255,255,0.1)' : undefined,
+                            position: 'relative',
+                            zIndex: 2010,
+                            transition: 'all 0.2s'
+                          }}>
+                            <Search size={16} color={(showJobSuggestions && jobFilteredSuggestions.length > 0) ? '#94a3b8' : '#bbb'} style={{ flexShrink: 0 }} />
+                            <input
+                              style={{
+                                ...S.jobSearchInput,
+                                color: (showJobSuggestions && jobFilteredSuggestions.length > 0) ? '#fff' : '#1e293b',
+                                transition: 'color 0.2s',
+                                background: 'transparent'
+                              }}
+                              type="text"
+                              value={jobSearch}
+                              onChange={handleJobSearchChange}
+                              onFocus={() => { if (jobSearch.trim().length > 0) setShowJobSuggestions(true); }}
+                              onBlur={() => setTimeout(() => setShowJobSuggestions(false), 200)}
+                              placeholder={`Search jobs at ${selectedCompany}`}
+                            />
+                            {jobSearch.length > 0 && (
+                              <button onClick={() => { setJobSearch(''); setJobFilteredSuggestions([]); setShowJobSuggestions(false); }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                                <X size={16} color="#94a3b8" />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Job suggestions dropdown */}
+                          {showJobSuggestions && jobFilteredSuggestions.length > 0 && (
+                            <div style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              backgroundColor: '#24385E',
+                              borderRadius: '16px',
+                              boxShadow: '0 16px 40px rgba(0,0,0,0.35)',
+                              zIndex: 2000,
+                              overflow: 'hidden',
+                              border: '1px solid rgba(255,255,255,0.1)',
+                              paddingTop: '50px'
+                            }}>
+                              <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                                {jobFilteredSuggestions.map((role) => (
+                                  <div
+                                    key={role}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      handleJobSuggestionClick(role);
+                                    }}
+                                    style={{
+                                      padding: '11px 18px',
+                                      cursor: 'pointer',
+                                      fontSize: '13px',
+                                      color: '#fff',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '12px',
+                                      background: 'transparent',
+                                      transition: 'background 0.15s'
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
+                                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                                  >
+                                    <Search size={13} color="#94a3b8" />
+                                    <span style={{ fontWeight: 400 }}>{role}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button
@@ -1081,7 +1390,7 @@ const Homepage = () => {
                             <SlidersHorizontal size={14} color={showJobFilters ? '#fff' : '#777'} />
                             Filters
                           </button>
-                          <button style={S.searchBtn} onClick={fetchCompanyJobs}>
+                          <button style={S.searchBtn} onClick={() => fetchCompanyJobs(1, jobSearch, jobLevelFilter)}>
                             Search
                           </button>
                         </div>

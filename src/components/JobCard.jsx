@@ -108,12 +108,20 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                         {/* Row 1: Company + Date */}
                         <div className="flex items-center justify-between mb-1.5 pr-4">
                             <span className="text-[14px] font-bold text-[#a0aec0] tracking-tight">{job.company || 'Company Name'}</span>
-                            <span className="text-[13px] font-bold text-[#a0aec0]">{formatDate(job.date_posted)}</span>
                         </div>
 
                         {/* Row 2: Title */}
-                        <h2 className="text-[24px] font-black text-[#111] leading-tight mb-2.5 truncate">
-                            {job.title || job.role || 'Not Specified'}
+                        <h2 className="text-[24px] font-black leading-tight mb-2.5 truncate">
+                            <a
+                                href={job.url || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#111] hover:text-[#FDB913] transition-colors duration-200"
+                                style={{ textDecoration: 'none' }}
+                                onClick={e => { if (!job.url) e.preventDefault(); }}
+                            >
+                                {job.title || job.role || 'Not Specified'}
+                            </a>
                         </h2>
 
                         {/* Row 3: Location */}
@@ -122,12 +130,7 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                             <span className="text-[14px] font-bold">{job.location || 'United States'}</span>
                         </div>
 
-                        {/* Row 4: Meta info pills */}
-                        <div className="flex flex-wrap items-center gap-3 mb-4">
-                            <div className="inline-flex items-center px-4 py-2 bg-white rounded-xl border border-[#edf2f7] text-[#718096]">
-                                <span className="text-[13px] font-bold">{job.years_exp_required || 'Open exp.'}</span>
-                            </div>
-                        </div>
+
 
                         {/* Row 5: Badges */}
                         <div className="flex items-center gap-3">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Star, Sliders, X, Building, Info, Loader2, ChevronLeft, ChevronRight, ArrowUpDown, User } from 'lucide-react';
+import { Search, Star, Sliders, X, Building, Info, Loader2, ChevronLeft, ChevronRight, ArrowUpDown, User, Briefcase } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import { supabase } from '../supabaseClient';
@@ -7,9 +7,13 @@ import CompanyCard from './CompanyCard';
 import CompanyJobCard from './CompanyJobCard';
 import { getCompanyLogo } from '../utils/logoHelper';
 import LogoBox from './LogoBox';
+import { fetchJobRoles, filterRoles } from '../utils/rolesSuggestions';
+import { isFamous } from '../utils/famousCompanies';
 
 const COMPANIES_PER_PAGE = 3;
 const JOBS_PER_PAGE = 2;
+
+// Roles fetched dynamically from Supabase via rolesSuggestions utility
 
 const MigrateHero = () => {
     const { user } = useAuth();
@@ -31,6 +35,12 @@ const MigrateHero = () => {
     const [companyPage, setCompanyPage] = useState(1);
     const [totalCompanies, setTotalCompanies] = useState(0);
     const [sortBy, setSortBy] = useState('most_jobs');
+    const [filteredSuggestions, setFilteredSuggestions] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const [allRoles, setAllRoles] = useState([]);
+
+    // Load job roles from Supabase on mount (globally cached)
+    useEffect(() => { fetchJobRoles().then(setAllRoles); }, []);
 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
@@ -40,9 +50,11 @@ const MigrateHero = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Debounce company search
+    // Debounce company search (only for Supabase querying)
     useEffect(() => {
-        const t = setTimeout(() => setDebouncedCompanySearch(companySearch), 400);
+        const t = setTimeout(() => {
+            setDebouncedCompanySearch(companySearch);
+        }, 500);
         return () => clearTimeout(t);
     }, [companySearch]);
 
@@ -53,9 +65,16 @@ const MigrateHero = () => {
             let arr = [...window._landingPageCompaniesCache];
 
             // Apply local sorting
-            if (sortBy === 'most_jobs') arr.sort((a, b) => b.jobCount - a.jobCount);
-            else if (sortBy === 'highest_wage') arr.sort((a, b) => b.maxWageNum - a.maxWageNum);
-            else arr.sort((a, b) => a.company.localeCompare(b.company));
+            // Apply local sorting with Famous Priority
+            arr.sort((a, b) => {
+                const aF = isFamous(a.company);
+                const bF = isFamous(b.company);
+                if (aF && !bF) return -1;
+                if (!aF && bF) return 1;
+                if (sortBy === 'most_jobs') return b.jobCount - a.jobCount;
+                if (sortBy === 'highest_wage') return b.maxWageNum - a.maxWageNum;
+                return a.company.localeCompare(b.company);
+            });
 
             setTotalCompanies(arr.length);
             const from = (companyPage - 1) * COMPANIES_PER_PAGE;
@@ -72,22 +91,53 @@ const MigrateHero = () => {
 
         setCompaniesLoading(true);
         try {
-            // STEP 1: Get confirmed companies from audit_reviews_sync (Very fast & reliable table)
-            let confirmedQuery = supabase
-                .from('audit_reviews_sync')
-                .select('company')
-                .eq('tl_confirmation', 'yes');
+            // STEP 1: Get confirmed companies
+            let confirmedNames = [];
 
-            if (debouncedCompanySearch) {
-                confirmedQuery = confirmedQuery.ilike('company', `%${debouncedCompanySearch}%`).limit(500);
+            if (debouncedCompanySearch && debouncedCompanySearch.trim()) {
+                const words = debouncedCompanySearch.trim().split(/\s+/).filter(w => w.length >= 1);
+                const nameCond = `and(${words.map(w => `company.ilike.%${w}%`).join(',')})`;
+                const roleCond = `and(${words.map(w => `job_role_name.ilike.%${w}%`).join(',')})`;
+
+                // Parallel search for company name (confirmed only) and role name (filter to confirmed later)
+                const [companyRes, roleRes] = await Promise.all([
+                    supabase
+                        .from('audit_reviews_sync')
+                        .select('company')
+                        .eq('tl_confirmation', 'yes')
+                        .or(nameCond)
+                        .limit(200),
+                    supabase
+                        .from('job_jobrole_sponsored_sync')
+                        .select('company')
+                        .or(roleCond)
+                        .limit(200)
+                ]);
+
+                const namesFromCompany = (companyRes.data || []).map(r => r.company);
+                const namesFromRole = (roleRes.data || []).map(r => r.company);
+                const combined = Array.from(new Set([...namesFromCompany, ...namesFromRole])).filter(Boolean);
+
+                // Now verify which of namesFromRole are actually confirmed
+                if (namesFromRole.length > 0) {
+                    const { data: verifiedOnes } = await supabase
+                        .from('audit_reviews_sync')
+                        .select('company')
+                        .eq('tl_confirmation', 'yes')
+                        .in('company', combined);
+                    confirmedNames = (verifiedOnes || []).map(v => v.company);
+                } else {
+                    confirmedNames = namesFromCompany;
+                }
             } else {
-                confirmedQuery = confirmedQuery.limit(500);
+                const { data: auditData } = await supabase
+                    .from('audit_reviews_sync')
+                    .select('company')
+                    .eq('tl_confirmation', 'yes')
+                    .limit(500);
+                confirmedNames = Array.from(new Set((auditData || []).map(r => r.company))).filter(Boolean);
             }
 
-            const { data: auditData, error: auditError } = await confirmedQuery;
-            if (auditError) throw auditError;
-
-            const confirmedNames = Array.from(new Set((auditData || []).map(r => r.company))).filter(Boolean);
             if (confirmedNames.length === 0) {
                 setCompanies([]);
                 setTotalCompanies(0);
@@ -129,7 +179,10 @@ const MigrateHero = () => {
                     stats.wageLevel = j.wage_level || 'Lv 1';
                 }
 
-                if (j.job_role_name) stats.industries.add(j.job_role_name);
+                if (j.job_role_name) {
+                    const roles = j.job_role_name.split(',').map(r => r.trim()).filter(Boolean);
+                    roles.forEach(r => stats.industries.add(r));
+                }
             });
 
             // Ensure every company from Step 1 exists in the final array
@@ -145,20 +198,40 @@ const MigrateHero = () => {
                 }
             });
 
-            let arr = Array.from(companyStats.values()).map(c => ({
-                ...c,
-                industries: Array.from(c.industries).slice(0, 3)
-            }));
+            let arr = Array.from(companyStats.values()).map(c => {
+                const industriesArr = Array.from(c.industries);
+                // Prioritize matching industries in display
+                if (debouncedCompanySearch) {
+                    const words = debouncedCompanySearch.toLowerCase().trim().split(/\s+/).filter(w => w.length >= 1);
+                    industriesArr.sort((a, b) => {
+                        const aMatch = words.every(w => a.toLowerCase().includes(w));
+                        const bMatch = words.every(w => b.toLowerCase().includes(w));
+                        if (aMatch && !bMatch) return -1;
+                        if (!aMatch && bMatch) return 1;
+                        return 0;
+                    });
+                }
+                return {
+                    ...c,
+                    industries: industriesArr // Keep full list for accurate sorting/display prioritization
+                };
+            });
 
             // Cache the results
             if (!debouncedCompanySearch) {
                 window._landingPageCompaniesCache = arr;
             }
 
-            // Apply selected sorting
-            if (sortBy === 'most_jobs') arr.sort((a, b) => b.jobCount - a.jobCount);
-            else if (sortBy === 'highest_wage') arr.sort((a, b) => b.maxWageNum - a.maxWageNum);
-            else arr.sort((a, b) => a.company.localeCompare(b.company));
+            // Apply selected sorting with Famous Priority
+            arr.sort((a, b) => {
+                const aF = isFamous(a.company);
+                const bF = isFamous(b.company);
+                if (aF && !bF) return -1;
+                if (!aF && bF) return 1;
+                if (sortBy === 'most_jobs') return b.jobCount - a.jobCount;
+                if (sortBy === 'highest_wage') return b.maxWageNum - a.maxWageNum;
+                return a.company.localeCompare(b.company);
+            });
 
             setTotalCompanies(arr.length);
             const from = (companyPage - 1) * COMPANIES_PER_PAGE;
@@ -201,12 +274,24 @@ const MigrateHero = () => {
         setJobsLoading(true);
         try {
             const from = (jobPage - 1) * JOBS_PER_PAGE;
-            const { data, error, count } = await supabase
+            let q = supabase
                 .from('job_jobrole_sponsored_sync')
                 .select('*', { count: 'exact' })
                 .eq('company', selectedCompany)
-                .order('date_posted', { ascending: false })
-                .range(from, from + JOBS_PER_PAGE - 1);
+                .order('wage_num', { ascending: false, nullsFirst: false })
+                .order('date_posted', { ascending: false });
+
+            // Strict Role Search: (Title has all words) OR (Role has all words)
+            if (debouncedCompanySearch && debouncedCompanySearch.trim()) {
+                const words = debouncedCompanySearch.trim().split(/\s+/).filter(w => w.length >= 1);
+                if (words.length > 0) {
+                    const titleCond = `and(${words.map(w => `title.ilike.%${w}%`).join(',')})`;
+                    const roleCond = `and(${words.map(w => `job_role_name.ilike.%${w}%`).join(',')})`;
+                    q = q.or(`${titleCond},${roleCond}`);
+                }
+            }
+
+            const { data, error, count } = await q.range(from, from + JOBS_PER_PAGE - 1);
 
             if (error) throw error;
 
@@ -216,6 +301,20 @@ const MigrateHero = () => {
                 job_id: j.id,
                 role: j.job_role_name
             }));
+
+            // Priority Sort: (1) Visible Salary First, (2) Apply Link
+            mappedData.sort((a, b) => {
+                const aHasSal = !!(a.salary && a.salary.trim().length > 0);
+                const bHasSal = !!(b.salary && b.salary.trim().length > 0);
+                const aHasUrl = !!(a.url || a.apply_url);
+                const bHasUrl = !!(b.url || b.apply_url);
+
+                const aScore = (aHasSal ? 100 : 0) + (aHasUrl ? 1 : 0);
+                const bScore = (bHasSal ? 100 : 0) + (bHasUrl ? 1 : 0);
+
+                if (aScore !== bScore) return bScore - aScore;
+                return 0;
+            });
 
             setCompanyJobs(mappedData);
             setTotalCompanyJobs(count || 0);
@@ -233,7 +332,7 @@ const MigrateHero = () => {
         } finally {
             setJobsLoading(false);
         }
-    }, [selectedCompany, jobPage]);
+    }, [selectedCompany, jobPage, debouncedCompanySearch]);
 
     useEffect(() => { fetchCompanies(); }, [debouncedCompanySearch, sortBy, companyPage]);
     useEffect(() => { fetchCompanyJobs(); }, [selectedCompany, jobPage]);
@@ -242,6 +341,28 @@ const MigrateHero = () => {
         setSelectedCompany(co.company);
         setSelectedCompanyData(co);
         setJobPage(1);
+    };
+
+    const handleSuggestionClick = (role) => {
+        setCompanySearch(role);
+        setDebouncedCompanySearch(role); // Instant update on select
+        setShowSuggestions(false);
+        setCompanyPage(1);
+    };
+
+    const handleSearchChange = (e) => {
+        const val = e.target.value;
+        setCompanySearch(val);
+        setCompanyPage(1);
+
+        if (val.trim().length > 0) {
+            const filtered = filterRoles(allRoles, val, 8);
+            setFilteredSuggestions(filtered);
+            setShowSuggestions(filtered.length > 0);
+        } else {
+            setFilteredSuggestions([]);
+            setShowSuggestions(false);
+        }
     };
 
     return (
@@ -284,18 +405,90 @@ const MigrateHero = () => {
                             flexDirection: 'column',
                             gap: '0'
                         }}>
-                            {/* Search bar clone */}
-                            <div style={{ background: '#fff', borderRadius: '60px', border: '1.5px solid #d8d8d8', display: 'flex', alignItems: 'center', gap: '10px', padding: '0 16px', height: '52px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)', marginBottom: '16px' }}>
-                                <Search size={18} color="#aaa" strokeWidth={2.5} />
-                                <input
-                                    value={companySearch}
-                                    onChange={(e) => { setCompanySearch(e.target.value); setCompanyPage(1); }}
-                                    placeholder="Search companies"
-                                    style={{ flex: 1, border: 'none', outline: 'none', fontSize: '14px', fontWeight: 600, color: '#333', background: 'transparent' }}
-                                />
-                                {!isMobile && (
-                                    <div style={{ height: '32px', padding: '0 14px', background: '#fff', border: '1.5px solid #ebebeb', borderRadius: '40px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 700, color: '#444' }}>
-                                        <Sliders size={14} className="text-yellow-500" /> Filters
+                            <div style={{ position: 'relative', marginBottom: '16px' }}>
+                                <div style={{
+                                    background: showSuggestions && filteredSuggestions.length > 0 ? '#24385E' : '#fff',
+                                    borderRadius: showSuggestions && filteredSuggestions.length > 0 ? '30px 30px 0 0' : '60px',
+                                    border: showSuggestions && filteredSuggestions.length > 0 ? '1.5px solid rgba(255,255,255,0.1)' : '1.5px solid #d8d8d8',
+                                    display: 'flex', alignItems: 'center', gap: '10px', padding: '0 16px', height: '52px',
+                                    boxShadow: showSuggestions && filteredSuggestions.length > 0 ? 'none' : '0 2px 8px rgba(0,0,0,0.07)',
+                                    position: 'relative', zIndex: 2010,
+                                    transition: 'all 0.2s'
+                                }}>
+                                    <Search size={18} color="#aaa" strokeWidth={2.5} />
+                                    <input
+                                        value={companySearch}
+                                        onChange={handleSearchChange}
+                                        onFocus={() => {
+                                            if (companySearch.length > 0) setShowSuggestions(true);
+                                        }}
+                                        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                                        placeholder="Search roles or companies"
+                                        style={{
+                                            flex: 1,
+                                            border: 'none',
+                                            outline: 'none',
+                                            fontSize: '14px',
+                                            fontWeight: 600,
+                                            color: showSuggestions && filteredSuggestions.length > 0 ? '#fff' : '#333',
+                                            background: 'transparent',
+                                            transition: 'color 0.2s'
+                                        }}
+                                    />
+                                    {!isMobile && (
+                                        <div style={{ height: '32px', padding: '0 14px', background: '#fff', border: '1.5px solid #ebebeb', borderRadius: '40px', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 700, color: '#444' }}>
+                                            <Sliders size={14} className="text-yellow-500" /> Filters
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Suggestions Dropdown (Google Chrome Style) */}
+                                {showSuggestions && filteredSuggestions.length > 0 && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: 0,
+                                        left: 0,
+                                        right: 0,
+                                        backgroundColor: '#24385E',
+                                        borderRadius: '30px',
+                                        boxShadow: '0 20px 40px rgba(0,0,0,0.4)',
+                                        zIndex: 2000,
+                                        overflow: 'hidden',
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        animation: 'fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                                        paddingTop: '52px'
+                                    }}>
+                                        <div style={{ borderTop: '0.5px solid rgba(255,255,255,0.1)' }}>
+                                            {filteredSuggestions.map((role, idx) => (
+                                                <div
+                                                    key={role}
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        handleSuggestionClick(role);
+                                                    }}
+                                                    style={{
+                                                        padding: '12px 20px',
+                                                        cursor: 'pointer',
+                                                        fontSize: '14px',
+                                                        color: '#fff',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '12px',
+                                                        transition: 'all 0.15s ease',
+                                                        background: 'transparent'
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                                    }}
+                                                >
+                                                    <Search size={14} color="#94a3b8" />
+                                                    <span style={{ fontWeight: 400 }}>{role}</span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -369,7 +562,25 @@ const MigrateHero = () => {
                                         <LogoBox name={selectedCompany} size={isMobile ? 48 : 64} fontSize={isMobile ? 16 : 20} />
                                         <div>
                                             <h3 style={{ fontSize: isMobile ? '18px' : '24px', fontWeight: 800, color: '#111', margin: '0 0 5px' }}>{selectedCompany}</h3>
-                                            <p style={{ fontSize: '13px', color: '#24385E', fontWeight: 600, margin: 0 }}>{selectedCompany.toLowerCase().replace(/\s+/g, '')}.com</p>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <ExternalLink size={13} color="#999" />
+                                                <a
+                                                    href={`https://${selectedCompany.toLowerCase().replace(/\s+/g, '')}.com`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    style={{
+                                                        fontSize: '13px',
+                                                        color: '#24385E',
+                                                        fontWeight: 700,
+                                                        textDecoration: 'none',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                    onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline'; e.currentTarget.style.color = '#FDB913'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none'; e.currentTarget.style.color = '#24385E'; }}
+                                                >
+                                                    {selectedCompany.toLowerCase().replace(/\s+/g, '')}.com
+                                                </a>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -450,7 +661,7 @@ const MigrateHero = () => {
                     </div>
                 </div>
             </div>
-        </section>
+        </section >
     );
 };
 

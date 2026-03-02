@@ -103,11 +103,24 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '3px' }}>
                         <p style={{ fontSize: '11px', color: '#aaa', margin: 0, fontWeight: 600 }}>{job.company}</p>
-                        <span style={{ fontSize: '11px', fontWeight: 600, color: isNew ? '#22c55e' : '#aaa', whiteSpace: 'nowrap', flexShrink: 0 }}>{timeAgo}</span>
                     </div>
 
-                    <h3 style={{ fontSize: isMobile ? '14px' : '15px', fontWeight: 700, color: '#111', margin: '0 0 5px', lineHeight: 1.3 }}>
-                        {job.title || job.role || 'Job Position'}
+                    <h3 style={{ fontSize: isMobile ? '14px' : '15px', fontWeight: 700, margin: '0 0 5px', lineHeight: 1.3 }}>
+                        <a
+                            href={job.url || job.apply_url || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                                color: '#111',
+                                textDecoration: 'none',
+                                transition: 'color 150ms ease'
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.color = '#EAB308'}
+                            onMouseLeave={e => e.currentTarget.style.color = '#111'}
+                            onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); }}
+                        >
+                            {job.title || job.role || 'Job Position'}
+                        </a>
                     </h3>
 
                     <p style={{ fontSize: '11px', color: '#aaa', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -117,9 +130,6 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '10px' }}>
                         {job.salary && (
                             <span style={{ fontSize: '11px', fontWeight: 600, color: '#24385E', background: '#f1f5f9', borderRadius: '6px', padding: '3px 8px' }}>{job.salary}</span>
-                        )}
-                        {(job.years_exp_required || job.commitment) && (
-                            <span style={{ fontSize: '11px', color: '#666', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '3px 8px' }}>{job.years_exp_required || job.commitment}</span>
                         )}
                     </div>
 
