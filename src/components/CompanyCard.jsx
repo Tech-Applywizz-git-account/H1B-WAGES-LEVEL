@@ -66,17 +66,6 @@ const CompanyCard = ({ company, jobCount, wageLevel, industries, isSelected, onC
                 </span>
             </div>
 
-            {/* Row 2: Industry chips */}
-            {industries && industries.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '10px' }}>
-                    {industries.slice(0, isMobile ? 2 : 3).map((ind, i) => (
-                        <span key={i} style={{
-                            fontSize: '11px', color: '#555', border: '1px solid #e0e0e0',
-                            borderRadius: '8px', padding: '3px 10px', background: '#fff',
-                        }}>{ind}</span>
-                    ))}
-                </div>
-            )}
 
             {/* Row 4: Wage badges */}
             <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>

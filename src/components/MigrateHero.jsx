@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Star, Sliders, X, Building, Info, Loader2, ChevronLeft, ChevronRight, ArrowUpDown, User, Briefcase } from 'lucide-react';
+import { Search, Star, Sliders, X, Building, Info, Loader2, ChevronLeft, ChevronRight, ArrowUpDown, User, Briefcase, ExternalLink } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import { supabase } from '../supabaseClient';
@@ -586,12 +586,6 @@ const MigrateHero = () => {
 
                                     {/* Company Info row */}
                                     <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', flexWrap: 'wrap', gap: isMobile ? '20px' : '32px', marginBottom: '24px' }}>
-                                        <div>
-                                            <p style={{ fontSize: '11px', color: '#aaa', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Industries</p>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                                {selectedCompanyData?.industries?.map(f => <span key={f} style={{ fontSize: '12px', fontWeight: 700, background: '#fff', border: '1px solid #ebebeb', borderRadius: '10px', padding: '5px 12px' }}>{f}</span>)}
-                                            </div>
-                                        </div>
                                         <div>
                                             <p style={{ fontSize: '11px', color: '#aaa', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Visa Sponsorship</p>
                                             <p style={{ fontSize: '14px', fontWeight: 700, color: '#333' }}>{selectedCompanyData?.jobCount}+ roles found</p>
