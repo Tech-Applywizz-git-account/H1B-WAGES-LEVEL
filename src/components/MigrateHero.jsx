@@ -100,9 +100,15 @@ const MigrateHero = () => {
                 const roleCond = `and(${words.map(w => `job_role_name.ilike.%${w}%`).join(',')})`;
 
                 // Parallel search for company name (confirmed only) and role name (filter to confirmed later)
-                const [companyRes, roleRes] = await Promise.all([
+                const [companySyncRes, companyBackupRes, roleRes] = await Promise.all([
                     supabase
                         .from('audit_reviews_sync')
+                        .select('company')
+                        .eq('tl_confirmation', 'yes')
+                        .or(nameCond)
+                        .limit(200),
+                    supabase
+                        .from('audit_reviews_backup')
                         .select('company')
                         .eq('tl_confirmation', 'yes')
                         .or(nameCond)
@@ -114,28 +120,53 @@ const MigrateHero = () => {
                         .limit(200)
                 ]);
 
-                const namesFromCompany = (companyRes.data || []).map(r => r.company);
+                const namesFromSync = (companySyncRes.data || []).map(r => r.company);
+                const namesFromBackup = (companyBackupRes.data || []).map(r => r.company);
                 const namesFromRole = (roleRes.data || []).map(r => r.company);
-                const combined = Array.from(new Set([...namesFromCompany, ...namesFromRole])).filter(Boolean);
+                const combined = Array.from(new Set([...namesFromSync, ...namesFromBackup, ...namesFromRole])).filter(Boolean);
 
                 // Now verify which of namesFromRole are actually confirmed
                 if (namesFromRole.length > 0) {
-                    const { data: verifiedOnes } = await supabase
-                        .from('audit_reviews_sync')
-                        .select('company')
-                        .eq('tl_confirmation', 'yes')
-                        .in('company', combined);
-                    confirmedNames = (verifiedOnes || []).map(v => v.company);
+                    const [resSync, resBackup] = await Promise.all([
+                        supabase
+                            .from('audit_reviews_sync')
+                            .select('company')
+                            .eq('tl_confirmation', 'yes')
+                            .in('company', combined),
+                        supabase
+                            .from('audit_reviews_backup')
+                            .select('company')
+                            .eq('tl_confirmation', 'yes')
+                            .in('company', combined)
+                    ]);
+                    const verifiedOnes = [...(resSync.data || []), ...(resBackup.data || [])];
+                    confirmedNames = Array.from(new Set(verifiedOnes.map(v => v.company))).filter(Boolean);
                 } else {
-                    confirmedNames = namesFromCompany;
+                    confirmedNames = Array.from(new Set([...namesFromSync, ...namesFromBackup])).filter(Boolean);
                 }
             } else {
-                const { data: auditData } = await supabase
-                    .from('audit_reviews_sync')
-                    .select('company')
-                    .eq('tl_confirmation', 'yes')
-                    .limit(500);
-                confirmedNames = Array.from(new Set((auditData || []).map(r => r.company))).filter(Boolean);
+                const fetchAllConfirmed = async (tableName) => {
+                    const names = [];
+                    let pg = 0;
+                    while (true) {
+                        const { data, error } = await supabase
+                            .from(tableName)
+                            .select('company')
+                            .eq('tl_confirmation', 'yes')
+                            .range(pg * 1000, (pg + 1) * 1000 - 1);
+                        if (error || !data || data.length === 0) break;
+                        data.forEach(r => r.company && names.push(r.company));
+                        if (data.length < 1000) break;
+                        pg++;
+                    }
+                    return names;
+                };
+
+                const [syncNames, backupNames] = await Promise.all([
+                    fetchAllConfirmed('audit_reviews_sync'),
+                    fetchAllConfirmed('audit_reviews_backup')
+                ]);
+                confirmedNames = Array.from(new Set([...syncNames, ...backupNames])).filter(Boolean);
             }
 
             if (confirmedNames.length === 0) {
@@ -512,6 +543,7 @@ const MigrateHero = () => {
                                         industries={co.industries}
                                         wageLevel={co.wageLevel}
                                         isMobile={isMobile}
+                                        isVerified={true}
                                         isSelected={selectedCompany === co.company}
                                         onClick={() => handleCompanySelect(co)}
                                     />
@@ -588,7 +620,6 @@ const MigrateHero = () => {
                                     <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', flexWrap: 'wrap', gap: isMobile ? '20px' : '32px', marginBottom: '24px' }}>
                                         <div>
                                             <p style={{ fontSize: '11px', color: '#aaa', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Visa Sponsorship</p>
-                                            <p style={{ fontSize: '14px', fontWeight: 700, color: '#333' }}>{selectedCompanyData?.jobCount}+ roles found</p>
                                         </div>
                                     </div>
 

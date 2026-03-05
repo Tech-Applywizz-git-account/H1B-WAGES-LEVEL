@@ -5,7 +5,7 @@ const TENANT_ID = Deno.env.get("AZURE_TENANT_ID");
 const CLIENT_ID = Deno.env.get("AZURE_CLIENT_ID");
 const CLIENT_SECRET = Deno.env.get("AZURE_CLIENT_SECRET");
 const SENDER_EMAIL = Deno.env.get("SENDER_EMAIL_ADDRESS");
-const APP_URL = Deno.env.get("APP_URL") || "https://teluguwalalinks.com";
+const APP_URL = Deno.env.get("APP_URL") || "https://wagetrail.com";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

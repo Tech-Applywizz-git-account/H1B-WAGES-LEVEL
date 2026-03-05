@@ -76,7 +76,7 @@ const Sidebar = ({ className = "", showHeader = true }) => {
                     </div>
                     <div className="flex flex-col">
                         <span className="text-xl font-bold text-[#24385E] tracking-tight leading-none">Wage</span>
-                        <span className="text-xl font-bold text-yellow-500 tracking-tight leading-none">Level</span>
+                        <span className="text-xl font-bold text-yellow-500 tracking-tight leading-none">Trail</span>
                     </div>
                 </div>
             </div>

@@ -27,7 +27,7 @@ const BuiltByImmigrants = () => {
                         </h2>
 
                         <p className="text-gray-400 text-lg md:text-xl font-medium max-w-2xl mx-auto leading-relaxed mb-12">
-                            We built H1B Wage Level after experiencing the struggle ourselves. No more guessing. No more dead ends. Just verified paths to your future in the U.S.
+                            We built Wage Trail after experiencing the struggle ourselves. No more guessing. No more dead ends. Just verified paths to your future in the U.S.
                         </p>
 
                         <button

@@ -18,7 +18,7 @@ const Pricing = () => {
     const faqs = [
         {
             question: 'How does the subscription work?',
-            answer: `H1-B Wage Level costs $39.99 for 6 months (limited-time offer for the first 1,000 users). You get immediate access to all verified jobs, direct company contact emails, and all premium features.`
+            answer: `Wage Trail costs $39.99 for 6 months (limited-time offer for the first 1,000 users). You get immediate access to all verified jobs, direct company contact emails, and all premium features.`
         },
         {
             question: 'Do you offer refunds?',
@@ -52,7 +52,7 @@ const Pricing = () => {
                             </div>
                         </div>
                         <h1 className="text-3xl md:text-5xl font-black mb-5 tracking-tight leading-tight">
-                            H1-B Wage Level
+                            Wage Trail
                         </h1>
                         <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto font-medium">
                             Unlimited access to visa-sponsored jobs for just $39.99 for 6 months.
@@ -225,7 +225,7 @@ const Pricing = () => {
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-xl font-bold text-[#24385E] tracking-tight leading-none">Wage</span>
-                                    <span className="text-xl font-bold text-yellow-500 tracking-tight leading-none">Level</span>
+                                    <span className="text-xl font-bold text-yellow-500 tracking-tight leading-none">Trail</span>
                                 </div>
                             </Link>
                             <p className="text-gray-400 font-bold text-lg mb-8 max-w-sm leading-relaxed">
@@ -270,7 +270,7 @@ const Pricing = () => {
 
                     <div className="pt-12 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6">
                         <p className="text-xs font-black text-gray-300 uppercase tracking-widest">
-                            © 2026 H1-B Wage Level. All rights reserved.
+                            © 2026 H1-B Wage Trail. All rights reserved.
                         </p>
                         <div className="flex gap-8">
                             <span className="text-xs font-black text-gray-300 uppercase tracking-widest cursor-pointer hover:text-gray-400 transition-colors">US SPONSORSHIP VERIFIED</span>

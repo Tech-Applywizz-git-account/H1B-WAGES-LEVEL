@@ -64,7 +64,7 @@ serve(async (req) => {
             </div>
 
             <div style="text-align: center; margin-top: 35px;">
-                <a href="${Deno.env.get('APP_URL') || 'http://localhost:5173'}/dashboard" style="background: #1e3a8a; color: #ffffff; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">Go to Dashboard</a>
+                <a href="${Deno.env.get('APP_URL') || 'https://wagetrail.com'}/dashboard" style="background: #1e3a8a; color: #ffffff; padding: 14px 30px; border-radius: 8px; text-decoration: none; font-weight: bold; font-size: 16px;">Go to Dashboard</a>
             </div>
           </div>
           

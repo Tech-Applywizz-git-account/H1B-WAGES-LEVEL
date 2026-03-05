@@ -23,7 +23,7 @@ const MigrateFooterSections = () => {
                                 </div>
                                 <div className="flex flex-col">
                                     <span className="text-xl font-bold text-[#24385E] tracking-tight leading-none">Wage</span>
-                                    <span className="text-xl font-bold text-yellow-500 tracking-tight leading-none">Level</span>
+                                    <span className="text-xl font-bold text-yellow-500 tracking-tight leading-none">Trail</span>
                                 </div>
                             </Link>
                             <p className="text-gray-400 font-bold text-lg mb-8 max-w-sm leading-relaxed">
@@ -68,7 +68,7 @@ const MigrateFooterSections = () => {
 
                     <div className="pt-12 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6">
                         <p className="text-xs font-black text-gray-300 uppercase tracking-widest">
-                            © 2026 H1-B Wage Level. All rights reserved.
+                            © 2026 Wage Trail. All rights reserved.
                         </p>
                         <div className="flex gap-8">
                             <span className="text-xs font-black text-gray-300 uppercase tracking-widest cursor-pointer hover:text-gray-400 transition-colors">US SPONSORSHIP VERIFIED</span>

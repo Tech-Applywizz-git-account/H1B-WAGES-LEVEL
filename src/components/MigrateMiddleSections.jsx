@@ -176,7 +176,7 @@ const MigrateMiddleSections = () => {
                                     {[
                                         '7-day unlimited search trial',
                                         'Verified open roles',
-                                        'Wage Level filters (L1, L2, L3, L4)',
+                                        'Wage Trail filters (L1, L2, L3, L4)',
                                         'Direct recruiter email access',
                                         'Cancel any time, no lock-in'
                                     ].map(item => (

@@ -63,6 +63,9 @@ const Login = () => {
                 provider: 'google',
                 options: {
                     redirectTo: `${window.location.origin}/auth/callback`,
+                    queryParams: {
+                        prompt: 'select_account',
+                    },
                 },
             });
             if (error) throw error;
@@ -91,7 +94,7 @@ const Login = () => {
                         </div>
                         <div className="flex flex-col">
                             <span className="text-xl font-bold text-[#24385E] tracking-tight leading-none">Wage</span>
-                            <span className="text-xl font-bold text-[#FDB913] tracking-tight leading-none">Level</span>
+                            <span className="text-xl font-bold text-[#FDB913] tracking-tight leading-none">Trail</span>
                         </div>
                     </Link>
                 </div>

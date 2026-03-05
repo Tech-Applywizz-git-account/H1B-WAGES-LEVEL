@@ -108,43 +108,28 @@ export const syncAuditReviews = async () => {
             return { success: true, recordsSynced: 0 };
         }
 
-        // --- INCREMENTAL SYNC LOGIC ---
-        // Dedup by `id` (primary key from external DB).
-        // Uses pagination to fetch ALL existing IDs (avoids 1000 limit issue).
-        const existingRecords = await fetchAllExistingFromMain('audit_reviews_sync', 'id');
-        const existingIds = new Set((existingRecords || []).map(r => r.id));
+        // Use UPSERT to update existing records and insert new ones
+        const batchSize = 100; // Smaller batch size for upsert
+        let totalSynced = 0;
 
-        // Filter out records whose id already exists in our DB
-        const newData = allData.filter(record => !existingIds.has(record.id));
-
-        if (newData.length === 0) {
-            console.log('ℹ️ No new audit reviews to sync');
-            return { success: true, recordsSynced: 0 };
-        }
-
-        console.log(`🆕 Found ${newData.length} new audit reviews to insert`);
-
-        // Insert in batches of 500
-        // Using upsert with ignoreDuplicates as a safety net to prevent 409 crashes
-        const batchSize = 500;
-        let totalInserted = 0;
-
-        for (let i = 0; i < newData.length; i += batchSize) {
-            const batch = newData.slice(i, i + batchSize).map(record => ({
+        for (let i = 0; i < allData.length; i += batchSize) {
+            const batch = allData.slice(i, i + batchSize).map(record => ({
                 ...record,
                 synced_at: new Date().toISOString()
             }));
 
-            const { error: insertError } = await supabase
+            const { error: upsertError } = await supabase
                 .from('audit_reviews_sync')
-                .insert(batch);
+                .upsert(batch, { onConflict: 'id' });
 
-            if (insertError) {
-                console.error(`❌ Error inserting audit reviews batch ${i / batchSize + 1}:`, insertError);
+            if (upsertError) {
+                console.error(`❌ Error upserting audit reviews batch ${i / batchSize + 1}:`, upsertError);
             } else {
-                totalInserted += batch.length;
+                totalSynced += batch.length;
             }
         }
+
+        return { success: true, recordsSynced: totalSynced };
 
         // Silence inserted log
 
@@ -152,6 +137,75 @@ export const syncAuditReviews = async () => {
 
     } catch (error) {
         console.error('❌ Audit reviews sync failed:', error);
+        return { success: false, error: error.message, recordsSynced: 0 };
+    }
+};
+
+/**
+ * Sync audit_reviews_backup from external DB to local audit_reviews_backup table
+ */
+export const syncAuditReviewsBackup = async () => {
+    if (!IS_SYNC_ENABLED) {
+        console.log('⏭️ Sync is currently disabled.');
+        return { success: true, recordsSynced: 0, message: 'Sync disabled' };
+    }
+    console.log('🔄 Starting audit_reviews_backup sync...');
+
+    try {
+        // Fetch all audit reviews from external DB
+        let allData = [];
+        let page = 0;
+        const pageSize = 1000;
+        let hasMore = true;
+
+        while (hasMore) {
+            const { data, error } = await externalSupabase
+                .from('audit_reviews_backup')
+                .select('*')
+                .range(page * pageSize, (page + 1) * pageSize - 1)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            if (data && data.length > 0) {
+                allData = [...allData, ...data];
+                page++;
+                hasMore = data.length === pageSize;
+            } else {
+                hasMore = false;
+            }
+        }
+
+        if (allData.length === 0) {
+            console.log('ℹ️ No audit reviews backup found in external DB');
+            return { success: true, recordsSynced: 0 };
+        }
+
+        // Use UPSERT to update existing records and insert new ones
+        const batchSize = 100;
+        let totalSynced = 0;
+
+        for (let i = 0; i < allData.length; i += batchSize) {
+            const batch = allData.slice(i, i + batchSize).map(record => ({
+                ...record,
+                synced_at: new Date().toISOString()
+            }));
+
+            const { error: upsertError } = await supabase
+                .from('audit_reviews_backup')
+                .upsert(batch, { onConflict: 'id' });
+
+            if (upsertError) {
+                console.error(`❌ Error upserting audit reviews backup batch ${i / batchSize + 1}:`, upsertError);
+            } else {
+                totalSynced += batch.length;
+            }
+        }
+
+        return { success: true, recordsSynced: totalSynced };
+
+    } catch (error) {
+        console.error('❌ Audit reviews backup sync failed:', error);
         return { success: false, error: error.message, recordsSynced: 0 };
     }
 };
@@ -334,6 +388,17 @@ export const runFullSync = async (force = false) => {
         sponsoredResult.recordsSynced,
         sponsoredResult.success ? 'success' : 'error',
         sponsoredResult.error || null
+    );
+
+    // Sync audit reviews backup
+    const backupResult = await syncAuditReviewsBackup();
+    results.auditReviewsBackup = backupResult;
+    await logSync(
+        'audit_reviews_backup',
+        'full',
+        backupResult.recordsSynced,
+        backupResult.success ? 'success' : 'error',
+        backupResult.error || null
     );
 
     markSyncComplete();
@@ -608,6 +673,39 @@ export const fetchAuditReviews = async (page = 1, pageSize = 50, filters = {}) =
         return { data: data || [], total: count || 0, page, pageSize };
     } catch (error) {
         console.error('Error fetching audit reviews:', error);
+        return { data: [], total: 0, page, pageSize };
+    }
+};
+
+/**
+ * Fetch synced audit reviews backup (from local cache)
+ */
+export const fetchAuditReviewsBackup = async (page = 1, pageSize = 50, filters = {}) => {
+    try {
+        let query = supabase
+            .from('audit_reviews_backup')
+            .select('*', { count: 'exact' });
+
+        if (filters.company) {
+            query = query.ilike('company', `%${filters.company}%`);
+        }
+        if (filters.decision) {
+            query = query.eq('decision', filters.decision);
+        }
+        if (filters.jobId) {
+            query = query.eq('job_id', filters.jobId);
+        }
+
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+        query = query.range(from, to).order('audit_date', { ascending: false });
+
+        const { data, error, count } = await query;
+
+        if (error) throw error;
+        return { data: data || [], total: count || 0, page, pageSize };
+    } catch (error) {
+        console.error('Error fetching audit reviews backup:', error);
         return { data: [], total: 0, page, pageSize };
     }
 };

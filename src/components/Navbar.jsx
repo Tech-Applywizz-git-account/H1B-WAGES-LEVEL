@@ -61,7 +61,7 @@ const Navbar = () => {
                             <div className="w-8 h-8 bg-[#FDB913] rounded-md flex items-center justify-center">
                                 <span className="text-black font-bold text-sm">H1-B</span>
                             </div>
-                            <span className="font-bold text-lg text-white tracking-tight">Wage Level</span>
+                            <span className="font-bold text-lg text-white tracking-tight">Wage Trail</span>
                         </div>
                     </Link>
 
@@ -158,7 +158,7 @@ const Navbar = () => {
                         <div className="w-8 h-8 bg-[#FDB913] rounded-md flex items-center justify-center">
                             <span className="text-black font-bold text-sm">H1-B</span>
                         </div>
-                        <span className="font-bold text-base text-white tracking-tight">Wage Level</span>
+                        <span className="font-bold text-base text-white tracking-tight">Wage Trail</span>
                     </Link>
 
                     <button

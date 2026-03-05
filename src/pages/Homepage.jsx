@@ -42,18 +42,74 @@ const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileActiveCol, setMobileActiveCol] = useState('left'); // 'left' or 'right'
 
-  const TARGET_NAMES = ['Google', 'Microsoft'];
-  const LOGOS = {
-    'Google': 'https://www.gstatic.com/images/branding/product/2x/googleg_96dp.png',
-    'Microsoft': 'https://upload.wikimedia.org/wikipedia/commons/4/44/Microsoft_logo.svg'
-  };
+  const TARGET_NAMES = ['Google', 'Microsoft', 'Meta', 'Amazon', 'Apple'];
 
-  const getLogo = (name) => LOGOS[name] || null;
-  const getInitials = (n) => {
-    if (!n) return '??';
-    const words = n.split(' ');
-    if (words.length > 1) return (words[0][0] + words[1][0]).toUpperCase();
-    return n.substring(0, 2).toUpperCase();
+  const S = {
+    page: { display: 'flex', height: '100vh', overflow: 'hidden', background: '#f5f5f7', fontFamily: "'Inter', sans-serif" },
+    sidebar: {
+      width: isMobile ? (mobileMenuOpen ? '280px' : '0') : '260px',
+      minWidth: isMobile ? (mobileMenuOpen ? '280px' : '0') : '260px',
+      background: '#ffffff',
+      borderRight: '1px solid #e8e8e8',
+      display: 'flex',
+      flexDirection: 'column',
+      flexShrink: 0,
+      position: isMobile ? 'fixed' : 'relative',
+      zIndex: 1000,
+      height: '100vh',
+      left: 0,
+      top: 0,
+      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      overflow: 'hidden',
+      boxShadow: isMobile && mobileMenuOpen ? '0 0 40px rgba(0,0,0,0.1)' : 'none'
+    },
+    sidebarLogo: { padding: '24px 24px 20px', minWidth: '260px' },
+    sidebarNav: { flex: 1, padding: '0 12px', overflowY: 'auto', minWidth: '260px' },
+    navItem: (active) => ({
+      width: '100%', display: 'flex', alignItems: 'center', gap: '12px',
+      padding: '10px 14px', borderRadius: '12px', fontSize: '14px', fontWeight: active ? 600 : 400,
+      color: active ? '#24385E' : '#666', background: active ? 'rgba(36,56,94,0.07)' : 'transparent',
+      border: 'none', cursor: 'pointer', transition: 'all 180ms ease', marginBottom: '4px',
+      textAlign: 'left',
+    }),
+    sidebarBottom: { padding: '12px 12px 20px', borderTop: '1px solid #efefef', minWidth: '260px' },
+    userRow: { display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 12px 0' },
+    main: { flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' },
+    topBar: {
+      background: '#fff',
+      borderBottom: '1px solid #e8e8e8',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: isMobile ? 'space-between' : 'center',
+      gap: '12px',
+      padding: isMobile ? '0 16px' : '11px 24px',
+      height: isMobile ? '60px' : 'auto',
+      flexShrink: 0
+    },
+    content: { flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' },
+    leftCol: {
+      width: isMobile ? '100%' : '460px',
+      minWidth: isMobile ? '0' : '460px',
+      background: '#f5f5f7',
+      display: (isMobile && mobileActiveCol === 'right') ? 'none' : 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      flexShrink: 0
+    },
+    searchWrap: { padding: isMobile ? '16px 12px' : '20px 20px 12px' },
+    searchRow: { display: 'flex', alignItems: 'center', gap: '10px' },
+    searchPill: { flex: 1, display: 'flex', alignItems: 'center', gap: '10px', background: '#fff', border: '1.5px solid #d8d8d8', borderRadius: '60px', padding: '0 16px', height: isMobile ? '46px' : '52px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)' },
+    searchInput: { flex: 1, border: 'none', outline: 'none', fontSize: isMobile ? '14px' : '15px', color: '#333', background: 'transparent', minWidth: 0 },
+    countRow: { padding: '0 20px 8px', textAlign: 'center', fontSize: '13px', color: '#888' },
+    companyList: { flex: 1, overflowY: 'auto', padding: isMobile ? '0 10px 24px' : '0 16px 24px', scrollbarWidth: 'none' },
+    rightCol: {
+      flex: 1,
+      background: '#fff',
+      display: (isMobile && mobileActiveCol === 'left') ? 'none' : 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden'
+    },
+    rightScroll: { flex: 1, overflowY: 'auto', padding: isMobile ? '20px' : '32px 40px', scrollbarWidth: 'none' },
   };
 
   useEffect(() => {
@@ -73,11 +129,10 @@ const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
           const companyData = data.filter(j => j.company === name);
           if (companyData.length > 0) {
             grouped[name] = {
-              name,
-              logo: getLogo(name),
-              jobs: companyData.slice(0, 2).map(j => ({ ...j, isTeaser: true, logo: getLogo(name) })),
-              count: companyData.length,
-              level: companyData[0].wage_level || 'Lv 2'
+              company: name,
+              jobs: companyData.slice(0, 3).map(j => ({ ...j, isTeaser: true })),
+              jobCount: companyData.length,
+              wageLevel: companyData[0].wage_level || 'Lv 2'
             };
           }
         });
@@ -103,228 +158,188 @@ const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: '#f8fafc', fontFamily: "'Inter', sans-serif", position: 'relative' }}>
-
-      {/* Sidebar Overlay for Mobile */}
+    <div style={S.page}>
       {isMobile && mobileMenuOpen && (
-        <div
-          onClick={() => setMobileMenuOpen(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 90 }}
-        />
+        <div onClick={() => setMobileMenuOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 90 }} />
       )}
 
       {/* Sidebar */}
-      <aside style={{
-        width: isMobile ? (mobileMenuOpen ? '280px' : '0') : '260px',
-        minWidth: isMobile ? (mobileMenuOpen ? '280px' : '0') : '260px',
-        background: '#fff',
-        borderRight: '1px solid #e2e8f0',
-        display: 'flex',
-        flexDirection: 'column',
-        position: isMobile ? 'fixed' : 'relative',
-        zIndex: 100,
-        height: '100vh',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        overflow: 'hidden'
-      }}>
-        <div style={{ padding: '24px', minWidth: '260px' }}>
+      <aside style={S.sidebar}>
+        <div style={S.sidebarLogo}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }} onClick={() => navigate('/')}>
-              <div style={{ width: 40, height: 40, background: '#24385E', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ color: '#fff', fontWeight: 900, fontSize: 12 }}>H1-B</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => navigate('/')}>
+              <div style={{ position: 'relative' }}>
+                <div style={{ width: '42px', height: '42px', background: '#24385E', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', transform: 'rotate(12deg)' }}>
+                  <span style={{ color: '#fff', fontWeight: 900, fontSize: '10px' }}>H1-B</span>
+                </div>
+                <div style={{ position: 'absolute', top: '-4px', right: '-4px', width: '14px', height: '14px', background: '#EAB308', borderRadius: '50%', border: '2px solid #fff' }}></div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
-                <span style={{ fontSize: 18, fontWeight: 800, color: '#24385E' }}>Wage</span>
-                <span style={{ fontSize: 18, fontWeight: 800, color: '#FDB913' }}>Level</span>
+                <span style={{ fontSize: '20px', fontWeight: 800, color: '#24385E' }}>Wage</span>
+                <span style={{ fontSize: '20px', fontWeight: 800, color: '#EAB308' }}>Trail</span>
               </div>
             </div>
             {isMobile && (
-              <button
-                onClick={() => setMobileMenuOpen(false)}
-                style={{ background: 'transparent', border: 'none', color: '#666' }}
-              >
+              <button onClick={() => setMobileMenuOpen(false)} style={{ background: 'transparent', border: 'none', color: '#666' }}>
                 <X size={24} />
               </button>
             )}
           </div>
         </div>
 
-        <nav style={{ flex: 1, padding: '0 12px', minWidth: '260px' }}>
-          {[
-            { label: 'Dashboard', icon: Building2, active: true },
-            { label: 'Pricing Plans', icon: Gift, onClick: () => navigate('/pricing') },
-          ].map((item, i) => {
-            const Icon = item.icon;
-            return (
-              <button key={i}
-                onClick={item.onClick}
-                style={{
-                  width: '100%', display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '12px 16px', borderRadius: 10, fontSize: 14,
-                  fontWeight: item.active ? 600 : 500,
-                  color: item.active ? '#24385E' : '#64748b',
-                  background: item.active ? '#f1f5f9' : 'transparent',
-                  border: 'none', cursor: 'pointer', marginBottom: 4, textAlign: 'left',
-                }}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
+        <nav style={S.sidebarNav}>
+          <button style={S.navItem(true)} onClick={() => { if (isMobile) setMobileMenuOpen(false); }}>
+            <Building2 size={18} strokeWidth={2.2} />
+            <span>Dashboard</span>
+          </button>
+          <button style={S.navItem(false)} onClick={() => { navigate('/pricing'); if (isMobile) setMobileMenuOpen(false); }}>
+            <Gift size={18} strokeWidth={1.6} />
+            <span>Pricing Plans</span>
+          </button>
         </nav>
 
-        <div style={{ padding: '16px', borderTop: '1px solid #e2e8f0', minWidth: '260px' }}>
-          <button onClick={signOut} style={{
-            width: '100%', display: 'flex', alignItems: 'center', gap: 10,
-            padding: '10px', borderRadius: 8, fontSize: 14, color: '#ef4444',
-            background: 'transparent', border: 'none', cursor: 'pointer',
-          }}>
-            <LogOut size={16} /> <span>Sign Out</span>
+        <div style={S.sidebarBottom}>
+          <button style={{ ...S.navItem(false), color: '#ef4444' }} onClick={signOut}>
+            <LogOut size={18} strokeWidth={1.6} />
+            <span>Logout</span>
           </button>
+          <div style={S.userRow}>
+            <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#24385E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: 700, color: '#fff', flexShrink: 0 }}>
+              {(user?.email?.[0] || 'U').toUpperCase()}
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: '13px', fontWeight: 600, color: '#1a1a1a', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email?.split('@')[0] || 'User'}</p>
+              <p style={{ fontSize: '11px', color: '#999', margin: 0 }}>Preview Participant</p>
+            </div>
+          </div>
         </div>
       </aside>
 
       {/* Main Content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-        <header style={{
-          background: '#fff',
-          borderBottom: '1px solid #e2e8f0',
-          padding: isMobile ? '0 16px' : '16px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: isMobile ? 'space-between' : 'space-between',
-          height: isMobile ? '60px' : 'auto',
-          flexShrink: 0
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {isMobile && (
-              <button onClick={() => setMobileMenuOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', marginLeft: '-8px' }}>
-                <Menu size={24} color="#24385E" />
-              </button>
-            )}
+      <div style={S.main}>
+        <header style={S.topBar}>
+          {isMobile && (
+            <button onClick={() => setMobileMenuOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', marginLeft: '-8px' }}>
+              <Menu size={24} color="#24385E" />
+            </button>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Building2 size={20} color="#24385E" />
-            <span style={{ fontWeight: 600, fontSize: isMobile ? '14px' : '16px' }}>Limited Preview</span>
+            <span style={{ fontSize: isMobile ? '13px' : '15px', fontWeight: 700, color: '#1a1a1a' }}>Limited Preview — Unlock Full Access</span>
           </div>
-          <button onClick={() => navigate('/pricing')} style={{
-            background: '#FDB913', color: '#24385E', border: 'none',
-            padding: isMobile ? '8px 12px' : '8px 20px', borderRadius: 8, fontWeight: 700, fontSize: isMobile ? '12px' : '13px', cursor: 'pointer'
-          }}>
-            Unlock Full Access
-          </button>
+          {!isMobile && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '12px' }}>
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#24385E' }} />
+              <div style={{ width: '36px', height: '3px', background: '#24385E', borderRadius: '3px' }} />
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#24385E' }} />
+              <div style={{ width: '36px', height: '3px', background: '#ddd', borderRadius: '3px' }} />
+              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ddd' }} />
+            </div>
+          )}
         </header>
 
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
-          {/* Company List */}
-          <div style={{
-            width: isMobile ? '100%' : '380px',
-            background: '#f8fafc',
-            borderRight: isMobile ? 'none' : '1px solid #e2e8f0',
-            overflowY: 'auto',
-            padding: '16px',
-            display: (isMobile && mobileActiveCol === 'right') ? 'none' : 'block'
-          }}>
-            <h3 style={{ fontSize: 12, fontWeight: 700, color: '#64748b', marginBottom: 16, textTransform: 'uppercase' }}>Featured Companies</h3>
-            {teaserLoading ? (
-              <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Loader2 className="animate-spin" color="#24385E" /></div>
-            ) : (
-              <>
-                {teaserCompanies.map(c => (
-                  <div key={c.name}
-                    onClick={() => handleSelect(c)}
-                    style={{
-                      background: '#fff', padding: '16px', borderRadius: 12, marginBottom: 12,
-                      border: selectedTeaserCompany?.name === c.name ? '2px solid #24385E' : '1px solid #e2e8f0',
-                      cursor: 'pointer', transition: 'all 0.2s'
-                    }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                      <LogoBox name={c.name} size={40} fontSize={12} />
-                      <div>
-                        <div style={{ fontWeight: 700, color: '#1e293b' }}>{c.name}</div>
-                        <div style={{ fontSize: 12, color: '#64748b' }}>{c.count} Job Roles</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-
-                <div style={{ marginTop: 20, padding: '24px', background: '#fff', borderRadius: 16, border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', textAlign: 'center' }}>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>Ready to apply?</p>
-                  <p style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>Access more jobs from top companies with direct apply links.</p>
-                  <button onClick={() => navigate('/pricing')} style={{
-                    width: '100%', padding: '12px', background: '#FDB913', color: '#24385E',
-                    border: 'none', borderRadius: 10, fontWeight: 800, cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(253,185,19,0.3)'
-                  }}>
-                    Get access to full jobs →
-                  </button>
+        <div style={S.content}>
+          <div style={S.leftCol}>
+            <div style={S.searchWrap}>
+              <div style={S.searchRow}>
+                <div style={S.searchPill}>
+                  <Search size={18} color="#94a3b8" />
+                  <input style={S.searchInput} type="text" placeholder="Search companies (Unlock full search)" disabled />
                 </div>
-              </>
-            )}
+              </div>
+            </div>
+            <div style={S.countRow}>Showing <strong style={{ color: '#333' }}>Featured</strong> Human verified companies</div>
+
+            <div style={S.companyList}>
+              {teaserLoading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '80px 0' }}>
+                  <Loader2 className="w-6 h-6 text-[#24385E] animate-spin" />
+                </div>
+              ) : teaserCompanies.map((c, i) => (
+                <CompanyCard
+                  key={c.company + i}
+                  company={c.company}
+                  isMobile={isMobile}
+                  isVerified={true}
+                  wageLevel={c.wageLevel}
+                  isSelected={selectedTeaserCompany?.company === c.company}
+                  onClick={() => handleSelect(c)}
+                />
+              ))}
+
+              <div style={{ marginTop: 24, padding: '24px', background: '#fff', borderRadius: 20, border: '1.5px dashed #d8d8d8', textAlign: 'center' }}>
+                <Lock size={24} color="#94a3b8" style={{ marginBottom: 12 }} />
+                <p style={{ fontSize: 13, fontWeight: 700, color: '#1e293b', marginBottom: 6 }}>1,000+ More Companies</p>
+                <p style={{ fontSize: 11, color: '#64748b', marginBottom: 16 }}>Complete your plan to unlock the full database of sponsoring companies.</p>
+                <button onClick={() => navigate('/pricing')} style={{ width: '100%', padding: '10px', background: '#24385E', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: 'pointer', fontSize: '13px' }}>Unlock All Companies</button>
+              </div>
+            </div>
           </div>
 
-          {/* Job Details */}
-          <div style={{
-            flex: 1,
-            background: '#fff',
-            overflowY: 'auto',
-            padding: isMobile ? '20px' : '32px',
-            display: (isMobile && mobileActiveCol === 'left') ? 'none' : 'block'
-          }}>
-            {selectedTeaserCompany ? (
-              <>
-                {isMobile && mobileActiveCol === 'right' && (
-                  <button onClick={() => setMobileActiveCol('left')} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', padding: '0 0 16px', color: '#24385E', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
-                    <ChevronLeft size={18} /> Back to companies
-                  </button>
-                )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24 }}>
-                  <LogoBox name={selectedTeaserCompany.name} size={isMobile ? 50 : 60} fontSize={isMobile ? 16 : 18} />
-                  <div>
-                    <h2 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: '#24385E', margin: 0 }}>{selectedTeaserCompany.name}</h2>
-                    <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: isMobile ? 13 : 14 }}>{selectedTeaserCompany.count}+ Visa Opportunities Found</p>
+          <div style={S.rightCol}>
+            <div style={S.rightScroll}>
+              {selectedTeaserCompany ? (
+                <>
+                  {isMobile && (
+                    <button onClick={() => setMobileActiveCol('left')} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', padding: '0 0 16px', color: '#24385E', fontWeight: 700, fontSize: '14px', cursor: 'pointer' }}>
+                      <ChevronLeft size={18} /> Back to list
+                    </button>
+                  )}
+
+                  <div style={{ background: '#FFF7ED', border: '1.5px solid #FFEDD5', borderRadius: '16px', padding: '20px', marginBottom: '24px', textAlign: 'center' }}>
+                    <p style={{ color: '#9A3412', fontWeight: 800, fontSize: '14px', marginBottom: '8px' }}>🔒 UNLOCK ALL JOBS</p>
+                    <p style={{ color: '#C2410C', fontSize: '12px', fontWeight: 500, marginBottom: '16px' }}>Get access to direct apply links and salary data for {selectedTeaserCompany.company}.</p>
+                    <button onClick={() => navigate('/pricing')} style={{ background: '#FDB913', color: '#111', fontWeight: 800, padding: '10px 20px', borderRadius: '10px', border: 'none', cursor: 'pointer', fontSize: '13px', width: '100%' }}>Get Full Access →</button>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+                    <LogoBox name={selectedTeaserCompany.company} size={isMobile ? 50 : 64} fontSize={isMobile ? 16 : 18} />
+                    <div>
+                      <h2 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, color: '#24385E', margin: 0 }}>{selectedTeaserCompany.company}</h2>
+                      <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: isMobile ? 13 : 14 }}>{selectedTeaserCompany.jobCount}+ Visa Opportunities Found</p>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: 32 }}>
+                    <h4 style={{ fontSize: 13, fontWeight: 800, color: '#1a1a1a', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 16 }}>Available Roles</h4>
+                    {teaserJobs.map((job, idx) => (
+                      <CompanyJobCard
+                        key={idx}
+                        job={{ ...job, isVerified: true }}
+                        isMobile={isMobile}
+                        isLandingPage={true}
+                      />
+                    ))}
+                  </div>
+
+                  <div style={{
+                    padding: isMobile ? '24px' : '40px', background: 'linear-gradient(135deg, #24385E 0%, #1a2b4b 100%)',
+                    borderRadius: 24, textAlign: 'center', color: '#fff', boxShadow: '0 12px 32px rgba(36,56,94,0.2)'
+                  }}>
+                    <Sparkles size={32} color="#FDB913" style={{ margin: '0 auto 16px' }} />
+                    <h3 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 900, marginBottom: 12 }}>Go Premium</h3>
+                    <p style={{ color: '#94a3b8', marginBottom: 24, fontSize: isMobile ? 14 : 15, maxWidth: 400, margin: '0 auto 24px' }}>
+                      Access direct application links, historical wage data, and exclusive sponsorship insights.
+                    </p>
+                    <button onClick={() => navigate('/pricing')} style={{ padding: '14px 40px', background: '#FDB913', color: '#24385E', border: 'none', borderRadius: 12, fontWeight: 900, cursor: 'pointer', fontSize: 15 }}>Upgrade Now →</button>
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <Building2 size={48} color="#e2e8f0" style={{ marginBottom: 16 }} />
+                    <p style={{ color: '#64748b' }}>Select a company to view roles</p>
                   </div>
                 </div>
-
-                <div style={{ marginBottom: 32 }}>
-                  <h4 style={{ fontSize: 14, fontWeight: 700, color: '#1e293b', marginBottom: 12 }}>Current Openings</h4>
-                  {teaserJobs.map((job, idx) => (
-                    <CompanyJobCard key={idx} job={job} isMobile={isMobile} />
-                  ))}
-                </div>
-
-                <div style={{
-                  padding: isMobile ? '24px' : '32px', background: 'linear-gradient(135deg, #24385E 0%, #1e293b 100%)',
-                  borderRadius: 24, textAlign: 'center', color: '#fff', boxShadow: '0 12px 32px rgba(36,56,94,0.25)',
-                  position: 'relative', overflow: 'hidden'
-                }}>
-                  <div style={{ position: 'absolute', top: -20, right: -20, width: 100, height: 100, background: 'rgba(253,185,19,0.1)', borderRadius: '50%' }}></div>
-                  <h3 style={{ fontSize: isMobile ? 20 : 24, fontWeight: 900, marginBottom: 12, position: 'relative' }}>Unlock Premium Access</h3>
-                  <p style={{ color: '#cbd5e1', marginBottom: 28, fontSize: isMobile ? 14 : 15, position: 'relative', maxWidth: 460, margin: '0 auto 28px' }}>
-                    Get the full wage levels, historic sponsorship records, and direct application links for every company.
-                  </p>
-                  <button onClick={() => navigate('/pricing')} style={{
-                    width: isMobile ? '100%' : 'auto',
-                    padding: '14px 40px', background: '#FDB913', color: '#24385E',
-                    border: 'none', borderRadius: 12, fontWeight: 900, cursor: 'pointer',
-                    fontSize: 15, transition: 'all 0.2s', boxShadow: '0 4px 15px rgba(253,185,19,0.4)',
-                    position: 'relative'
-                  }}>
-                    Complete Payment to Get Full Access →
-                  </button>
-                </div>
-              </>
-            ) : (
-              <div style={{ textAlign: 'center', padding: isMobile ? 40 : 100, color: '#64748b' }}>
-                <Building2 size={48} style={{ marginBottom: 16, opacity: 0.2 }} />
-                <p>Select a company to view available roles</p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 };
+
 
 const JOBS_PER_PAGE = 15;
 const COMPANIES_PER_PAGE = 25;
@@ -522,16 +537,31 @@ const Homepage = () => {
     setCompaniesLoading(true);
     try {
       // ── 3. FAST FIRST PAGE: Show initial companies quickly (single query, no pagination loops) ──
-      const [auditRes, jobsRes] = await Promise.all([
-        // Fetch confirmed company names only from External DB
-        externalSupabase.from('audit_reviews').select('company').eq('tl_confirmation', 'yes'),
-        // Fetch job stats (4 lightweight columns, single batch up to 5000)
+
+      const fetchAllConfirmed = async (tableName) => {
+        const names = [];
+        let pg = 0;
+        while (true) {
+          const { data, error } = await supabase
+            .from(tableName)
+            .select('company')
+            .eq('tl_confirmation', 'yes')
+            .range(pg * 1000, (pg + 1) * 1000 - 1);
+          if (error || !data || data.length === 0) break;
+          data.forEach(r => r.company && names.push(r.company));
+          if (data.length < 1000) break;
+          pg++;
+        }
+        return names;
+      };
+
+      const [syncNames, backupNames, jobsRes] = await Promise.all([
+        fetchAllConfirmed('audit_reviews_sync'),
+        fetchAllConfirmed('audit_reviews_backup'),
         supabase.from('job_jobrole_sponsored_sync').select('company, job_role_name, wage_level, wage_num').limit(5000)
       ]);
 
-      const confirmedNames = Array.from(
-        new Set((auditRes.data || []).map(r => r.company))
-      ).filter(Boolean);
+      const confirmedNames = Array.from(new Set([...syncNames, ...backupNames])).filter(Boolean);
 
       let jobData = jobsRes.data || [];
 
@@ -915,7 +945,7 @@ const Homepage = () => {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
                 <span style={{ fontSize: '20px', fontWeight: 800, color: '#24385E' }}>Wage</span>
-                <span style={{ fontSize: '20px', fontWeight: 800, color: '#EAB308' }}>Level</span>
+                <span style={{ fontSize: '20px', fontWeight: 800, color: '#EAB308' }}>Trail</span>
               </div>
             </div>
             {isMobile && (

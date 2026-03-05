@@ -50,7 +50,7 @@ const MigrateNavbar = () => {
                     </div>
                     <div className="flex flex-col">
                         <span className="text-xl font-bold text-[#24385E] tracking-tight leading-none">Wage</span>
-                        <span className="text-xl font-bold text-yellow-500 tracking-tight leading-none">Level</span>
+                        <span className="text-xl font-bold text-yellow-500 tracking-tight leading-none">Trail</span>
                     </div>
                 </Link>
 
@@ -137,7 +137,7 @@ const MigrateNavbar = () => {
                     <div className="flex justify-between items-center mb-10">
                         <div className="flex items-center gap-2">
                             <Globe size={28} className="text-[#1F2937]" />
-                            <span className="font-bold text-xl text-[#1F2937]">Wage Level</span>
+                            <span className="font-bold text-xl text-[#1F2937]">Wage Trail</span>
                         </div>
                         <button onClick={() => setIsOpen(false)} className="p-2"><X size={28} /></button>
                     </div>

@@ -14,7 +14,7 @@ const LandingPage = () => {
     // Scroll to top on load and redirect if logged in
     useEffect(() => {
         window.scrollTo(0, 0);
-        document.title = "H1-B Wage Level | Land your dream job in the US";
+        document.title = "Wage Trail | Land your dream job in the US";
 
         if (!loading && user) {
             navigate('/app', { replace: true });

@@ -130,6 +130,24 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                             <span className="text-[14px] font-bold">{job.location || 'United States'}</span>
                         </div>
 
+                        {/* Row 4: Salary */}
+                        {job.salary && (
+                            <div className="flex items-center gap-1.5 mb-4">
+                                <span style={{
+                                    fontSize: '13px',
+                                    fontWeight: 700,
+                                    color: '#24385E',
+                                    background: '#f1f5f9',
+                                    borderRadius: '10px',
+                                    padding: '6px 14px',
+                                    display: 'inline-flex',
+                                    alignItems: 'center'
+                                }}>
+                                    {job.salary}
+                                </span>
+                            </div>
+                        )}
+
 
 
                         {/* Row 5: Badges */}

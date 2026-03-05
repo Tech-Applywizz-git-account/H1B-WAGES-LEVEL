@@ -65,7 +65,7 @@ const JobRow = ({ job, isSaved, onSave }) => {
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {/* Header Area for Mobile: Logo + Wage Level */}
+            {/* Header Area for Mobile: Logo + Wage Trail */}
             {isMobile && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                     <LogoBox name={job.company} size={48} fontSize={16} />
@@ -135,6 +135,20 @@ const JobRow = ({ job, isSaved, onSave }) => {
                         <span style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>{job.location || 'United States'}</span>
                     </div>
 
+                    {job.salary && (
+                        <span style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            color: '#24385E',
+                            background: '#f1f5f9',
+                            borderRadius: '8px',
+                            padding: '4px 12px',
+                            display: 'inline-flex',
+                            alignItems: 'center'
+                        }}>
+                            {job.salary}
+                        </span>
+                    )}
                 </div>
 
                 {/* Row 4: Verified Badge */}
@@ -158,7 +172,7 @@ const JobRow = ({ job, isSaved, onSave }) => {
                 )}
             </div>
 
-            {/* Right side: Wage level (Desktop) + Action */}
+            {/* Right side: Wage trail (Desktop) + Action */}
             <div style={{
                 display: 'flex',
                 flexDirection: isMobile ? 'row' : 'column',
@@ -318,22 +332,31 @@ const AllJobsTab = () => {
             setVerifiedSet(s);
             return s;
         }
-        // Fetch from DB
-        const names = [];
-        let pg = 0;
-        const client = externalSupabase || supabase;
-        while (true) {
-            const { data, error } = await client
-                .from('audit_reviews')
-                .select('company')
-                .eq('tl_confirmation', 'yes')
-                .range(pg * 1000, (pg + 1) * 1000 - 1);
-            if (error || !data || data.length === 0) break;
-            data.forEach(r => r.company && names.push(r.company));
-            if (data.length < 1000) break;
-            pg++;
-        }
-        const unique = Array.from(new Set(names));
+
+        const fetchNames = async (tableName) => {
+            const names = [];
+            let pg = 0;
+            while (true) {
+                const { data, error } = await supabase
+                    .from(tableName)
+                    .select('company')
+                    .eq('tl_confirmation', 'yes')
+                    .range(pg * 1000, (pg + 1) * 1000 - 1);
+                if (error || !data || data.length === 0) break;
+                data.forEach(r => r.company && names.push(r.company));
+                if (data.length < 1000) break;
+                pg++;
+            }
+            return names;
+        };
+
+        // Fetch from BOTH local sync and backup tables
+        const [syncNames, backupNames] = await Promise.all([
+            fetchNames('audit_reviews_sync'),
+            fetchNames('audit_reviews_backup')
+        ]);
+
+        const unique = Array.from(new Set([...syncNames, ...backupNames]));
         window._confirmedCompaniesCache = unique;
         const s = new Set(unique);
         setVerifiedSet(s);
@@ -378,7 +401,7 @@ const AllJobsTab = () => {
                 query = query.in('company', verifiedArr);
             }
 
-            // Wage Level filter
+            // Wage Trail filter
             if (level !== 'all') {
                 query = query.eq('wage_level', level);
             }
@@ -388,16 +411,16 @@ const AllJobsTab = () => {
             const { data, error: fetchErr, count } = await query;
             if (fetchErr) throw fetchErr;
 
-            // Tag _verified flag on each job (uses cache, no extra query)
+            // Tag isVerified flag on each job (uses cache, no extra query)
             let processedJobs = data || [];
             if (filter === 'verified') {
-                processedJobs = processedJobs.map(j => ({ ...j, _verified: true }));
+                processedJobs = processedJobs.map(j => ({ ...j, isVerified: true }));
             } else {
                 // Tag without extra fetch - use cache
                 const vSet = verifiedSet;
                 processedJobs = processedJobs.map(j => ({
                     ...j,
-                    _verified: vSet ? vSet.has(j.company) : false
+                    isVerified: vSet ? vSet.has(j.company) : false
                 }));
             }
 
@@ -585,7 +608,7 @@ const AllJobsTab = () => {
                     borderRadius: '12px', border: '1.5px solid #efefef',
                     animation: 'fadeIn 0.2s ease-out'
                 }}>
-                    <p style={{ fontSize: '12px', fontWeight: 800, color: '#24385E', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Filter by Wage Level</p>
+                    <p style={{ fontSize: '12px', fontWeight: 800, color: '#24385E', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Filter by Wage Trail</p>
                     <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '4px' }} className="no-scrollbar">
                         {['all', 'Lv 1', 'Lv 2', 'Lv 3', 'Lv 4'].map((lv) => (
                             <button
@@ -770,7 +793,7 @@ const AllJobsTab = () => {
             {activeFilter === 'verified' && !loading && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', fontSize: '13px', color: '#16a34a', fontWeight: 600, marginBottom: '14px' }}>
                     <VerifiedSeal size={14} />
-                    Showing jobs from <strong style={{ marginLeft: '4px' }}>human-verified H-1B sponsoring companies</strong>
+                    Showing jobs from <strong style={{ marginLeft: '4px' }}>Human-Verified H-1B sponsoring companies</strong>
                 </div>
             )}
 

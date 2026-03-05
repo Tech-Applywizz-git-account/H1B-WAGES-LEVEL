@@ -61,9 +61,6 @@ const CompanyCard = ({ company, jobCount, wageLevel, industries, isSelected, onC
                         )}
                     </div>
                 </div>
-                <span style={{ fontSize: isMobile ? '12px' : '14px', fontWeight: 700, color: '#24385E', whiteSpace: 'nowrap', flexShrink: 0, marginTop: '2px' }}>
-                    {jobCount?.toLocaleString()} jobs
-                </span>
             </div>
 
 

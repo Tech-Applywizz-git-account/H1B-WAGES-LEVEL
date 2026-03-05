@@ -5,50 +5,50 @@ const TENANT_ID = Deno.env.get("AZURE_TENANT_ID");
 const CLIENT_ID = Deno.env.get("AZURE_CLIENT_ID");
 const CLIENT_SECRET = Deno.env.get("AZURE_CLIENT_SECRET");
 const SENDER_EMAIL = Deno.env.get("SENDER_EMAIL_ADDRESS");
-const APP_URL = Deno.env.get("APP_URL") || "https://teluguwalalinks.com";
+const APP_URL = Deno.env.get("APP_URL") || "https://wagetrail.com";
 
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 async function getAccessToken() {
-    const tokenUrl = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`;
-    const params = new URLSearchParams({
-        client_id: CLIENT_ID || '',
-        client_secret: CLIENT_SECRET || '',
-        scope: 'https://graph.microsoft.com/.default',
-        grant_type: 'client_credentials',
-    });
+  const tokenUrl = `https://login.microsoftonline.com/${TENANT_ID}/oauth2/v2.0/token`;
+  const params = new URLSearchParams({
+    client_id: CLIENT_ID || '',
+    client_secret: CLIENT_SECRET || '',
+    scope: 'https://graph.microsoft.com/.default',
+    grant_type: 'client_credentials',
+  });
 
-    const response = await fetch(tokenUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString(),
-    });
+  const response = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params.toString(),
+  });
 
-    const data = await response.json();
-    if (!response.ok) {
-        throw new Error(`Failed to get access token: ${data.error_description || data.error}`);
-    }
-    return data.access_token;
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(`Failed to get access token: ${data.error_description || data.error}`);
+  }
+  return data.access_token;
 }
 
 serve(async (req) => {
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders });
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders });
+  }
+
+  try {
+    const { email, firstName, lastName, password } = await req.json();
+
+    if (!email || !firstName || !password) {
+      throw new Error("Missing required fields: email, firstName, password");
     }
 
-    try {
-        const { email, firstName, lastName, password } = await req.json();
+    console.log(`Sending welcome email to: ${email}`);
 
-        if (!email || !firstName || !password) {
-            throw new Error("Missing required fields: email, firstName, password");
-        }
-
-        console.log(`Sending welcome email to: ${email}`);
-
-        const htmlContent = `
+    const htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -141,48 +141,48 @@ serve(async (req) => {
 </html>
     `;
 
-        const accessToken = await getAccessToken();
+    const accessToken = await getAccessToken();
 
-        const emailResponse = await fetch(
-            `https://graph.microsoft.com/v1.0/users/${SENDER_EMAIL}/sendMail`,
-            {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message: {
-                        subject: `Welcome to H1B WageLevel — Your Login Credentials`,
-                        body: { contentType: 'HTML', content: htmlContent },
-                        toRecipients: [{ emailAddress: { address: email } }],
-                    },
-                    saveToSentItems: true,
-                }),
-            }
-        );
+    const emailResponse = await fetch(
+      `https://graph.microsoft.com/v1.0/users/${SENDER_EMAIL}/sendMail`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: {
+            subject: `Welcome to H1B WageLevel — Your Login Credentials`,
+            body: { contentType: 'HTML', content: htmlContent },
+            toRecipients: [{ emailAddress: { address: email } }],
+          },
+          saveToSentItems: true,
+        }),
+      }
+    );
 
-        if (!emailResponse.ok) {
-            const errorData = await emailResponse.text();
-            console.error('Microsoft Graph API error:', errorData);
-            throw new Error(`Email sending failed: ${emailResponse.status}`);
-        }
-
-        console.log(`Welcome email sent to ${email}`);
-
-        return new Response(
-            JSON.stringify({ success: true, message: "Welcome email sent" }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-
-    } catch (error) {
-        console.error('Error in send-welcome-email:', error);
-        return new Response(
-            JSON.stringify({ success: false, error: error.message }),
-            {
-                status: 400,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-            }
-        );
+    if (!emailResponse.ok) {
+      const errorData = await emailResponse.text();
+      console.error('Microsoft Graph API error:', errorData);
+      throw new Error(`Email sending failed: ${emailResponse.status}`);
     }
+
+    console.log(`Welcome email sent to ${email}`);
+
+    return new Response(
+      JSON.stringify({ success: true, message: "Welcome email sent" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
+  } catch (error) {
+    console.error('Error in send-welcome-email:', error);
+    return new Response(
+      JSON.stringify({ success: false, error: error.message }),
+      {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      }
+    );
+  }
 });

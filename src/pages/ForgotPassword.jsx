@@ -34,9 +34,9 @@ const ForgotPassword = () => {
                 <div className="text-center mb-8">
                     <Link to="/" className="inline-flex items-center gap-2">
                         <div className="w-10 h-10 bg-gray-900 rounded-xl flex items-center justify-center">
-                            <span className="text-white font-black text-xs tracking-tighter">H1-B</span>
+                            <span className="text-xl font-bold text-yellow-500 tracking-tight leading-none">Trail</span>
                         </div>
-                        <span className="font-bold text-xl text-gray-900">H1-B Wage Level</span>
+                        <span className="font-bold text-xl text-gray-900">Wage Trail</span>
                     </Link>
                 </div>
 

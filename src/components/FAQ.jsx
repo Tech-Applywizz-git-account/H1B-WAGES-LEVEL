@@ -6,8 +6,8 @@ const FAQ = () => {
 
     const faqs = [
         {
-            question: 'Is H1B Wage Level right for me?',
-            answer: 'If you\'re looking to land a job in the US as a non-US citizen, H1B Wage Level is right for you. Whether you\'re a recent graduate, a professional with years of experience, or someone with niche skills, H1B Wage Level can help you identify companies that have a proven history of sponsoring visas. It\'s designed for job seekers from any country and any industry who want to streamline their job search and focus on opportunities that are most likely to lead to employment and visa sponsorship in the US. All jobs listed are actively hiring.'
+            question: 'Is Wage Trail right for me?',
+            answer: 'If you\'re looking to land a job in the US as a non-US citizen, Wage Trail is right for you. Whether you\'re a recent graduate, a professional with years of experience, or someone with niche skills, Wage Trail can help you identify companies that have a proven history of sponsoring visas. It\'s designed for job seekers from any country and any industry who want to streamline their job search and focus on opportunities that are most likely to lead to employment and visa sponsorship in the US. All jobs listed are actively hiring.'
         },
         {
             question: 'What visa types are supported?',
@@ -26,8 +26,8 @@ const FAQ = () => {
             answer: 'Yes! You can cancel your subscription at any time. When you cancel, you will not be charged for the next billing period. Your access continues until the end of the current billing period.'
         },
         {
-            question: 'Is H1B Wage Level legit?',
-            answer: 'Absolutely. H1B Wage Level is a legitimate platform built by immigrants for immigrants. Our job data is verified against U.S. Government records including USCIS H-1B disclosure data, and we constantly update our database to ensure accuracy. We have thousands of satisfied users who have successfully found visa-sponsored employment through our platform.'
+            question: 'Is Wage Trail legit?',
+            answer: 'Absolutely. Wage Trail is a legitimate platform built by immigrants for immigrants. Our job data is verified against U.S. Government records including USCIS H-1B disclosure data, and we constantly update our database to ensure accuracy. We have thousands of satisfied users who have successfully found visa-sponsored employment through our platform.'
         },
     ];
 
@@ -39,7 +39,7 @@ const FAQ = () => {
                         Frequently Asked Questions
                     </h2>
                     <p className="text-sm md:text-base text-gray-400">
-                        Everything you need to know about H1B Wage Level
+                        Everything you need to know about Wage Trail
                     </p>
                 </div>
 
