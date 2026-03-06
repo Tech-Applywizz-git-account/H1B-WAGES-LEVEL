@@ -14,7 +14,7 @@ import { supabase } from './supabaseClient.js';
 import { externalSupabase } from './externalSupabaseClient.js';
 
 const SYNC_CACHE_KEY = 'lastSyncTimestamp';
-const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const SYNC_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes — pick up new source data faster
 const IS_SYNC_ENABLED = true; // Enabled for incremental sync as requested
 
 /**
@@ -149,11 +149,11 @@ export const syncAuditReviewsBackup = async () => {
         console.log('⏭️ Sync is currently disabled.');
         return { success: true, recordsSynced: 0, message: 'Sync disabled' };
     }
-    console.log('🔄 Starting audit_reviews_backup sync...');
+    console.log('🔄 Starting audit_reviews_backup incremental sync...');
 
     try {
-        // Fetch all audit reviews from external DB
-        let allData = [];
+        // ── Step 1: Fetch all records from SOURCE (external DB) ──────────────
+        let sourceData = [];
         let page = 0;
         const pageSize = 1000;
         let hasMore = true;
@@ -161,14 +161,17 @@ export const syncAuditReviewsBackup = async () => {
         while (hasMore) {
             const { data, error } = await externalSupabase
                 .from('audit_reviews_backup')
-                .select('*')
+                .select('id, job_id, company, role, domain, job_link, decision, remarks, observant_name, audit_date, created_at, tl_confirmation, tl_name, admin_confirmation, admin_name, audit_link_review, salary')
                 .range(page * pageSize, (page + 1) * pageSize - 1)
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Error reading from source audit_reviews_backup:', error.message);
+                throw error;
+            }
 
             if (data && data.length > 0) {
-                allData = [...allData, ...data];
+                sourceData = [...sourceData, ...data];
                 page++;
                 hasMore = data.length === pageSize;
             } else {
@@ -176,33 +179,71 @@ export const syncAuditReviewsBackup = async () => {
             }
         }
 
-        if (allData.length === 0) {
-            console.log('ℹ️ No audit reviews backup found in external DB');
+        if (sourceData.length === 0) {
+            console.log('ℹ️ No records found in source audit_reviews_backup');
             return { success: true, recordsSynced: 0 };
         }
 
-        // Use UPSERT to update existing records and insert new ones
-        const batchSize = 100;
-        let totalSynced = 0;
+        console.log(`📥 Found ${sourceData.length} records in source`);
 
-        for (let i = 0; i < allData.length; i += batchSize) {
-            const batch = allData.slice(i, i + batchSize).map(record => ({
-                ...record,
-                synced_at: new Date().toISOString()
+        // ── Step 2: Fetch all existing job_ids from TARGET (main DB) ─────────
+        // Use job_id as the natural deduplication key (not the UUID id which may differ)
+        const existingRecords = await fetchAllExistingFromMain('audit_reviews_backup', 'job_id');
+        const existingJobIds = new Set((existingRecords || []).map(r => r.job_id));
+
+        console.log(`📋 Target already has ${existingJobIds.size} records`);
+
+        // ── Step 3: Filter to only NEW records not in target ─────────────────
+        const newRecords = sourceData.filter(r => !existingJobIds.has(r.job_id));
+
+        if (newRecords.length === 0) {
+            console.log('✅ audit_reviews_backup is already up to date — nothing to insert');
+            return { success: true, recordsSynced: 0 };
+        }
+
+        console.log(`🆕 Inserting ${newRecords.length} new records into audit_reviews_backup`);
+
+        // ── Step 4: INSERT only new records — NO DELETE, NO UPDATE of existing ─
+        // Strip synced_at (not in schema) and keep only known columns
+        const batchSize = 100;
+        let totalInserted = 0;
+
+        for (let i = 0; i < newRecords.length; i += batchSize) {
+            const batch = newRecords.slice(i, i + batchSize).map(record => ({
+                id: record.id,
+                job_id: record.job_id,
+                company: record.company,
+                role: record.role,
+                domain: record.domain,
+                job_link: record.job_link,
+                decision: record.decision,
+                remarks: record.remarks,
+                observant_name: record.observant_name,
+                audit_date: record.audit_date,
+                created_at: record.created_at || new Date().toISOString(),
+                tl_confirmation: record.tl_confirmation || 'Pending',
+                tl_name: record.tl_name || null,
+                admin_confirmation: record.admin_confirmation || 'Pending',
+                admin_name: record.admin_name || null,
+                audit_link_review: record.audit_link_review || null,
+                salary: record.salary || null,
             }));
 
-            const { error: upsertError } = await supabase
+            const { error: insertError } = await supabase
                 .from('audit_reviews_backup')
-                .upsert(batch, { onConflict: 'id' });
+                .insert(batch);  // INSERT only — never delete or overwrite
 
-            if (upsertError) {
-                console.error(`❌ Error upserting audit reviews backup batch ${i / batchSize + 1}:`, upsertError);
+            if (insertError) {
+                console.error(`❌ Error inserting backup batch ${Math.floor(i / batchSize) + 1}:`, insertError.message);
+                // Continue with next batch even if one fails
             } else {
-                totalSynced += batch.length;
+                totalInserted += batch.length;
+                console.log(`✅ Batch ${Math.floor(i / batchSize) + 1}: inserted ${batch.length} records`);
             }
         }
 
-        return { success: true, recordsSynced: totalSynced };
+        console.log(`✅ audit_reviews_backup sync complete — inserted ${totalInserted} new records`);
+        return { success: true, recordsSynced: totalInserted };
 
     } catch (error) {
         console.error('❌ Audit reviews backup sync failed:', error);

@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, ArrowUpDown, Eye,
   MessageSquare, Gift, Archive, Building2, X, Users, Mail,
   ExternalLink, SlidersHorizontal, HelpCircle, Lock, LogOut, CreditCard,
-  Menu, Zap, Sparkles
+  Menu, Zap, Sparkles, Shield
 } from 'lucide-react';
 
 import { getCompanyLogo } from '../utils/logoHelper';
@@ -345,7 +345,9 @@ const JOBS_PER_PAGE = 15;
 const COMPANIES_PER_PAGE = 25;
 
 const Homepage = () => {
-  const { user, loading: authLoading, subscriptionExpired, signOut, paymentStatus, paymentLoading, refresh: refreshAuth } = useAuth();
+  const { user, loading: authLoading, subscriptionExpired, signOut, paymentStatus, paymentLoading, refresh: refreshAuth, isAdmin: isAdminFromCtx, role } = useAuth();
+  // Safety net: also check localStorage in case context hasn't hydrated yet
+  const isAdmin = isAdminFromCtx || role === 'admin' || localStorage.getItem('userRole') === 'admin';
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -446,7 +448,7 @@ const Homepage = () => {
   useEffect(() => { const t = setTimeout(() => setDebouncedJobSearch(jobSearch), 400); return () => clearTimeout(t); }, [jobSearch]);
 
   const fetchCompanies = useCallback(async () => {
-    if (!user || subscriptionExpired || paymentLoading || paymentStatus === 'pending') return;
+    if (!user || subscriptionExpired || paymentLoading || (paymentStatus === 'pending' && !isAdmin)) return;
 
     // ── 1. In-memory cache hit (fastest — no re-render needed) ──────────────
     if (isInitialLoadDone && allProcessedCompanies.length > 0) {
@@ -781,6 +783,31 @@ const Homepage = () => {
   }, [fetchCompanyJobs, user, selectedCompany, activeView, isMobile]);
   useEffect(() => { if (user) { fetchSavedJobIds(); fetchAppliedJobIds(); } }, [user]);
 
+  // ── Realtime: when new tl_confirmation='yes' rows are synced into audit_reviews_backup,
+  //             clear company caches and re-fetch so verified badges update automatically
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel('hp_audit_backup_insert')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'audit_reviews_backup' },
+        (payload) => {
+          if (payload?.new?.tl_confirmation === 'yes') {
+            // Clear all company caches so next fetchCompanies gets fresh confirmed list
+            window._allProcessedCompanies = null;
+            window._confirmedCompaniesCache = null;
+            try { sessionStorage.removeItem('companiesCache'); } catch (_) { }
+            setIsInitialLoadDone(false);
+            setAllProcessedCompanies([]);
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
+
   const fetchSavedJobIds = async () => {
     if (!user) return;
     try {
@@ -835,8 +862,8 @@ const Homepage = () => {
   if (authLoading || paymentLoading) return <div className="h-screen w-screen flex items-center justify-center bg-[#f5f5f7]"><Loader2 className="w-8 h-8 text-[#24385E] animate-spin" /></div>;
   if (!user) return <div className="bg-white"><Navbar /><HeroSection /><Testimonials /><FAQ /><Footer /></div>;
 
-  // ── Payment gate: show teaser if not paid ──
-  const isPaid = paymentStatus === 'paid' || paymentStatus === 'active';
+  // ── Payment gate: show teaser if not paid (admins always bypass) ──
+  const isPaid = paymentStatus === 'paid' || paymentStatus === 'active' || paymentStatus === 'completed' || isAdmin;
   if (!isPaid) return <TeaserDashboard user={user} signOut={handleLogout} navigate={navigate} isMobile={isMobile} />;
 
   const navItems = [
@@ -994,6 +1021,31 @@ const Homepage = () => {
           >
             <Settings size={18} strokeWidth={1.6} /><span>Settings</span>
           </button>
+
+          {/* Admin Panel — only visible when role === 'admin' */}
+          {isAdmin && (
+            <button
+              style={{
+                ...S.navItem(false),
+                color: '#7c3aed',
+                background: 'rgba(124,58,237,0.07)',
+                border: '1px solid rgba(124,58,237,0.15)',
+                marginTop: '4px',
+              }}
+              onClick={() => { navigate('/admin'); if (isMobile) setMobileMenuOpen(false); }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(124,58,237,0.14)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(124,58,237,0.07)'}
+            >
+              <Shield size={18} strokeWidth={1.8} />
+              <span style={{ fontWeight: 700 }}>Admin Panel</span>
+              <span style={{
+                marginLeft: 'auto', fontSize: '9px', fontWeight: 800,
+                background: '#7c3aed', color: '#fff',
+                padding: '2px 6px', borderRadius: '20px', letterSpacing: '0.05em',
+                textTransform: 'uppercase'
+              }}>Admin</span>
+            </button>
+          )}
 
           <button
             style={{ ...S.navItem(false), color: '#ef4444' }}

@@ -1,11 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// Azure AD credentials from Environment Variables
-const TENANT_ID = Deno.env.get("AZURE_TENANT_ID");
-const CLIENT_ID = Deno.env.get("AZURE_CLIENT_ID");
-const CLIENT_SECRET = Deno.env.get("AZURE_CLIENT_SECRET");
-const SENDER_EMAIL = Deno.env.get("SENDER_EMAIL_ADDRESS");
-const APP_URL = Deno.env.get("APP_URL") || "https://wagetrail.com";
+// Azure AD credentials — updated
+const TENANT_ID = Deno.env.get("AZURE_TENANT_ID") ?? '';
+const CLIENT_ID = Deno.env.get("AZURE_CLIENT_ID") ?? '';
+const CLIENT_SECRET = Deno.env.get("AZURE_CLIENT_SECRET") ?? '';
+const SENDER_EMAIL = Deno.env.get("SENDER_EMAIL_ADDRESS") ?? 'manasa@wagetrail.com';
+const APP_URL = Deno.env.get("APP_URL") ?? 'https://wagetrail.com';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -85,116 +85,68 @@ serve(async (req) => {
       minute: "2-digit",
     });
 
-    // Create HTML email template
+    // Create HTML email template — plain style (matching brand tone)
     const htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Welcome to H1B Wage Level</title>
+  <title>Payment Confirmed — WageTrail</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4;">
+<body style="margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; background-color: #ffffff; color: #222222; font-size: 15px; line-height: 1.6;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
     <tr>
-      <td align="center" style="padding: 40px 0;">
-        <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-          
-          <!-- Header -->
-          <tr>
-            <td style="background: linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%); padding: 40px 30px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">H1B Wage Level</h1>
-              <p style="margin: 10px 0 0 0; color: #fbbf24; font-size: 16px;">Payment Successful! 🎉</p>
-            </td>
-          </tr>
-          
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" style="width: 100%; max-width: 580px; border-collapse: collapse; background-color: #ffffff;">
+
           <!-- Body -->
           <tr>
-            <td style="padding: 40px 30px;">
-              <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 22px;">Dear ${firstName} ${lastName},</h2>
-              
-              <p style="margin: 0 0 15px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
-                Thank you for subscribing to H1B Wage Level! We're thrilled to have you on board. Your payment has been successfully processed, and your account is now active.
+            <td style="padding: 0 0 24px 0;">
+              <p style="margin: 0 0 16px 0;">Hey ${firstName},</p>
+
+              <p style="margin: 0 0 20px 0;">
+                Great news — your payment was successful and your WageTrail account is now active!
               </p>
-              
-              <div style="background-color: #f9fafb; border-left: 4px solid #10b981; padding: 20px; margin: 30px 0; border-radius: 4px;">
-                <h3 style="margin: 0 0 15px 0; color: #1f2937; font-size: 18px;">Transaction Details</h3>
-                <table style="width: 100%; border-collapse: collapse;">
-                  <tr>
-                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Transaction ID:</td>
-                    <td style="padding: 8px 0; color: #1f2937; font-size: 14px; font-weight: 600; text-align: right;">${transactionId}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Order ID:</td>
-                    <td style="padding: 8px 0; color: #1f2937; font-size: 14px; font-weight: 600; text-align: right;">${orderId}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Amount Paid:</td>
-                    <td style="padding: 8px 0; color: #1f2937; font-size: 14px; font-weight: 600; text-align: right;">${currency} ${amount}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Payment Date:</td>
-                    <td style="padding: 8px 0; color: #1f2937; font-size: 14px; font-weight: 600; text-align: right;">${paymentDate}</td>
-                  </tr>
-                </table>
-              </div>
-              
-              <div style="background-color: #eff6ff; border-left: 4px solid #3b82f6; padding: 20px; margin: 30px 0; border-radius: 4px;">
-                <h3 style="margin: 0 0 15px 0; color: #1f2937; font-size: 18px;">Your Login Credentials</h3>
-                <table style="width: 100%; border-collapse: collapse;">
-                  <tr>
-                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Email:</td>
-                    <td style="padding: 8px 0; color: #1f2937; font-size: 14px; font-weight: 600; text-align: right;">${to}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Password:</td>
-                    <td style="padding: 8px 0; color: #1f2937; font-size: 14px; font-weight: 600; text-align: right;">${password}</td>
-                  </tr>
-                </table>
-                <p style="margin: 15px 0 0 0; color: #dc2626; font-size: 13px; font-style: italic;">
-                  ⚠️ Please change your password after your first login for security purposes.
-                </p>
-              </div>
-              
-              <div style="background-color: #fef3c7; border-left: 4px solid #fbbf24; padding: 15px; margin: 20px 0; border-radius: 4px;">
-                <p style="margin: 0; color: #92400e; font-size: 14px; line-height: 1.5;">
-                  📧 <strong>Note:</strong> If you don't see this email in your inbox, please check your spam or junk mail folder.
-                </p>
-              </div>
-              
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="${APP_URL}/login" style="display: inline-block; background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); color: #ffffff; text-decoration: none; padding: 14px 40px; border-radius: 6px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                  Click Here to Login
-                </a>
-              </div>
-              
-              <p style="margin: 30px 0 0 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
-                You now have access to 500,000+ verified job openings including H-1B, OPT/CPT, TN, E-3, J-1 & Green Cards opportunities. Start exploring and find your dream job today!
+
+              <!-- Transaction details -->
+              <p style="margin: 0 0 6px 0;"><strong>Transaction ID:</strong> ${transactionId}</p>
+              <p style="margin: 0 0 6px 0;"><strong>Order ID:</strong> ${orderId}</p>
+              <p style="margin: 0 0 6px 0;"><strong>Amount Paid:</strong> ${currency} ${amount}</p>
+              <p style="margin: 0 0 20px 0;"><strong>Payment Date:</strong> ${paymentDate}</p>
+
+              <!-- Login credentials -->
+              <p style="margin: 0 0 6px 0;"><strong>Email:</strong> ${to}</p>
+              <p style="margin: 0 0 20px 0;"><strong>Password:</strong> ${password}</p>
+
+              <p style="margin: 0 0 20px 0;">
+                Log in here: <a href="${APP_URL}/login" style="color: #1a56db;">${APP_URL}/login</a>
+                (remember to change your password after logging in to keep your account secure)
               </p>
-              
-              <p style="margin: 20px 0 0 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
-                If you have any questions or need assistance, feel free to reach out to our support team.
+
+              <p style="margin: 0 0 20px 0;">
+                You now have full access to 500,000+ verified H-1B sponsoring jobs — including OPT/CPT, TN, E-3, J-1 &amp; Green Card opportunities. Start exploring today!
               </p>
-              
-              <p style="margin: 30px 0 0 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
-                Best regards,<br>
-                <strong>The H1B Wage Level Team</strong>
+
+              <p style="margin: 0 0 20px 0;">
+                Do you have any feedback or questions? Just reply to this email — I read every message.
               </p>
+
+              <p style="margin: 0 0 4px 0;"><strong>Manasa</strong></p>
+              <p style="margin: 0; color: #555555; font-size: 14px;">Head of Growth &amp; User Strategy</p>
             </td>
           </tr>
-          
+
           <!-- Footer -->
           <tr>
-            <td style="background-color: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">
-                © ${new Date().getFullYear()} H1B Wage Level. All rights reserved.
-              </p>
+            <td style="border-top: 1px solid #e5e7eb; padding: 20px 0 0 0;">
               <p style="margin: 0; color: #9ca3af; font-size: 12px;">
-                This is an automated email. Please do not reply to this message.
+                &copy; ${new Date().getFullYear()} WageTrail. All rights reserved.<br>
+                You're receiving this because you just subscribed at wagetrail.com.
               </p>
             </td>
           </tr>
-          
+
         </table>
       </td>
     </tr>
@@ -232,7 +184,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           message: {
-            subject: 'Welcome to H1B Wage Level - Payment Successful! 🎉',
+            subject: 'Welcome to WageTrail — Your Account is Active! 🎉',
             body: {
               contentType: 'HTML',
               content: htmlContent,
@@ -244,6 +196,12 @@ serve(async (req) => {
                 },
               },
             ],
+            from: {
+              emailAddress: {
+                address: SENDER_EMAIL,
+                name: 'Manasa from WageTrail',
+              },
+            },
           },
           saveToSentItems: true,
         }),

@@ -60,7 +60,7 @@ const OtpInput = ({ value, onChange, disabled }) => {
     };
 
     return (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'center', margin: '24px 0' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center', margin: '24px 0', flexWrap: 'nowrap' }}>
             {[0, 1, 2, 3, 4, 5].map((idx) => (
                 <input
                     key={idx}
@@ -73,11 +73,12 @@ const OtpInput = ({ value, onChange, disabled }) => {
                     onKeyDown={(e) => handleKeyDown(e, idx)}
                     onPaste={handlePaste}
                     disabled={disabled}
+                    className="otp-box"
                     style={{
-                        width: 44,
-                        height: 52,
+                        width: 'clamp(36px, 12vw, 44px)',
+                        height: 'clamp(44px, 13vw, 52px)',
                         textAlign: 'center',
-                        fontSize: 22,
+                        fontSize: 'clamp(18px, 5vw, 22px)',
                         fontWeight: 800,
                         borderTop: 'none',
                         borderLeft: 'none',
@@ -91,6 +92,7 @@ const OtpInput = ({ value, onChange, disabled }) => {
                         caretColor: '#6B5CF6',
                         transition: 'border-color 0.2s',
                         padding: '4px 0',
+                        minWidth: 0,
                     }}
                 />
             ))}
@@ -107,10 +109,13 @@ const COUNTRY_CODES = [
 ];
 
 // ─── Landmark panel ────────────────────────────────────────────────────────────
-const LandmarkPanel = ({ idx, setIdx }) => (
+const LandmarkPanel = ({ idx, setIdx, mobile }) => (
     <div
-        className="shrink-0 relative overflow-hidden"
-        style={{ width: '46%', position: 'sticky', top: 0, height: '100vh', minHeight: '100vh' }}
+        className={mobile ? 'signup-landmark-mobile' : 'signup-landmark-panel shrink-0'}
+        style={mobile
+            ? { position: 'relative', width: '100%', overflow: 'hidden', flexShrink: 0 }
+            : { width: '46%', position: 'sticky', top: 0, height: '100vh', minHeight: '100vh', overflow: 'hidden', flexShrink: 0 }
+        }
     >
         {LANDMARKS.map((lm, i) => (
             <div
@@ -130,17 +135,30 @@ const LandmarkPanel = ({ idx, setIdx }) => (
                 />
                 <div style={{
                     position: 'absolute', inset: 0,
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.1) 50%, transparent 100%)'
+                    background: 'linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.15) 55%, transparent 100%)'
                 }} />
-                <div style={{ position: 'absolute', bottom: 32, left: 32, color: 'white', zIndex: 10 }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: 3, textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)', marginBottom: 4 }}>{lm.city}</p>
-                    <h3 style={{ fontSize: 22, fontWeight: 900, marginBottom: 4, lineHeight: 1.2 }}>{lm.name}</h3>
-                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>{lm.coords}</p>
+                <div style={{
+                    position: 'absolute',
+                    bottom: mobile ? 16 : 32,
+                    left: mobile ? 16 : 32,
+                    color: 'white',
+                    zIndex: 10,
+                }}>
+                    <p style={{ fontSize: mobile ? 10 : 11, fontWeight: 700, letterSpacing: 3, textTransform: 'uppercase', color: 'rgba(255,255,255,0.7)', marginBottom: 2 }}>{lm.city}</p>
+                    <h3 style={{ fontSize: mobile ? 16 : 22, fontWeight: 900, marginBottom: 2, lineHeight: 1.2 }}>{lm.name}</h3>
+                    <p style={{ fontSize: mobile ? 10 : 11, color: 'rgba(255,255,255,0.55)', fontWeight: 500 }}>{lm.coords}</p>
                 </div>
             </div>
         ))}
         {/* Progress dots */}
-        <div style={{ position: 'absolute', bottom: 32, right: 32, display: 'flex', gap: 6, zIndex: 10 }}>
+        <div style={{
+            position: 'absolute',
+            bottom: mobile ? 16 : 32,
+            right: mobile ? 16 : 32,
+            display: 'flex',
+            gap: 6,
+            zIndex: 10,
+        }}>
             {LANDMARKS.map((_, i) => (
                 <button
                     key={i}
@@ -367,10 +385,62 @@ const Signup = () => {
 
     // ── Render ────────────────────────────────────────────────────────────────────
     return (
-        <div className="min-h-screen flex">
+        <div className="signup-page-root">
+            {/* Responsive styles injected inline */}
+            <style>{`
+                /* ── Mobile: stack vertically ── */
+                .signup-page-root {
+                    min-height: 100vh;
+                    display: flex;
+                    flex-direction: row;
+                }
+                .signup-landmark-mobile {
+                    display: none;
+                }
+                @media (max-width: 767px) {
+                    .signup-page-root {
+                        flex-direction: column;
+                    }
+                    /* show mobile banner, hide desktop side panel */
+                    .signup-landmark-mobile {
+                        display: block !important;
+                        height: 42vw;
+                        min-height: 180px;
+                        max-height: 300px;
+                        width: 100%;
+                        flex-shrink: 0;
+                    }
+                    .signup-landmark-panel {
+                        display: none !important;
+                    }
+                    .signup-left-panel {
+                        padding-left: 20px !important;
+                        padding-right: 20px !important;
+                        padding-top: 32px !important;
+                        padding-bottom: 40px !important;
+                        justify-content: flex-start !important;
+                    }
+                    .signup-inner {
+                        max-width: 100% !important;
+                    }
+                }
+                /* ── Tablet ── */
+                @media (min-width: 768px) and (max-width: 1023px) {
+                    .signup-landmark-panel {
+                        width: 40% !important;
+                    }
+                    .signup-left-panel {
+                        padding-left: 28px !important;
+                        padding-right: 28px !important;
+                    }
+                }
+            `}</style>
 
-            {/* LEFT PANEL */}
-            <div className="flex-1 flex flex-col items-center justify-center px-8 py-12 bg-white relative min-w-0">
+            {/* MOBILE-ONLY top image banner */}
+            <LandmarkPanel idx={landmarkIdx} setIdx={setLandmarkIdx} mobile={true} />
+
+            {/* LEFT PANEL (form) */}
+            <div className="signup-left-panel flex-1 flex flex-col items-center justify-center px-8 py-12 bg-white relative min-w-0">
 
                 {/* Back button */}
                 {(step === 'otp' || step === 'details') && (
@@ -397,7 +467,7 @@ const Signup = () => {
                     </button>
                 )}
 
-                <div className="w-full max-w-sm">
+                <div className="signup-inner w-full max-w-sm">
 
                     {/* Logo */}
                     <div className="flex justify-center mb-10">
@@ -682,7 +752,7 @@ const Signup = () => {
                 </div>
             </div>
 
-            {/* RIGHT PANEL — always visible on screens >= 768px */}
+            {/* RIGHT PANEL — hidden on mobile, visible on md+ */}
             <LandmarkPanel idx={landmarkIdx} setIdx={setLandmarkIdx} />
         </div>
     );

@@ -48,12 +48,15 @@ const Sidebar = ({ className = "", showHeader = true }) => {
         { id: "applied", label: "Applied Jobs", icon: Briefcase },
         { id: "profile", label: "Profile", icon: User },
         { id: "billing", label: "Billing", icon: CreditCard },
-        ...(isAdmin ? [{ id: "admin", label: "Admin Controls", icon: Shield }] : []),
     ];
 
     const handleTabClick = (tabId) => {
         setActiveTab(tabId);
         navigate('/dashboard', { state: { initialTab: tabId } });
+    };
+
+    const handleAdminClick = () => {
+        navigate('/admin');
     };
 
     const handleLogout = async () => {
@@ -126,6 +129,27 @@ const Sidebar = ({ className = "", showHeader = true }) => {
                         </button>
                     );
                 })}
+
+                {/* Admin Panel Link — visible only for admins */}
+                {isAdmin && (
+                    <button
+                        onClick={handleAdminClick}
+                        className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 mt-2
+                            ${location.pathname === '/admin'
+                                ? "bg-purple-50 text-purple-700 font-bold"
+                                : "text-[#666666] hover:bg-purple-50 hover:text-purple-700"
+                            }`}
+                    >
+                        <div className={`p-1.5 rounded-lg transition-colors duration-200 ${location.pathname === '/admin' ? "bg-white shadow-sm" : ""}`}>
+                            <Shield
+                                size={18}
+                                className={`${location.pathname === '/admin' ? "text-purple-600" : "text-[#999999] group-hover:text-purple-600"} transition-colors`}
+                            />
+                        </div>
+                        <span className="text-[14px]">Admin Panel</span>
+                        <span className="ml-auto text-[9px] font-black uppercase tracking-widest bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-full">Admin</span>
+                    </button>
+                )}
             </nav>
 
             {/* Footer Section */}
@@ -160,4 +184,4 @@ const Sidebar = ({ className = "", showHeader = true }) => {
     );
 };
 
-export default React.memo(Sidebar);
+export default Sidebar;

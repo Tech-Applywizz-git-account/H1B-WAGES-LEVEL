@@ -299,6 +299,27 @@ const AllJobsTab = () => {
     const searchTimer = useRef(null);
     const [debouncedSearch, setDebouncedSearch] = useState('');
 
+    // ── Realtime: refresh verified set whenever a new row is inserted in audit_reviews_backup
+    useEffect(() => {
+        const channel = supabase
+            .channel('audit_reviews_backup_changes')
+            .on(
+                'postgres_changes',
+                { event: 'INSERT', schema: 'public', table: 'audit_reviews_backup' },
+                (payload) => {
+                    // Only refresh if the new row has tl_confirmation = 'yes'
+                    if (payload?.new?.tl_confirmation === 'yes') {
+                        // Clear caches so next fetch gets fresh data
+                        window._confirmedCompaniesCache = null;
+                        setVerifiedSet(null); // triggers re-fetch via getVerifiedSet
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => { supabase.removeChannel(channel); };
+    }, []);
+
     const totalPages = Math.ceil(totalJobs / JOBS_PER_PAGE);
 
     // Debounce search (only for Supabase querying)
@@ -356,7 +377,8 @@ const AllJobsTab = () => {
             fetchNames('audit_reviews_backup')
         ]);
 
-        const unique = Array.from(new Set([...syncNames, ...backupNames]));
+        // Deduplicate across both tables — no duplicate company names
+        const unique = Array.from(new Set([...syncNames, ...backupNames])).filter(Boolean);
         window._confirmedCompaniesCache = unique;
         const s = new Set(unique);
         setVerifiedSet(s);

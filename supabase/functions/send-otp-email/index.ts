@@ -4,10 +4,10 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const TENANT_ID = Deno.env.get("AZURE_TENANT_ID");
-const CLIENT_ID = Deno.env.get("AZURE_CLIENT_ID");
-const CLIENT_SECRET = Deno.env.get("AZURE_CLIENT_SECRET");
-const SENDER_EMAIL = Deno.env.get("SENDER_EMAIL_ADDRESS");
+const TENANT_ID = Deno.env.get("AZURE_TENANT_ID") ?? '';
+const CLIENT_ID = Deno.env.get("AZURE_CLIENT_ID") ?? '';
+const CLIENT_SECRET = Deno.env.get("AZURE_CLIENT_SECRET") ?? '';
+const SENDER_EMAIL = Deno.env.get("SENDER_EMAIL_ADDRESS") ?? 'manasa@wagetrail.com';
 // Use service role key as HMAC signing secret (already available in all edge functions)
 const OTP_SECRET = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "fallback-secret-change-me";
 
@@ -67,7 +67,9 @@ serve(async (req) => {
     const token = btoa(payload) + "." + signature;
 
     // Send OTP email via Microsoft Graph
+    console.log(`[OTP] Requesting access token — tenant: ${TENANT_ID}, client: ${CLIENT_ID}`);
     const accessToken = await getAccessToken();
+    console.log(`[OTP] Access token obtained ✅. Sending to: ${email}, from: ${SENDER_EMAIL}`);
 
     const htmlContent = `
 <!DOCTYPE html>
@@ -116,29 +118,37 @@ serve(async (req) => {
 </body>
 </html>`;
 
-    const emailRes = await fetch(
-      `https://graph.microsoft.com/v1.0/users/${SENDER_EMAIL}/sendMail`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
+    const graphUrl = `https://graph.microsoft.com/v1.0/users/${SENDER_EMAIL}/sendMail`;
+    console.log(`[OTP] Calling Graph API: POST ${graphUrl}`);
+
+    const emailRes = await fetch(graphUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: {
+          subject: `${otp} — Your WageTrail verification code`,
+          body: { contentType: 'HTML', content: htmlContent },
+          toRecipients: [{ emailAddress: { address: email } }],
+          // Removed 'from' override — the URL path (users/${SENDER_EMAIL}) already
+          // controls the sender. An explicit 'from' can be silently dropped or cause
+          // delivery issues in some M365 configurations.
         },
-        body: JSON.stringify({
-          message: {
-            subject: `${otp} — Your H1B WageLevel verification code`,
-            body: { contentType: 'HTML', content: htmlContent },
-            toRecipients: [{ emailAddress: { address: email } }],
-          },
-          saveToSentItems: false,
-        }),
-      }
-    );
+        saveToSentItems: true, // Enable so delivery can be verified in M365 Sent folder
+      }),
+    });
+
+    // Always log the exact Graph API response for diagnostics
+    const responseBody = await emailRes.text();
+    console.log(`[OTP] Graph API response: status=${emailRes.status}, body=${responseBody || '(empty — normal for 202)'}`);
 
     if (!emailRes.ok) {
-      const err = await emailRes.text();
-      throw new Error(`Email failed: ${emailRes.status} — ${err}`);
+      throw new Error(`Email failed: ${emailRes.status} — ${responseBody}`);
     }
+
+    console.log(`[OTP] ✅ Email accepted by Microsoft Graph for delivery to ${email}`);
 
     // Return token to client (NO otp in response — client doesn't see it)
     return new Response(

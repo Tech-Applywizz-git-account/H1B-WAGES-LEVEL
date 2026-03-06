@@ -338,8 +338,9 @@ const AuthContext = createContext({
 });
 
 // Cache for user roles to prevent redundant DB queries
+// Kept intentionally short (90s) so DB role changes (e.g. user→admin) propagate promptly
 const roleCache = new Map();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+const CACHE_DURATION = 90 * 1000; // 90-second cache — short enough to pick up role changes quickly
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -390,11 +391,9 @@ export function AuthProvider({ children }) {
       setRole(storedRole);
     }
 
-    // Prevent duplicate queries
-    if (hasProfileQueryRun.current && userId === user?.id) {
-      return;
-    }
-
+    // NOTE: We intentionally removed the hasProfileQueryRun guard here.
+    // That guard was blocking fresh DB reads after an admin role change in Supabase,
+    // causing the sidebar to never show the Admin Panel button even after re-login.
     hasProfileQueryRun.current = true;
 
     try {
@@ -611,12 +610,23 @@ export function AuthProvider({ children }) {
 
         case 'SIGNED_IN':
         case 'USER_UPDATED':
-        case 'TOKEN_REFRESHED':
-        case 'INITIAL_SESSION': // Handle initial session event
           if (session?.user) {
-
             setUser(session.user);
-            // Load role in background without blocking
+            // On a fresh sign-in: ALWAYS bypass cache and hit the DB.
+            // This ensures a user whose role was changed to 'admin' in Supabase
+            // sees the Admin Panel button immediately after their next login.
+            roleCache.delete(session.user.id);
+            hasProfileQueryRun.current = false;
+            setTimeout(() => loadUserRole(session.user), 100);
+          }
+          break;
+
+        case 'TOKEN_REFRESHED':
+        case 'INITIAL_SESSION':
+          if (session?.user) {
+            setUser(session.user);
+            // On token refresh / initial session we still load role,
+            // but we let the short 90s cache serve if fresh enough.
             setTimeout(() => loadUserRole(session.user), 100);
           }
           break;

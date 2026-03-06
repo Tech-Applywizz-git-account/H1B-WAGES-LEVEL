@@ -8,6 +8,7 @@ import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import JobSearch from './pages/JobSearch';
 import AuthCallback from './pages/AuthCallback';
+import AdminDashboard from './pages/AdminDashboard';
 import { AuthProvider } from './hooks/useAuth';
 import useDataSync from './hooks/useDataSync';
 import './output.css';
@@ -38,6 +39,9 @@ function App() {
 
             {/* OAuth callback */}
             <Route path="/auth/callback" element={<AuthCallback />} />
+
+            {/* Admin Dashboard */}
+            <Route path="/admin" element={<AdminDashboard />} />
 
             {/* Redirect old /dashboard to new /app */}
             <Route path="/dashboard" element={<Navigate to="/app" replace />} />
