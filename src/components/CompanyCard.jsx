@@ -1,7 +1,7 @@
-import React from 'react';
+import { Globe } from 'lucide-react';
 import LogoBox from './LogoBox';
 
-const CompanyCard = ({ company, jobCount, wageLevel, industries, isSelected, onClick, isMobile, isVerified }) => {
+const CompanyCard = ({ company, jobCount, wageLevel, industries, isSelected, onClick, isMobile, isVerified, lca_filings }) => {
     const level = parseInt(wageLevel?.match(/\d/)?.[0] || '2');
 
     const cardStyle = {
@@ -37,7 +37,7 @@ const CompanyCard = ({ company, jobCount, wageLevel, industries, isSelected, onC
                 }
             }}
         >
-            {/* Row 1: Logo + Name + Job count */}
+            {/* Row 1: Logo + Name + Content */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
                     <LogoBox name={company} size={isMobile ? 36 : 44} fontSize={isMobile ? 12 : 14} className={isSelected ? 'bg-navy-select' : ''} />
@@ -54,6 +54,26 @@ const CompanyCard = ({ company, jobCount, wageLevel, industries, isSelected, onC
                                 </svg>
                             )}
                         </div>
+
+                        {lca_filings > 0 && (
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '5px',
+                                background: '#f1f5f9',
+                                padding: '3px 10px',
+                                borderRadius: '8px',
+                                fontSize: '11.5px',
+                                fontWeight: 800,
+                                color: '#24385E',
+                                width: 'fit-content',
+                                marginBottom: '4px'
+                            }}>
+                                <Globe size={13} strokeWidth={2.5} />
+                                {lca_filings.toLocaleString()} Filings
+                            </div>
+                        )}
+
                         {!isMobile && (
                             <p style={{ fontSize: '12px', color: '#aaa', margin: 0 }}>
                                 Visa inquiries: <span style={{ color: '#24385E', fontWeight: 500 }}>{company?.toLowerCase().replace(/\s+/g, '')}@careers.com</span>
@@ -62,7 +82,6 @@ const CompanyCard = ({ company, jobCount, wageLevel, industries, isSelected, onC
                     </div>
                 </div>
             </div>
-
 
             {/* Row 4: Wage badges */}
             <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>

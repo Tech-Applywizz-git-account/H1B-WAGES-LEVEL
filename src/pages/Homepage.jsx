@@ -8,7 +8,7 @@ import {
   ChevronLeft, ChevronRight, ArrowUpDown, Eye,
   MessageSquare, Gift, Archive, Building2, X, Users, Mail,
   ExternalLink, SlidersHorizontal, HelpCircle, Lock, LogOut, CreditCard,
-  Menu, Zap, Sparkles, Shield
+  Menu, Zap, Sparkles, Shield, Globe
 } from 'lucide-react';
 
 import { getCompanyLogo } from '../utils/logoHelper';
@@ -25,6 +25,7 @@ import AppliedJobsTab from '../components/AppliedJobsTab';
 import PaymentDetailsTab from '../components/PaymentDetailsTab';
 import LogoBox from '../components/LogoBox';
 import AllJobsTab from '../components/AllJobsTab';
+import H1BSponsorFinder from '../components/H1BSponsorFinder';
 import { fetchJobRoles, filterRoles } from '../utils/rolesSuggestions';
 import { isFamous } from '../utils/famousCompanies';
 
@@ -397,6 +398,36 @@ const Homepage = () => {
   const [allRoles, setAllRoles] = useState([]);
   const [jobFilteredSuggestions, setJobFilteredSuggestions] = useState([]);
   const [showJobSuggestions, setShowJobSuggestions] = useState(false);
+  const [filingCounts, setFilingCounts] = useState({});
+
+  // Fetch filing counts for the current page of companies
+  useEffect(() => {
+    const names = companies.map(c => c.company).filter(Boolean);
+    if (names.length === 0) return;
+
+    const fetchFilings = async () => {
+      try {
+        const { data } = await supabase
+          .from('h1b_sponsor_finder')
+          .select('Company, "LCA Filings"')
+          .or(names.map(n => `Company.ilike.%${n}%`).join(','));
+
+        if (data) {
+          const normalize = (name) => name?.toLowerCase().replace(/[\.,]/g, ' ').replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies)\b/g, ' ').replace(/\s+/g, ' ').trim() || '';
+          const map = {};
+          data.forEach(f => {
+            const norm = normalize(f.Company);
+            map[f.Company.toLowerCase()] = f["LCA Filings"];
+            if (norm && !map[norm]) map[norm] = f["LCA Filings"];
+          });
+          setFilingCounts(prev => ({ ...prev, ...map }));
+        }
+      } catch (err) { console.error("Error fetching filing counts:", err); }
+    };
+    fetchFilings();
+  }, [companies]);
+
+  const normalizeName = (name) => name?.toLowerCase().replace(/[\.,]/g, ' ').replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies)\b/g, ' ').replace(/\s+/g, ' ').trim() || '';
 
   // Fetch job roles from Supabase on mount (globally cached)
   useEffect(() => { fetchJobRoles().then(setAllRoles); }, []);
@@ -541,36 +572,37 @@ const Homepage = () => {
       // ── 3. FAST FIRST PAGE: Show initial companies quickly (single query, no pagination loops) ──
 
       const fetchAllConfirmed = async (tableName) => {
-        const names = [];
+        const records = [];
         let pg = 0;
         while (true) {
           const { data, error } = await supabase
             .from(tableName)
-            .select('company')
+            .select('company, role, domain')
             .eq('tl_confirmation', 'yes')
             .range(pg * 1000, (pg + 1) * 1000 - 1);
           if (error || !data || data.length === 0) break;
-          data.forEach(r => r.company && names.push(r.company));
+          data.forEach(r => r.company && records.push(r));
           if (data.length < 1000) break;
           pg++;
         }
-        return names;
+        return records;
       };
 
-      const [syncNames, backupNames, jobsRes] = await Promise.all([
+      const [syncResults, backupResults, jobsRes] = await Promise.all([
         fetchAllConfirmed('audit_reviews_sync'),
         fetchAllConfirmed('audit_reviews_backup'),
         supabase.from('job_jobrole_sponsored_sync').select('company, job_role_name, wage_level, wage_num').limit(5000)
       ]);
 
-      const confirmedNames = Array.from(new Set([...syncNames, ...backupNames])).filter(Boolean);
+      const allVerified = [...syncResults, ...backupResults];
+      const confirmedNames = Array.from(new Set(allVerified.map(r => r.company))).filter(Boolean);
 
       let jobData = jobsRes.data || [];
 
       // If jobs table has more than 5000, fetch remaining pages in background
       if (jobData.length === 5000) {
         // Show first-page results immediately using the data we have, then fill in more
-        buildAndSetCompanies(confirmedNames, jobData, true);
+        buildAndSetCompanies(confirmedNames, jobData, allVerified, true);
 
         // Background: fetch remaining pages without blocking UI
         let p = 1;
@@ -588,7 +620,7 @@ const Homepage = () => {
         }
       }
 
-      buildAndSetCompanies(confirmedNames, jobData, false);
+      buildAndSetCompanies(confirmedNames, jobData, allVerified, false);
 
     } catch (err) {
       if (!err.message?.includes('fetch') && window.navigator.onLine) {
@@ -598,9 +630,20 @@ const Homepage = () => {
       setCompaniesLoading(false);
     }
 
-    function buildAndSetCompanies(confirmedNames, jobData, preliminary) {
+    function buildAndSetCompanies(confirmedNames, jobData, allVerified = [], preliminary) {
       const companyStats = new Map();
       confirmedNames.forEach(name => companyStats.set(name, { company: name, jobCount: 0, maxWageNum: 0, wageLevel: 'Lv 1', industries: new Set() }));
+
+      // Count and collect industries from ALL verified roles
+      allVerified.forEach(v => {
+        if (companyStats.has(v.company)) {
+          const s = companyStats.get(v.company);
+          s.jobCount++;
+          if (v.role) s.industries.add(v.role);
+          if (v.domain) s.industries.add(v.domain);
+        }
+      });
+
       jobData.forEach(j => {
         if (companyStats.has(j.company)) {
           const s = companyStats.get(j.company);
@@ -685,7 +728,7 @@ const Homepage = () => {
 
     const page = pageOverride || jobPage;
     // Use the specific right-panel job search IF it exists, otherwise use the main left-panel company filter
-    const search = (searchOverride !== undefined) ? searchOverride : (jobSearch || debouncedCompanySearch);
+    const search = (searchOverride !== undefined) ? searchOverride : jobSearch;
     const level = levelOverride || jobLevelFilter;
 
     // --- Cache check ---
@@ -701,63 +744,120 @@ const Homepage = () => {
     setJobsLoading(true);
     try {
       const from = (page - 1) * JOBS_PER_PAGE;
-      let q = supabase.from('job_jobrole_sponsored_sync').select('*', { count: 'exact' }).eq('company', selectedCompany);
+      const to = from + JOBS_PER_PAGE - 1;
 
+      // 1. Sponsored jobs query
+      let q1 = supabase.from('job_jobrole_sponsored_sync').select('*', { count: 'exact' }).eq('company', selectedCompany);
       if (search && search.trim()) {
         const words = search.trim().split(/\s+/).filter(w => w.length >= 1);
         if (words.length > 0) {
-          // Rule: (Title has ALL words) OR (Job Role has ALL words)
-          // This is the "Strict AND" rule.
           const titleCond = `and(${words.map(w => `title.ilike.%${w}%`).join(',')})`;
           const roleCond = `and(${words.map(w => `job_role_name.ilike.%${w}%`).join(',')})`;
-          q = q.or(`${titleCond},${roleCond}`);
+          q1 = q1.or(`${titleCond},${roleCond}`);
+        }
+      }
+      if (level !== 'all') q1 = q1.eq('wage_level', level);
+
+      // 2. Audit reviews sync (human verified)
+      let q2 = supabase.from('audit_reviews_sync').select('*').eq('company', selectedCompany).eq('tl_confirmation', 'yes');
+      if (search && search.trim()) {
+        const words = search.trim().split(/\s+/).filter(w => w.length >= 1);
+        if (words.length > 0) {
+          const roleCond = `and(${words.map(w => `role.ilike.%${w}%`).join(',')})`;
+          const domainCond = `and(${words.map(w => `domain.ilike.%${w}%`).join(',')})`;
+          q2 = q2.or(`${roleCond},${domainCond}`);
         }
       }
 
-      if (level !== 'all') q = q.eq('wage_level', level);
+      // 3. Audit reviews backup (human verified)
+      let q3 = supabase.from('audit_reviews_backup').select('*').eq('company', selectedCompany).eq('tl_confirmation', 'yes');
+      if (search && search.trim()) {
+        const words = search.trim().split(/\s+/).filter(w => w.length >= 1);
+        if (words.length > 0) {
+          const roleCond = `and(${words.map(w => `role.ilike.%${w}%`).join(',')})`;
+          const domainCond = `and(${words.map(w => `domain.ilike.%${w}%`).join(',')})`;
+          q3 = q3.or(`${roleCond},${domainCond}`);
+        }
+      }
 
-      const { data, error, count } = await q
-        .order('wage_num', { ascending: false, nullsFirst: false })
-        .order('date_posted', { ascending: false })
-        .range(from, from + JOBS_PER_PAGE - 1);
-      if (error) throw error;
+      const [resSponsored, resSync, resBackup] = await Promise.all([
+        q1.order('wage_num', { ascending: false, nullsFirst: false }).order('date_posted', { ascending: false }).range(from, to),
+        q2.order('audit_date', { ascending: false }),
+        q3.order('audit_date', { ascending: false })
+      ]);
 
-      const seen = new Set();
-      const unique = (data || []).map(j => ({
+      if (resSponsored.error) throw resSponsored.error;
+
+      // Map verified roles to job format
+      const verifiedJobs = [
+        ...(resSync.data || []),
+        ...(resBackup.data || [])
+      ].map(r => ({
+        ...r,
+        title: r.role,
+        url: r.job_link,
+        date_posted: r.audit_date,
+        job_role_name: r.domain,
+        isVerified: true,
+        isTeaser: paymentStatus === 'pending',
+        job_id: r.job_id // Removed || r.id fallback to allow proper deduplication
+      }));
+
+      const sponsoredJobs = (resSponsored.data || []).map(j => ({
         ...j,
         job_id: j.id,
         role: j.job_role_name,
         isTeaser: paymentStatus === 'pending'
-      })).filter(j => {
-        const k = j.url || j.id;
-        if (!k || seen.has(k)) return false;
+      }));
+
+      // Combine and deduplicate
+      const combined = [...verifiedJobs, ...sponsoredJobs];
+      const seen = new Set();
+      const unique = combined.filter(j => {
+        // Robust deduplication: Priority to stringified job_id, fallback to composite URL+Title
+        const k = j.job_id ? String(j.job_id) : `${j.url || ''}_${j.title || ''}`;
+        if (!k || k === '_' || seen.has(k)) return false;
         seen.add(k);
         return true;
       });
 
-      const total = paymentStatus === 'pending' ? Math.min(2, count || 0) : (count || 0);
+      const total = paymentStatus === 'pending' ? Math.min(2, (resSponsored.count || 0) + verifiedJobs.length) : ((resSponsored.count || 0) + verifiedJobs.length);
 
-      // Final Priority Sort: (1) Visible Salary First, (2) Apply Link, (3) Freshness
+      // Final Priority Sort: (1) Salary First, (2) Verified, (3) Newest
       unique.sort((a, b) => {
-        const aHasSal = !!(a.salary && a.salary.trim().length > 0);
-        const bHasSal = !!(b.salary && b.salary.trim().length > 0);
-        const aHasUrl = !!(a.url || a.apply_url);
-        const bHasUrl = !!(b.url || b.apply_url);
+        const hasSal = (s) => s && s.includes('$');
+        const aHasSal = hasSal(a.salary);
+        const bHasSal = hasSal(b.salary);
+        if (aHasSal && !bHasSal) return -1;
+        if (!aHasSal && bHasSal) return 1;
 
-        const aScore = (aHasSal ? 100 : 0) + (aHasUrl ? 1 : 0);
-        const bScore = (bHasSal ? 100 : 0) + (bHasUrl ? 1 : 0);
+        if (a.isVerified && !b.isVerified) return -1;
+        if (!a.isVerified && b.isVerified) return 1;
 
-        if (aScore !== bScore) return bScore - aScore;
-
-        // Tie-breaker: Newest first
         const dateA = new Date(a.date_posted || 0).getTime();
         const dateB = new Date(b.date_posted || 0).getTime();
         return dateB - dateA;
       });
 
-      setCompanyJobs(unique);
-      setTotalCompanyJobs(total);
-      window._companyJobsCache.set(cacheKey, { jobs: unique, total });
+      // Fetch filing count for this company to show on cards
+      let lcaCount = 0;
+      const { data: sData } = await supabase
+        .from('h1b_sponsor_finder')
+        .select('"LCA Filings"')
+        .ilike('Company', `%${selectedCompany}%`)
+        .limit(1);
+
+      if (sData && sData[0]) {
+        const val = sData[0]["LCA Filings"];
+        lcaCount = typeof val === 'number' ? val : parseInt(String(val || 0).replace(/,/g, '')) || 0;
+      }
+
+      const jobsWithFilings = unique.map(j => ({ ...j, lca_filings: lcaCount }));
+      const deduplicatedTotal = unique.length;
+
+      setCompanyJobs(jobsWithFilings);
+      setTotalCompanyJobs(deduplicatedTotal);
+      window._companyJobsCache.set(cacheKey, { jobs: jobsWithFilings, total: deduplicatedTotal });
     } catch (err) {
       console.error("fetchCompanyJobs Error:", err);
     } finally {
@@ -797,7 +897,8 @@ const Homepage = () => {
             // Clear all company caches so next fetchCompanies gets fresh confirmed list
             window._allProcessedCompanies = null;
             window._confirmedCompaniesCache = null;
-            try { sessionStorage.removeItem('companiesCache'); } catch (_) { }
+            window._companyJobsCache = null; // Clear jobs cache as well
+            try { sessionStorage.removeItem('_companiesCache_v4'); } catch (_) { }
             setIsInitialLoadDone(false);
             setAllProcessedCompanies([]);
           }
@@ -868,6 +969,7 @@ const Homepage = () => {
 
   const navItems = [
     { id: 'all_jobs', label: 'All Jobs', icon: Briefcase },
+    { id: 'h1b_finder', label: 'H-1B Visa Sponsor Finder', icon: Globe },
     { id: 'billing', label: 'Billing & Plan', icon: CreditCard },
   ];
 
@@ -1027,20 +1129,20 @@ const Homepage = () => {
             <button
               style={{
                 ...S.navItem(false),
-                color: '#7c3aed',
-                background: 'rgba(124,58,237,0.07)',
-                border: '1px solid rgba(124,58,237,0.15)',
+                color: '#24385E',
+                background: 'rgba(36,56,94,0.08)',
+                border: '1px solid rgba(36,56,94,0.15)',
                 marginTop: '4px',
               }}
               onClick={() => { navigate('/admin'); if (isMobile) setMobileMenuOpen(false); }}
-              onMouseEnter={e => e.currentTarget.style.background = 'rgba(124,58,237,0.14)'}
-              onMouseLeave={e => e.currentTarget.style.background = 'rgba(124,58,237,0.07)'}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(36,56,94,0.14)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(36,56,94,0.08)'}
             >
               <Shield size={18} strokeWidth={1.8} />
               <span style={{ fontWeight: 700 }}>Admin Panel</span>
               <span style={{
                 marginLeft: 'auto', fontSize: '9px', fontWeight: 800,
-                background: '#7c3aed', color: '#fff',
+                background: '#24385E', color: '#fff',
                 padding: '2px 6px', borderRadius: '20px', letterSpacing: '0.05em',
                 textTransform: 'uppercase'
               }}>Admin</span>
@@ -1105,6 +1207,13 @@ const Homepage = () => {
           {activeView === 'billing' && (
             <div style={{ flex: 1, overflowY: 'auto', background: '#fff', scrollbarWidth: 'none' }}>
               <PaymentDetailsTab />
+            </div>
+          )}
+
+          {/* ━━━━━━ H-1B FINDER VIEW ━━━━━━ */}
+          {activeView === 'h1b_finder' && (
+            <div style={{ flex: 1, overflowY: 'auto', background: '#fff', scrollbarWidth: 'none' }}>
+              <H1BSponsorFinder isMobile={isMobile} />
             </div>
           )}
 
@@ -1251,6 +1360,7 @@ const Homepage = () => {
                     <CompanyCard key={c.company + i} company={c.company} jobCount={c.jobCount}
                       isMobile={isMobile}
                       isVerified={true}
+                      lca_filings={filingCounts[c.company.toLowerCase()] || filingCounts[normalizeName(c.company)] || 0}
                       wageLevel={c.wageLevel} industries={c.industries}
                       isSelected={selectedCompany === c.company} onClick={() => handleCompanySelect(c)} />
                   )) : (

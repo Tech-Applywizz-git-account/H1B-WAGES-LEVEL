@@ -35,6 +35,45 @@ const SavedJobsTab = () => {
 
             if (fetchError) throw fetchError;
 
+            // Fetch filing counts for these companies to show on cards
+            const companyNames = [...new Set(data.map(item => item.job_data?.company))].filter(Boolean);
+            if (companyNames.length > 0) {
+                const { data: filingsData } = await supabase
+                    .from('h1b_sponsor_finder')
+                    .select('Company, "LCA Filings"')
+                    .or(companyNames.map(n => `Company.ilike.%${n}%`).join(','));
+
+                if (filingsData) {
+                    const normalize = (name) => name?.toLowerCase().replace(/[\.,]/g, ' ').replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies)\b/g, ' ').replace(/\s+/g, ' ').trim() || '';
+                    const filingMap = {};
+                    filingsData.forEach(f => {
+                        const norm = normalize(f.Company);
+                        filingMap[f.Company.toLowerCase()] = f["LCA Filings"];
+                        if (norm && !filingMap[norm]) filingMap[norm] = f["LCA Filings"];
+                    });
+                    const filingKeys = Object.keys(filingMap);
+
+                    const parseCount = (val) => {
+                        if (typeof val === 'number') return val;
+                        if (!val) return 0;
+                        return parseInt(String(val).replace(/,/g, '')) || 0;
+                    };
+
+                    data.forEach(item => {
+                        const job = item.job_data;
+                        if (!job) return;
+                        const jLower = job.company?.toLowerCase() || '';
+                        const jNorm = normalize(job.company);
+                        let count = filingMap[jLower] || filingMap[jNorm] || 0;
+                        if (count === 0 && jNorm) {
+                            const bestKey = filingKeys.find(k => k.includes(jNorm) || jNorm.includes(k));
+                            if (bestKey) count = filingMap[bestKey];
+                        }
+                        job.lca_filings = parseCount(count);
+                    });
+                }
+            }
+
             console.log('✅ Saved jobs fetched:', data?.length || 0);
             setSavedJobs(data || []);
         } catch (err) {

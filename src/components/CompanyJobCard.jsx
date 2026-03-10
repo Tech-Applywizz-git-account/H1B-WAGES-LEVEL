@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, DollarSign, Clock, ExternalLink, Star } from 'lucide-react';
+import { MapPin, DollarSign, Clock, ExternalLink, Star, Globe } from 'lucide-react';
 import LogoBox from './LogoBox';
 
 const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, isMobile }) => {
@@ -102,7 +102,25 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '3px' }}>
-                        <p style={{ fontSize: '11px', color: '#aaa', margin: 0, fontWeight: 600 }}>{job.company}</p>
+                        <p style={{ fontSize: '11px', color: '#aaa', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {job.company}
+                            {job.lca_filings > 0 && (
+                                <span style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    background: '#f1f5f9',
+                                    padding: '2px 8px',
+                                    borderRadius: '6px',
+                                    fontSize: '11px',
+                                    fontWeight: 800,
+                                    color: '#24385E'
+                                }}>
+                                    <Globe size={12} strokeWidth={2.5} />
+                                    {job.lca_filings.toLocaleString()} Filings
+                                </span>
+                            )}
+                        </p>
                     </div>
 
                     <h3 style={{ fontSize: isMobile ? '14px' : '15px', fontWeight: 700, margin: '0 0 5px', lineHeight: 1.3 }}>
