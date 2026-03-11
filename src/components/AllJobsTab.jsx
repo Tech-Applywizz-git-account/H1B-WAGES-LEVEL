@@ -284,7 +284,7 @@ const JobRow = ({ job, isSaved, onSave }) => {
 
 // ── Main Component ─────────────────────────────────────────────────────────
 const AllJobsTab = () => {
-    const { user } = useAuth();
+    const { user, paymentStatus } = useAuth();
     const [jobs, setJobs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
