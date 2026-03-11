@@ -641,8 +641,8 @@ const MigrateHero = () => {
                                             <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}><Loader2 className="animate-spin text-[#24385E]" size={32} /></div>
                                         ) : companyJobs.length > 0 ? (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                                {companyJobs.map(job => (
-                                                    <CompanyJobCard key={job.id} job={job} isLandingPage={true} isMobile={isMobile} />
+                                                {companyJobs.map((job, jobIdx) => (
+                                                    <CompanyJobCard key={`${job.id || 'job'}_${jobIdx}`} job={job} isLandingPage={true} isMobile={isMobile} />
                                                 ))}
                                             </div>
                                         ) : (

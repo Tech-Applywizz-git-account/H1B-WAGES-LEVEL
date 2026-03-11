@@ -56,7 +56,7 @@ const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
       flexDirection: 'column',
       flexShrink: 0,
       position: isMobile ? 'fixed' : 'relative',
-      zIndex: 1000,
+      zIndex: 9999,
       height: '100vh',
       left: 0,
       top: 0,
@@ -161,7 +161,7 @@ const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
   return (
     <div style={S.page}>
       {isMobile && mobileMenuOpen && (
-        <div onClick={() => setMobileMenuOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 90 }} />
+        <div onClick={() => setMobileMenuOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9998 }} />
       )}
 
       {/* Sidebar */}
@@ -810,15 +810,26 @@ const Homepage = () => {
         isTeaser: paymentStatus === 'pending'
       }));
 
-      // Combine and deduplicate
+      // Combine and deduplicate by BOTH job_id AND url
+      // Some jobs come from multiple tables with the same URL but different IDs —
+      // tracking both prevents duplicate keys and duplicate cards.
       const combined = [...verifiedJobs, ...sponsoredJobs];
-      const seen = new Set();
+      const seenIds = new Set();
+      const seenUrls = new Set();
       const unique = combined.filter(j => {
-        // Robust deduplication: Priority to stringified job_id, fallback to composite URL+Title
-        const k = j.job_id ? String(j.job_id) : `${j.url || ''}_${j.title || ''}`;
-        if (!k || k === '_' || seen.has(k)) return false;
-        seen.add(k);
-        return true;
+        // Robust deduplication: check both ID and URL
+        const idKey = (j.job_id || j.id || j.audit_id) ? String(j.job_id || j.id || j.audit_id) : null;
+        const urlKey = (j.url || j.job_link || '').trim();
+
+        if (idKey) {
+          if (seenIds.has(idKey)) return false;
+          seenIds.add(idKey);
+        }
+        if (urlKey) {
+          if (seenUrls.has(urlKey)) return false;
+          seenUrls.add(urlKey);
+        }
+        return idKey || urlKey;
       });
 
       const total = paymentStatus === 'pending' ? Math.min(2, (resSponsored.count || 0) + verifiedJobs.length) : ((resSponsored.count || 0) + verifiedJobs.length);
@@ -987,7 +998,7 @@ const Homepage = () => {
       flexDirection: 'column',
       flexShrink: 0,
       position: isMobile ? 'fixed' : 'relative',
-      zIndex: 1000,
+      zIndex: 9999,  // Must be above search pill (2010) and suggestions (2000)
       height: '100vh',
       left: 0,
       top: 0,
@@ -1056,7 +1067,7 @@ const Homepage = () => {
       {isMobile && mobileMenuOpen && (
         <div
           onClick={() => setMobileMenuOpen(false)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 90 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9998 }}
         />
       )}
 
@@ -1205,14 +1216,14 @@ const Homepage = () => {
 
           {/* ━━━━━━ BILLING VIEW ━━━━━━ */}
           {activeView === 'billing' && (
-            <div style={{ flex: 1, overflowY: 'auto', background: '#fff', scrollbarWidth: 'none' }}>
+            <div style={{ flex: 1, height: '100%', overflowY: 'auto', background: '#fff', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
               <PaymentDetailsTab />
             </div>
           )}
 
           {/* ━━━━━━ H-1B FINDER VIEW ━━━━━━ */}
           {activeView === 'h1b_finder' && (
-            <div style={{ flex: 1, overflowY: 'auto', background: '#fff', scrollbarWidth: 'none' }}>
+            <div style={{ flex: 1, height: '100%', overflowY: 'auto', background: '#fff', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
               <H1BSponsorFinder isMobile={isMobile} />
             </div>
           )}
@@ -1596,7 +1607,9 @@ const Homepage = () => {
                       ) : companyJobs.length > 0 ? (
                         <>
                           {companyJobs.map((job, i) => (
-                            <CompanyJobCard key={job.url || job.id || i} job={{ ...job, isVerified: true }}
+                            <CompanyJobCard
+                              key={`${job.url || job.id || job.job_id || 'job'}_${i}`}
+                              job={{ ...job, isVerified: true }}
                               isMobile={isMobile}
                               isSaved={savedJobIds.has(String(job.id || job.job_id || job.audit_id))}
                               onSave={handleSaveJob} />
@@ -1664,17 +1677,17 @@ const Homepage = () => {
           )}
 
           {activeView === 'all_jobs' && (
-            <div style={{ flex: 1, overflowY: 'auto', background: '#fff', scrollbarWidth: 'none', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-              <div style={{ padding: isMobile ? '16px 12px' : '40px', maxWidth: '1000px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ flex: 1, height: '100%', overflowY: 'auto', background: '#fff', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+              <div style={{ padding: isMobile ? '16px 12px 32px' : '32px 40px' }}>
                 <AllJobsTab />
               </div>
             </div>
           )}
 
           {/* Settings / Saved / Applied Views */}
-          {activeView === 'saved' && <div style={{ flex: 1, overflowY: 'auto', background: '#fff', scrollbarWidth: 'none' }}><div style={{ padding: isMobile ? '20px 16px' : '40px', maxWidth: '900px', margin: '0 auto' }}><SavedJobsTab /></div></div>}
-          {activeView === 'applied' && <div style={{ flex: 1, overflowY: 'auto', background: '#fff', scrollbarWidth: 'none' }}><div style={{ padding: isMobile ? '20px 16px' : '40px', maxWidth: '900px', margin: '0 auto' }}><AppliedJobsTab /></div></div>}
-          {activeView === 'settings' && <div style={{ flex: 1, overflowY: 'auto', background: '#fff', scrollbarWidth: 'none' }}><div style={{ padding: isMobile ? '20px 16px' : '40px', maxWidth: '800px', margin: '0 auto' }}><ProfileTab /></div></div>}
+          {activeView === 'saved' && <div style={{ flex: 1, height: '100%', overflowY: 'auto', background: '#fff', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}><div style={{ padding: isMobile ? '20px 16px' : '40px', maxWidth: '900px', margin: '0 auto' }}><SavedJobsTab /></div></div>}
+          {activeView === 'applied' && <div style={{ flex: 1, height: '100%', overflowY: 'auto', background: '#fff', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}><div style={{ padding: isMobile ? '20px 16px' : '40px', maxWidth: '900px', margin: '0 auto' }}><AppliedJobsTab /></div></div>}
+          {activeView === 'settings' && <div style={{ flex: 1, height: '100%', overflowY: 'auto', background: '#fff', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}><div style={{ padding: isMobile ? '20px 16px' : '40px', maxWidth: '800px', margin: '0 auto' }}><ProfileTab /></div></div>}
 
         </div>
       </div>

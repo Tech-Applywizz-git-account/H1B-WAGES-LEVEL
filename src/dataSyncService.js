@@ -88,7 +88,7 @@ export const syncAuditReviews = async () => {
         while (hasMore) {
             const { data, error } = await externalSupabase
                 .from('audit_reviews')
-                .select('*')
+                .select('id, job_id, company, role, domain, job_link, decision, remarks, observant_name, audit_date, created_at, tl_confirmation, tl_name, admin_confirmation, admin_name, audit_link_review, salary')
                 .range(page * pageSize, (page + 1) * pageSize - 1)
                 .order('created_at', { ascending: false });
 
@@ -114,7 +114,28 @@ export const syncAuditReviews = async () => {
 
         for (let i = 0; i < allData.length; i += batchSize) {
             const batch = allData.slice(i, i + batchSize).map(record => ({
-                ...record,
+                // Explicitly map only columns that exist in audit_reviews_sync
+                // DO NOT use ...record spread — external DB has extra columns (e.g. 'edits')
+                // that don't exist in the local table schema, causing PGRST204 errors.
+                id: record.id,
+                job_id: record.job_id,
+                company: record.company,
+                role: record.role,
+                domain: record.domain,
+                job_link: record.job_link,
+                decision: record.decision,
+                remarks: record.remarks,
+                observant_name: record.observant_name,
+                audit_date: record.audit_date,
+                created_at: record.created_at || new Date().toISOString(),
+                tl_confirmation: record.tl_confirmation || 'Pending',
+                tl_name: record.tl_name || null,
+                admin_confirmation: record.admin_confirmation || 'Pending',
+                admin_name: record.admin_name || null,
+                audit_link_review: record.audit_link_review || null,
+                salary: record.salary || null,
+                // NOTE: 'job_type' and 'edits' exist in the EXTERNAL source DB
+                // but NOT in the local audit_reviews_sync table — DO NOT include them.
                 synced_at: new Date().toISOString()
             }));
 

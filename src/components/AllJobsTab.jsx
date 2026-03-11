@@ -49,16 +49,16 @@ const JobRow = ({ job, isSaved, onSave }) => {
         <div
             style={{
                 background: '#fff',
-                borderRadius: isMobile ? '16px' : '20px',
-                border: '1.2px solid #f1f5f9',
-                padding: isMobile ? '16px' : '18px 24px',
+                borderRadius: isMobile ? '16px' : '16px',
+                border: '1.5px solid #ebebeb',
+                padding: isMobile ? '16px' : '20px 24px',
                 marginBottom: '12px',
                 display: 'flex',
                 flexDirection: isMobile ? 'column' : 'row',
                 alignItems: isMobile ? 'stretch' : 'center',
                 gap: isMobile ? '12px' : '20px',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                boxShadow: hovered ? '0 10px 25px rgba(0,0,0,0.05)' : '0 1px 3px rgba(0,0,0,0.01)',
+                transition: 'all 0.2s ease',
+                boxShadow: hovered ? '0 6px 20px rgba(0,0,0,0.07)' : '0 1px 3px rgba(0,0,0,0.03)',
                 position: 'relative',
                 overflow: 'hidden'
             }}
@@ -97,7 +97,7 @@ const JobRow = ({ job, isSaved, onSave }) => {
             {/* Left side: Logo (Desktop Only) */}
             {!isMobile && (
                 <div style={{ flexShrink: 0 }}>
-                    <LogoBox name={job.company} size={56} fontSize={18} />
+                    <LogoBox name={job.company} size={60} fontSize={18} />
                 </div>
             )}
 
@@ -125,9 +125,9 @@ const JobRow = ({ job, isSaved, onSave }) => {
 
                 {/* Row 2: Title */}
                 <h3 style={{
-                    fontSize: isMobile ? '16px' : '18px',
+                    fontSize: isMobile ? '16px' : '17px',
                     fontWeight: 800,
-                    margin: '0 0 6px',
+                    margin: '0 0 8px',
                     lineHeight: 1.25,
                     letterSpacing: '-0.2px'
                 }}>
@@ -144,21 +144,21 @@ const JobRow = ({ job, isSaved, onSave }) => {
                     </a>
                 </h3>
 
-                {/* Row 3: Meta Info (Location + Exp) */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+                {/* Row 3: Meta Info (Location + Salary inline) */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', marginBottom: '10px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <MapPin size={13} color="#94a3b8" />
-                        <span style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>{job.location || 'United States'}</span>
+                        <MapPin size={12} color="#94a3b8" />
+                        <span style={{ fontSize: '12px', fontWeight: 500, color: '#64748b' }}>{job.location || 'United States'}</span>
                     </div>
 
                     {job.salary && (
                         <span style={{
-                            fontSize: '11px',
+                            fontSize: '11.5px',
                             fontWeight: 700,
                             color: '#24385E',
-                            background: '#f1f5f9',
-                            borderRadius: '8px',
-                            padding: '4px 12px',
+                            background: '#eef2f8',
+                            borderRadius: '6px',
+                            padding: '3px 10px',
                             display: 'inline-flex',
                             alignItems: 'center'
                         }}>
@@ -194,11 +194,11 @@ const JobRow = ({ job, isSaved, onSave }) => {
                 flexDirection: isMobile ? 'row' : 'column',
                 alignItems: 'center',
                 justifyContent: isMobile ? 'flex-end' : 'center',
-                gap: isMobile ? '12px' : '16px',
-                minWidth: isMobile ? '100%' : '180px',
+                gap: isMobile ? '12px' : '12px',
+                minWidth: isMobile ? '100%' : '160px',
                 marginTop: isMobile ? '4px' : '0',
                 borderLeft: isMobile ? 'none' : '1px solid #f1f5f9',
-                paddingLeft: isMobile ? '0' : '24px'
+                paddingLeft: isMobile ? '0' : '20px'
             }}>
                 {!isMobile && (
                     <div style={{
@@ -489,35 +489,49 @@ const AllJobsTab = () => {
                 combined = combined.filter(j => j.isVerified);
             }
 
-            const seen = new Set();
+            const seenIds = new Set();
+            const seenUrls = new Set();
             let unique = combined.filter(j => {
-                // Robust deduplication: Priority to job_id (stringified), fallback to composite URL+Title
-                // Normalizing to string ensures that numbers and strings are treated the same
-                const k = j.job_id ? String(j.job_id) : `${j.url || ''}_${j.title || ''}`;
-                if (!k || k === '_' || seen.has(k)) return false;
-                seen.add(k);
-                return true;
+                const idKey = (j.job_id || j.id) ? String(j.job_id || j.id) : null;
+                const urlKey = (j.url || j.job_link || '').trim();
+                
+                if (idKey) {
+                    if (seenIds.has(idKey)) return false;
+                    seenIds.add(idKey);
+                }
+                if (urlKey) {
+                    if (seenUrls.has(urlKey)) return false;
+                    seenUrls.add(urlKey);
+                }
+                return idKey || urlKey;
             });
 
-            // --- THE MASTER SORT: Salary First, then Recency ---
+            // --- THE MASTER SORT: Ranked Companies First, then Salary, then Recency ---
             unique.sort((a, b) => {
-                // 1. Salary existence (Strict check for real salary values)
+                const rankA = getCompanyRank(a.company);
+                const rankB = getCompanyRank(b.company);
+
+                const aIsRanked = rankA < Infinity;
+                const bIsRanked = rankB < Infinity;
+
+                // 1. Ranked companies always first; any ranked beats any unranked
+                if (aIsRanked && !bIsRanked) return -1;
+                if (!aIsRanked && bIsRanked) return 1;
+
+                // 2. Among ranked companies: respect priority order (Amazon=0, Google=1, …)
+                if (aIsRanked && bIsRanked && rankA !== rankB) return rankA - rankB;
+
+                // 3. Salary existence (jobs with real $ value float up)
                 const hasSal = (s) => s && s.includes('$');
                 const aSal = hasSal(a.salary);
                 const bSal = hasSal(b.salary);
-
                 if (aSal && !bSal) return -1;
                 if (!aSal && bSal) return 1;
 
-                // 2. Recency (Tie-breaker for same salary status)
+                // 4. Recency (newer first as final tiebreaker)
                 const dateA = new Date(a.date_posted || 0).getTime();
                 const dateB = new Date(b.date_posted || 0).getTime();
-                if (dateB !== dateA) return dateB - dateA;
-
-                // 3. Company Rank (Final tie-breaker)
-                const rankA = getCompanyRank(a.company);
-                const rankB = getCompanyRank(b.company);
-                return rankA - rankB;
+                return dateB - dateA;
             });
 
             // Pagination from the sorted pool
@@ -758,16 +772,15 @@ const AllJobsTab = () => {
             )}
 
             {/* ── Search row ── */}
-            <div style={{ marginBottom: '16px' }}>
-                {/* Search input - always full width */}
-                <div style={{ position: 'relative', marginBottom: isMobile ? '10px' : '0' }}>
+            <div style={{ marginBottom: '20px' }}>
+                <div style={{ position: 'relative' }}>
                     <div style={{
-                        display: 'flex', alignItems: 'center', gap: '12px',
-                        background: (showSuggestions && filteredSuggestions.length > 0) ? '#24385E' : '#fff',
-                        border: (showSuggestions && filteredSuggestions.length > 0) ? '1.5px solid rgba(255,255,255,0.1)' : '1.5px solid #e2e8f0',
-                        borderRadius: (showSuggestions && filteredSuggestions.length > 0) ? '20px 20px 0 0' : '40px',
-                        padding: '0 16px', height: '48px',
-                        boxShadow: (showSuggestions && filteredSuggestions.length > 0) ? 'none' : '0 1px 3px rgba(0,0,0,0.05)',
+                        display: 'flex', alignItems: 'center', gap: '10px',
+                        background: (showSuggestions && filteredSuggestions.length > 0) ? '#24385E' : '#f8f9fb',
+                        border: (showSuggestions && filteredSuggestions.length > 0) ? '1.5px solid rgba(255,255,255,0.1)' : '1.5px solid #dde1e7',
+                        borderRadius: (showSuggestions && filteredSuggestions.length > 0) ? '20px 20px 0 0' : '14px',
+                        padding: '0 8px 0 18px', height: '54px',
+                        boxShadow: (showSuggestions && filteredSuggestions.length > 0) ? 'none' : '0 1px 4px rgba(0,0,0,0.04)',
                         position: 'relative', zIndex: 2010,
                         transition: 'all 0.2s'
                     }}>
@@ -785,10 +798,11 @@ const AllJobsTab = () => {
                             style={{
                                 border: 'none',
                                 outline: 'none',
-                                fontSize: '14px',
+                                fontSize: '14.5px',
                                 color: (showSuggestions && filteredSuggestions.length > 0) ? '#fff' : '#1e293b',
                                 background: 'transparent',
-                                width: '100%',
+                                flex: 1,
+                                minWidth: 0,
                                 fontWeight: 500,
                                 transition: 'all 0.2s'
                             }}
@@ -802,9 +816,36 @@ const AllJobsTab = () => {
                                 }}
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px', flexShrink: 0 }}
                             >
-                                <X size={18} color="#94a3b8" />
+                                <X size={16} color="#94a3b8" />
                             </button>
                         )}
+                        {/* Small inline Search button */}
+                        <button
+                            onClick={() => fetchJobs(1, activeFilter, searchTerm, levelFilter)}
+                            style={{
+                                flexShrink: 0,
+                                height: '40px',
+                                padding: '0 20px',
+                                borderRadius: '10px',
+                                background: '#24385E',
+                                color: '#fff',
+                                fontSize: '13.5px',
+                                fontWeight: 700,
+                                border: 'none',
+                                cursor: 'pointer',
+                                transition: 'all 200ms',
+                                boxShadow: '0 2px 8px rgba(36, 56, 94, 0.3)',
+                                whiteSpace: 'nowrap',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '7px',
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#1a2b4b'}
+                            onMouseLeave={e => e.currentTarget.style.background = '#24385E'}
+                        >
+                            <Search size={14} />
+                            Search
+                        </button>
                     </div>
 
                     {/* Suggestions Dropdown */}
@@ -815,13 +856,13 @@ const AllJobsTab = () => {
                             left: 0,
                             right: 0,
                             backgroundColor: '#24385E',
-                            borderRadius: '24px',
+                            borderRadius: '20px',
                             boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
                             zIndex: 2000,
                             overflow: 'hidden',
                             border: '1px solid rgba(255,255,255,0.1)',
                             animation: 'fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                            paddingTop: '52px'
+                            paddingTop: '58px'
                         }}>
                             <div style={{ borderTop: '0.5px solid rgba(255,255,255,0.1)' }}>
                                 {filteredSuggestions.map((role) => (
@@ -856,42 +897,6 @@ const AllJobsTab = () => {
                         </div>
                     )}
                 </div>
-
-                {/* On desktop: buttons sit inline to the right (achieved by flex row wrapping) */}
-                {/* On mobile: buttons appear below the search bar */}
-                {!isMobile && (
-                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                        <button
-                            onClick={() => fetchJobs(1, activeFilter, searchTerm, levelFilter)}
-                            style={{
-                                flex: 1,
-                                padding: '0 24px', borderRadius: '12px', background: '#24385E',
-                                color: '#fff', fontSize: '13px', fontWeight: 800, border: 'none',
-                                height: '44px', cursor: 'pointer', transition: 'all 200ms',
-                                boxShadow: '0 4px 10px rgba(36, 56, 94, 0.15)',
-                            }}
-                        >
-                            Search
-                        </button>
-                    </div>
-                )}
-
-                {isMobile && (
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                        <button
-                            onClick={() => fetchJobs(1, activeFilter, searchTerm, levelFilter)}
-                            style={{
-                                flex: 1,
-                                padding: '0 16px', borderRadius: '12px', background: '#24385E',
-                                color: '#fff', fontSize: '13px', fontWeight: 800, border: 'none',
-                                height: '44px', cursor: 'pointer', transition: 'all 200ms',
-                                boxShadow: '0 4px 10px rgba(36, 56, 94, 0.15)',
-                            }}
-                        >
-                            Search
-                        </button>
-                    </div>
-                )}
             </div>
 
             {/* ── Verified filter banner ── */}
@@ -901,6 +906,8 @@ const AllJobsTab = () => {
                     Showing jobs from <strong style={{ marginLeft: '4px' }}>Human-Verified H-1B sponsoring companies</strong>
                 </div>
             )}
+
+
 
             {/* ── Loading ── */}
             {loading && (
@@ -938,7 +945,7 @@ const AllJobsTab = () => {
                 <>
                     {jobs.map((job, i) => (
                         <JobRow
-                            key={job.id || job.url || i}
+                            key={`${job.id || job.url || 'job'}_${i}`}
                             job={{
                                 ...job,
                                 isVerified: job._verified || verifiedSet?.has(job.company)

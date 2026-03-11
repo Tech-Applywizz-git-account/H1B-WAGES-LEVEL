@@ -216,10 +216,10 @@ const H1BSponsorFinder = ({ isMobile }) => {
                 {!isMobile && (
                     <div style={{ width: '230px', marginRight: '24px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         <div style={{ background: COLORS.white, padding: '24px', borderRadius: '20px', border: `1.5px solid ${COLORS.border}`, boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-                            <p style={{ fontSize: '12px', fontWeight: 900, color: COLORS.primary, textTransform: 'uppercase', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: 900, color: COLORS.primary, textTransform: 'uppercase', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <div style={{ width: '3px', height: '14px', background: COLORS.secondary, borderRadius: '2px' }} />
                                 Filters
-                            </p>
+                            </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                                 <div>
