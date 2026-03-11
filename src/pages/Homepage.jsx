@@ -1664,8 +1664,8 @@ const Homepage = () => {
           )}
 
           {activeView === 'all_jobs' && (
-            <div style={{ flex: 1, overflowY: 'auto', background: '#fff', scrollbarWidth: 'none' }}>
-              <div style={{ padding: isMobile ? '20px 16px' : '40px', maxWidth: '1000px', margin: '0 auto' }}>
+            <div style={{ flex: 1, overflowY: 'auto', background: '#fff', scrollbarWidth: 'none', minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ padding: isMobile ? '16px 12px' : '40px', maxWidth: '1000px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
                 <AllJobsTab />
               </div>
             </div>

@@ -25,10 +25,10 @@ const VerifiedSeal = ({ size = 16 }) => (
 const JobRow = ({ job, isSaved, onSave }) => {
     const level = parseInt(job.wage_level?.match(/\d/)?.[0] || '2');
     const [hovered, setHovered] = useState(false);
-    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
     useEffect(() => {
-        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        const handleResize = () => setIsMobile(window.innerWidth < 1024);
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
@@ -669,8 +669,9 @@ const AllJobsTab = () => {
                     style={{
                         flexShrink: 0,
                         display: 'inline-flex', alignItems: 'center', gap: '6px',
-                        padding: '8px 16px', borderRadius: '10px', fontSize: '12.5px', fontWeight: 700,
-                        cursor: 'pointer', transition: 'all 200ms', border: 'none',
+                        padding: isMobile ? '8px 14px' : '8px 16px', borderRadius: '10px',
+                        fontSize: isMobile ? '12px' : '12.5px', fontWeight: 700,
+                        cursor: 'pointer', transition: 'all 200ms',
                         background: activeFilter === 'all' ? '#24385E' : '#fff',
                         color: activeFilter === 'all' ? '#fff' : '#64748b',
                         boxShadow: activeFilter === 'all' ? '0 4px 10px rgba(36, 56, 94, 0.15)' : '0 1px 2px rgba(0,0,0,0.05)',
@@ -686,9 +687,10 @@ const AllJobsTab = () => {
                     onClick={() => { setActiveFilter('verified'); setCurrentPage(1); }}
                     style={{
                         flexShrink: 0,
-                        display: 'inline-flex', alignItems: 'center', gap: '8px',
-                        padding: '8px 16px', borderRadius: '10px', fontSize: '12px', fontWeight: 800,
-                        cursor: 'pointer', transition: 'all 200ms', border: 'none',
+                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        padding: isMobile ? '8px 14px' : '8px 16px', borderRadius: '10px',
+                        fontSize: isMobile ? '11px' : '12px', fontWeight: 800,
+                        cursor: 'pointer', transition: 'all 200ms',
                         background: activeFilter === 'verified' ? '#f0fdf4' : '#fff',
                         color: activeFilter === 'verified' ? '#16a34a' : '#64748b',
                         border: '1.5px solid',
@@ -698,26 +700,26 @@ const AllJobsTab = () => {
                     }}
                 >
                     Human Verified
-                    <VerifiedSeal size={15} />
+                    <VerifiedSeal size={13} />
                 </button>
 
-                {!isMobile && (
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        style={{
-                            flexShrink: 0,
-                            display: 'inline-flex', alignItems: 'center', gap: '8px',
-                            padding: '8px 16px', borderRadius: '10px', fontSize: '12.5px', fontWeight: 700,
-                            cursor: 'pointer', transition: 'all 200ms', border: '1.5px solid',
-                            background: showFilters ? '#24385E' : '#fff',
-                            color: showFilters ? '#fff' : '#64748b',
-                            borderColor: showFilters ? '#24385E' : '#e2e8f0',
-                        }}
-                    >
-                        <SlidersHorizontal size={14} />
-                        Filters {levelFilter !== 'all' ? `(${levelFilter})` : ''}
-                    </button>
-                )}
+                <button
+                    onClick={() => setShowFilters(!showFilters)}
+                    style={{
+                        flexShrink: 0,
+                        display: 'inline-flex', alignItems: 'center', gap: '6px',
+                        padding: isMobile ? '8px 12px' : '8px 16px', borderRadius: '10px',
+                        fontSize: isMobile ? '12px' : '12.5px', fontWeight: 700,
+                        cursor: 'pointer', transition: 'all 200ms', border: '1.5px solid',
+                        background: showFilters ? '#24385E' : '#fff',
+                        color: showFilters ? '#fff' : '#64748b',
+                        borderColor: showFilters ? '#24385E' : '#e2e8f0',
+                    }}
+                >
+                    <SlidersHorizontal size={14} />
+                    {!isMobile && `Filters ${levelFilter !== 'all' ? `(${levelFilter})` : ''}`}
+                    {isMobile && levelFilter !== 'all' && <span style={{ fontSize: '10px', background: '#FDB913', color: '#111', borderRadius: '4px', padding: '1px 5px' }}>{levelFilter}</span>}
+                </button>
             </div>
 
             {/* ── Level Filter Row (Collapsed inside Filter Option) ── */}
@@ -756,27 +758,20 @@ const AllJobsTab = () => {
             )}
 
             {/* ── Search row ── */}
-            <div style={{
-                display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                alignItems: isMobile ? 'stretch' : 'center',
-                gap: '12px',
-                marginBottom: '16px'
-            }}>
-                <div style={{
-                    flex: 1, position: 'relative'
-                }}>
+            <div style={{ marginBottom: '16px' }}>
+                {/* Search input - always full width */}
+                <div style={{ position: 'relative', marginBottom: isMobile ? '10px' : '0' }}>
                     <div style={{
                         display: 'flex', alignItems: 'center', gap: '12px',
                         background: (showSuggestions && filteredSuggestions.length > 0) ? '#24385E' : '#fff',
                         border: (showSuggestions && filteredSuggestions.length > 0) ? '1.5px solid rgba(255,255,255,0.1)' : '1.5px solid #e2e8f0',
                         borderRadius: (showSuggestions && filteredSuggestions.length > 0) ? '20px 20px 0 0' : '40px',
-                        padding: '0 16px', height: isMobile ? '48px' : '48px',
+                        padding: '0 16px', height: '48px',
                         boxShadow: (showSuggestions && filteredSuggestions.length > 0) ? 'none' : '0 1px 3px rgba(0,0,0,0.05)',
                         position: 'relative', zIndex: 2010,
                         transition: 'all 0.2s'
                     }}>
-                        <Search size={18} color={(showSuggestions && filteredSuggestions.length > 0) ? '#94a3b8' : '#94a3b8'} style={{ flexShrink: 0 }} />
+                        <Search size={18} color="#94a3b8" style={{ flexShrink: 0 }} />
                         <input
                             type="text"
                             value={searchTerm}
@@ -786,7 +781,7 @@ const AllJobsTab = () => {
                             }}
                             onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                             onKeyDown={e => e.key === 'Enter' && fetchJobs(1, activeFilter, searchTerm, levelFilter)}
-                            placeholder={isMobile ? "Search roles..." : "Search for roles (e.g. Data Engineer)..."}
+                            placeholder="Search for roles (e.g. Data Engineer)..."
                             style={{
                                 border: 'none',
                                 outline: 'none',
@@ -805,14 +800,14 @@ const AllJobsTab = () => {
                                     setFilteredSuggestions([]);
                                     setShowSuggestions(false);
                                 }}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px' }}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px', flexShrink: 0 }}
                             >
-                                <X size={20} color={(showSuggestions && filteredSuggestions.length > 0) ? '#94a3b8' : '#94a3b8'} />
+                                <X size={18} color="#94a3b8" />
                             </button>
                         )}
                     </div>
 
-                    {/* Suggestions Dropdown (Google Chrome Style) */}
+                    {/* Suggestions Dropdown */}
                     {showSuggestions && filteredSuggestions.length > 0 && (
                         <div style={{
                             position: 'absolute',
@@ -826,86 +821,77 @@ const AllJobsTab = () => {
                             overflow: 'hidden',
                             border: '1px solid rgba(255,255,255,0.1)',
                             animation: 'fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
-                            paddingTop: isMobile ? '56px' : '52px'
+                            paddingTop: '52px'
                         }}>
                             <div style={{ borderTop: '0.5px solid rgba(255,255,255,0.1)' }}>
-                                {filteredSuggestions.map((role, idx) => {
-                                    const searchLower = searchTerm.toLowerCase();
-                                    const roleLower = role.toLowerCase();
-                                    const matchIdx = roleLower.indexOf(searchLower);
-
-                                    return (
-                                        <div
-                                            key={role}
-                                            onMouseDown={(e) => {
-                                                e.preventDefault();
-                                                setSearchTerm(role);
-                                                setDebouncedSearch(role); // Instant update on select
-                                                setShowSuggestions(false);
-                                                fetchJobs(1, activeFilter, role, levelFilter);
-                                            }}
-                                            style={{
-                                                padding: '10px 18px',
-                                                cursor: 'pointer',
-                                                fontSize: '14px',
-                                                color: '#fff',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '12px',
-                                                transition: 'all 0.15s ease',
-                                                background: 'transparent'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.backgroundColor = 'transparent';
-                                            }}
-                                        >
-                                            <Search size={16} color="#94a3b8" />
-                                            <span style={{ fontWeight: 400 }}>
-                                                {role}
-                                            </span>
-                                        </div>
-                                    );
-                                })}
+                                {filteredSuggestions.map((role) => (
+                                    <div
+                                        key={role}
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            setSearchTerm(role);
+                                            setDebouncedSearch(role);
+                                            setShowSuggestions(false);
+                                            fetchJobs(1, activeFilter, role, levelFilter);
+                                        }}
+                                        style={{
+                                            padding: '10px 18px',
+                                            cursor: 'pointer',
+                                            fontSize: '14px',
+                                            color: '#fff',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '12px',
+                                            transition: 'all 0.15s ease',
+                                            background: 'transparent'
+                                        }}
+                                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)'; }}
+                                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+                                    >
+                                        <Search size={16} color="#94a3b8" />
+                                        <span style={{ fontWeight: 400 }}>{role}</span>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '10px' }}>
-                    <button
-                        onClick={() => setShowFilters(!showFilters)}
-                        style={{
-                            flex: 1,
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                            padding: '0 16px', borderRadius: '12px', fontSize: '13px', fontWeight: 700,
-                            height: isMobile ? '48px' : '48px', cursor: 'pointer', transition: 'all 200ms', border: '1.5px solid',
-                            borderColor: showFilters ? '#24385E' : '#e2e8f0',
-                            background: showFilters ? '#24385E' : '#fff',
-                            color: showFilters ? '#fff' : '#64748b',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
-                            minWidth: isMobile ? '0' : '120px'
-                        }}
-                    >
-                        <SlidersHorizontal size={15} />
-                        Filters
-                    </button>
+                {/* On desktop: buttons sit inline to the right (achieved by flex row wrapping) */}
+                {/* On mobile: buttons appear below the search bar */}
+                {!isMobile && (
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                        <button
+                            onClick={() => fetchJobs(1, activeFilter, searchTerm, levelFilter)}
+                            style={{
+                                flex: 1,
+                                padding: '0 24px', borderRadius: '12px', background: '#24385E',
+                                color: '#fff', fontSize: '13px', fontWeight: 800, border: 'none',
+                                height: '44px', cursor: 'pointer', transition: 'all 200ms',
+                                boxShadow: '0 4px 10px rgba(36, 56, 94, 0.15)',
+                            }}
+                        >
+                            Search
+                        </button>
+                    </div>
+                )}
 
-                    <button
-                        onClick={() => fetchJobs(1, activeFilter, searchTerm, levelFilter)}
-                        style={{
-                            flex: 1,
-                            padding: '0 24px', borderRadius: '12px', background: '#24385E',
-                            color: '#fff', fontSize: '13px', fontWeight: 800, border: 'none',
-                            height: isMobile ? '48px' : '48px', cursor: 'pointer', transition: 'all 200ms',
-                            boxShadow: '0 4px 10px rgba(36, 56, 94, 0.15)',
-                        }}
-                    >
-                        Search
-                    </button>
-                </div>
+                {isMobile && (
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                            onClick={() => fetchJobs(1, activeFilter, searchTerm, levelFilter)}
+                            style={{
+                                flex: 1,
+                                padding: '0 16px', borderRadius: '12px', background: '#24385E',
+                                color: '#fff', fontSize: '13px', fontWeight: 800, border: 'none',
+                                height: '44px', cursor: 'pointer', transition: 'all 200ms',
+                                boxShadow: '0 4px 10px rgba(36, 56, 94, 0.15)',
+                            }}
+                        >
+                            Search
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* ── Verified filter banner ── */}
