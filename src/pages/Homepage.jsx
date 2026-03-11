@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { externalSupabase } from '../externalSupabaseClient';
 import useAuth from '../hooks/useAuth';
 import {
   Loader2, Search, Briefcase, Heart, CheckSquare, Settings,
-  ChevronLeft, ChevronRight, ArrowUpDown, Eye,
+  ChevronLeft, ChevronRight, ArrowUpDown, Eye, Star,
   MessageSquare, Gift, Archive, Building2, X, Users, Mail,
   ExternalLink, SlidersHorizontal, HelpCircle, Lock, LogOut, CreditCard,
   Menu, Zap, Sparkles, Shield, Globe
@@ -305,7 +305,7 @@ const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
                     <h4 style={{ fontSize: 13, fontWeight: 800, color: '#1a1a1a', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 16 }}>Available Roles</h4>
                     {teaserJobs.map((job, idx) => (
                       <CompanyJobCard
-                        key={idx}
+                        key={`${job.id || job.url || 'teaser'}_${idx}`}
                         job={{ ...job, isVerified: true }}
                         isMobile={isMobile}
                         isLandingPage={true}
@@ -385,12 +385,12 @@ const Homepage = () => {
   const [jobPage, setJobPage] = useState(1);
   const [jobSearch, setJobSearch] = useState('');
   const [debouncedJobSearch, setDebouncedJobSearch] = useState('');
-  const [jobLevelFilter, setJobLevelFilter] = useState('all');
+  const [jobLevelFilter, setJobLevelFilter] = useState([]);
   const [savedJobIds, setSavedJobIds] = useState(new Set());
   const [appliedJobIds, setAppliedJobIds] = useState(new Set());
   const [allProcessedCompanies, setAllProcessedCompanies] = useState(window._allProcessedCompanies || []);
   const [isInitialLoadDone, setIsInitialLoadDone] = useState(!!window._allProcessedCompanies);
-  const [levelFilter, setLevelFilter] = useState('all'); // 'all' | 'Lv 1' | 'Lv 2' | 'Lv 3' | 'Lv 4'
+  const [levelFilter, setLevelFilter] = useState([]); // Array like ['Lv 1', 'Lv 2']
   const [showCompanyFilters, setShowCompanyFilters] = useState(false);
   const [showJobFilters, setShowJobFilters] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState([]);
@@ -399,6 +399,22 @@ const Homepage = () => {
   const [jobFilteredSuggestions, setJobFilteredSuggestions] = useState([]);
   const [showJobSuggestions, setShowJobSuggestions] = useState(false);
   const [filingCounts, setFilingCounts] = useState({});
+  const activeCompanyRef = useRef(null);
+
+  // Sync ref with state
+  useEffect(() => {
+    activeCompanyRef.current = selectedCompany;
+  }, [selectedCompany]);
+
+  // Global name normalizer for consistent lookups (matches line 1465 usage)
+  const normalizeName = (name) => {
+    if (!name) return '';
+    return name.toLowerCase()
+      .replace(/[\.,]/g, ' ')
+      .replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  };
 
   // Fetch filing counts for the current page of companies
   useEffect(() => {
@@ -413,10 +429,9 @@ const Homepage = () => {
           .or(names.map(n => `Company.ilike.%${n}%`).join(','));
 
         if (data) {
-          const normalize = (name) => name?.toLowerCase().replace(/[\.,]/g, ' ').replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies)\b/g, ' ').replace(/\s+/g, ' ').trim() || '';
           const map = {};
           data.forEach(f => {
-            const norm = normalize(f.Company);
+            const norm = normalizeName(f.Company);
             map[f.Company.toLowerCase()] = f["LCA Filings"];
             if (norm && !map[norm]) map[norm] = f["LCA Filings"];
           });
@@ -427,7 +442,6 @@ const Homepage = () => {
     fetchFilings();
   }, [companies]);
 
-  const normalizeName = (name) => name?.toLowerCase().replace(/[\.,]/g, ' ').replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies)\b/g, ' ').replace(/\s+/g, ' ').trim() || '';
 
   // Fetch job roles from Supabase on mount (globally cached)
   useEffect(() => { fetchJobRoles().then(setAllRoles); }, []);
@@ -498,8 +512,8 @@ const Homepage = () => {
           return nameMatches || roleMatches;
         });
       }
-      if (levelFilter !== 'all') {
-        arr = arr.filter(n => n.wageLevel === levelFilter);
+      if (levelFilter && levelFilter.length > 0) {
+        arr = arr.filter(n => levelFilter.includes(n.wageLevel));
       }
       // Consolidated filter logic above replaces the redundant blocks here
       // Primary sort: Famous first. Secondary sort: Selected criteria.
@@ -523,7 +537,7 @@ const Homepage = () => {
 
     // ── 2. sessionStorage cache hit (survives navigation, avoids full re-fetch) ──
     try {
-      const cached = sessionStorage.getItem('_companiesCache_v4');
+      const cached = sessionStorage.getItem('_companiesCache_v8');
       if (cached) {
         const parsed = JSON.parse(cached);
         if (parsed && parsed.length > 0) {
@@ -543,8 +557,8 @@ const Homepage = () => {
               return nameMatches || roleMatches;
             });
           }
-          if (levelFilter !== 'all') {
-            arr = arr.filter(n => n.wageLevel === levelFilter);
+          if (levelFilter && levelFilter.length > 0) {
+            arr = arr.filter(n => levelFilter.includes(n.wageLevel));
           }
           // Priority Sort: Famous First
           arr.sort((a, b) => {
@@ -577,7 +591,7 @@ const Homepage = () => {
         while (true) {
           const { data, error } = await supabase
             .from(tableName)
-            .select('company, role, domain')
+            .select('company, role, domain, salary, remarks')
             .eq('tl_confirmation', 'yes')
             .range(pg * 1000, (pg + 1) * 1000 - 1);
           if (error || !data || data.length === 0) break;
@@ -634,13 +648,44 @@ const Homepage = () => {
       const companyStats = new Map();
       confirmedNames.forEach(name => companyStats.set(name, { company: name, jobCount: 0, maxWageNum: 0, wageLevel: 'Lv 1', industries: new Set() }));
 
-      // Count and collect industries from ALL verified roles
+      // Count, collect industries, AND track max wage level from ALL verified roles
       allVerified.forEach(v => {
         if (companyStats.has(v.company)) {
           const s = companyStats.get(v.company);
           s.jobCount++;
           if (v.role) s.industries.add(v.role);
           if (v.domain) s.industries.add(v.domain);
+
+          // Extract wage level from verified record and update max if higher.
+          // Since audit tables don't have a dedicated wage_level column, we check salary/remarks.
+          const rawLevel = String(v.wage_level || v.salary_level || v.salary || v.remarks || '').toUpperCase();
+          let wageNum = 0;
+          
+          // 1. Explicit labels
+          const explicitMatch = rawLevel.match(/LV\s*(\d)/) || rawLevel.match(/LEVEL\s*(\d)/);
+          if (explicitMatch) {
+            wageNum = parseInt(explicitMatch[1]);
+          } else if (rawLevel.includes('IV') || rawLevel.match(/\bLEVEL 4\b/)) wageNum = 4;
+          else if (rawLevel.includes('III') || rawLevel.match(/\bLEVEL 3\b/)) wageNum = 3;
+          else if (rawLevel.includes('II') || rawLevel.match(/\bLEVEL 2\b/)) wageNum = 2;
+          else if (rawLevel.match(/\bLEVEL 1\b/) || rawLevel.match(/\bI\b/)) wageNum = 1;
+
+          // 2. Title-based heuristic fallback (matches getWageLevel logic)
+          if (wageNum === 0 && v.role) {
+            const rt = v.role.toLowerCase();
+            if (rt.match(/\blead\b|\bstaff\b|\bprincipal\b|\bdirector\b|\bvp\b|\bhead\b|\bchief\b/)) wageNum = 4;
+            else if (rt.match(/\bsenior\b|\bsr[\s.]\b/)) wageNum = 3;
+            else if (rt.match(/\bjunior\b|\bjr[\s.]\b|\bentry\b|\bintern\b|\bgraduate\b/)) wageNum = 1;
+            else if (rt.match(/\b(ii|2)\b/)) wageNum = 2;
+            else if (rt.match(/\b(iii|3)\b/)) wageNum = 3;
+            else if (rt.match(/\b(iv|4)\b/)) wageNum = 4;
+            else wageNum = 2; // Baseline for typical roles
+          }
+
+          if (wageNum > s.maxWageNum) {
+            s.maxWageNum = wageNum;
+            s.wageLevel = `Lv ${wageNum}`;
+          }
         }
       });
 
@@ -648,7 +693,12 @@ const Homepage = () => {
         if (companyStats.has(j.company)) {
           const s = companyStats.get(j.company);
           s.jobCount++;
-          if ((j.wage_num || 0) > s.maxWageNum) { s.maxWageNum = j.wage_num; s.wageLevel = j.wage_level || 'Lv 1'; }
+          // For sponsored jobs, default to 2 if missing (matching heuristic above)
+          const currentWage = parseInt(j.wage_num || j.wage_level?.match(/\d/)?.[0] || '2');
+          if (currentWage > s.maxWageNum) {
+            s.maxWageNum = currentWage;
+            s.wageLevel = `Lv ${currentWage}`;
+          }
           if (j.job_role_name) {
             // Split comma-separated role names for cleaner tags
             const roles = j.job_role_name.split(',').map(r => r.trim()).filter(Boolean);
@@ -696,7 +746,7 @@ const Homepage = () => {
       setAllProcessedCompanies(finalArr);
       if (!preliminary) {
         setIsInitialLoadDone(true);
-        try { sessionStorage.setItem('_companiesCache_v4', JSON.stringify(finalArr)); } catch (e) { }
+        try { sessionStorage.setItem('_companiesCache_v8', JSON.stringify(finalArr)); } catch (e) { }
       }
 
       let viewArr = finalArr;
@@ -712,8 +762,8 @@ const Homepage = () => {
           return nameMatches || roleMatches;
         });
       }
-      if (levelFilter !== 'all') {
-        viewArr = viewArr.filter(n => n.wageLevel === levelFilter);
+      if (levelFilter && levelFilter.length > 0) {
+        viewArr = viewArr.filter(n => levelFilter.includes(n.wageLevel));
       }
       setTotalCompanies(viewArr.length);
       const from = (companyPage - 1) * COMPANIES_PER_PAGE;
@@ -731,9 +781,9 @@ const Homepage = () => {
     const search = (searchOverride !== undefined) ? searchOverride : jobSearch;
     const level = levelOverride || jobLevelFilter;
 
-    // --- Cache check ---
+    // --- Cache check (bump version to invalidate any stale pre-fix cache) ---
     if (!window._companyJobsCache) window._companyJobsCache = new Map();
-    const cacheKey = `${selectedCompany}|${page}|${search}|${level}`;
+    const cacheKey = `v2|${selectedCompany}|${page}|${search}|${level}`;
     const cached = window._companyJobsCache.get(cacheKey);
     if (cached) {
       setCompanyJobs(cached.jobs);
@@ -742,6 +792,7 @@ const Homepage = () => {
     }
 
     setJobsLoading(true);
+    setCompanyJobs([]); // Immediate clear to prevent stale flash
     try {
       const from = (page - 1) * JOBS_PER_PAGE;
       const to = from + JOBS_PER_PAGE - 1;
@@ -756,7 +807,15 @@ const Homepage = () => {
           q1 = q1.or(`${titleCond},${roleCond}`);
         }
       }
-      if (level !== 'all') q1 = q1.eq('wage_level', level);
+      if (level && level.length > 0) {
+        const expanded = level.flatMap(l => {
+          const n = l.match(/\d/)?.[0];
+          if (!n) return [l];
+          const roman = { '1': 'I', '2': 'II', '3': 'III', '4': 'IV' }[n];
+          return [l, `Level ${n}`, `Level ${roman}`, n, `Lv ${n}`, `Lv${n}`];
+        });
+        q1 = q1.in('wage_level', expanded);
+      }
 
       // 2. Audit reviews sync (human verified)
       let q2 = supabase.from('audit_reviews_sync').select('*').eq('company', selectedCompany).eq('tl_confirmation', 'yes');
@@ -781,58 +840,183 @@ const Homepage = () => {
       }
 
       const [resSponsored, resSync, resBackup] = await Promise.all([
-        q1.order('wage_num', { ascending: false, nullsFirst: false }).order('date_posted', { ascending: false }).range(from, to),
+        q1.order('wage_num', { ascending: false, nullsFirst: false }).order('date_posted', { ascending: false }),
         q2.order('audit_date', { ascending: false }),
         q3.order('audit_date', { ascending: false })
       ]);
 
-      if (resSponsored.error) throw resSponsored.error;
+      // ── Normalize helper ──────────────────────────────────────────────────────
+      const _normR = (s) => String(s || '').toLowerCase()
+        .replace(/[-–—]/g, ' ').replace(/\s+/g, ' ').trim();
 
-      // Map verified roles to job format
-      const verifiedJobs = [
+      const _urlKey = (u) => {
+        if (!u) return '';
+        // Aggressively normalize URLs to catch duplicates even with slightly different formats
+        let s = String(u).toLowerCase().trim();
+        try {
+          const urlObj = new URL(s.startsWith('http') ? s : `https://${s}`);
+          return (urlObj.hostname + urlObj.pathname).replace(/^www\./, '').replace(/\/$/, '');
+        } catch {
+          return s.split('?')[0].split('#')[0].replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+        }
+      };
+
+      // Job key for deduplication: STRICT Logical Identity (Company + Title + Location)
+      // We no longer use URL as a key differentiator because duplicate listings often use different tracking URLs
+      const _jobKey = (j) => {
+        const co = String(j.company || selectedCompany || '').toLowerCase().trim();
+        const ti = _normR(j.title || j.role || j.job_role_name || '');
+        const lo = _normR(j.location || 'us');
+        return `${co}||${ti}||${lo}`;
+      };
+
+      // Role key for verification lookup: Company + Domain/Role
+      const _roleKey = (j) => {
+        const co = String(j.company || selectedCompany || '').toLowerCase().trim();
+        const ro = _normR(j.job_role_name || j.role || '');
+        return `${co}||${ro}`;
+      };
+
+      // ── Pass 1: Flatten + dedup verified jobs (sync + backup) ────────────────
+      const allVerifiedRaw = [
         ...(resSync.data || []),
         ...(resBackup.data || [])
       ].map(r => ({
         ...r,
-        title: r.role,
-        url: r.job_link,
-        date_posted: r.audit_date,
+        title:        null, // Verified tables don't have a 'title' column, so we start with null
+        url:          r.job_link,
+        date_posted:  r.audit_date,
         job_role_name: r.domain,
-        isVerified: true,
-        isTeaser: paymentStatus === 'pending',
-        job_id: r.job_id // Removed || r.id fallback to allow proper deduplication
+        isVerified:   true,
+        isTeaser:     paymentStatus === 'pending',
+        job_id:       r.job_id || r.id,
       }));
 
-      const sponsoredJobs = (resSponsored.data || []).map(j => ({
+      // Dedup verified jobs by role key — sync and backup share the same records
+      const verifiedByRole = new Map(); // roleKey → job
+      allVerifiedRaw.forEach(v => {
+        const rk = _roleKey(v);
+        const existing = verifiedByRole.get(rk);
+        if (!existing) {
+          verifiedByRole.set(rk, v);
+        } else {
+          // Merge: keep richest salary/wage data
+          verifiedByRole.set(rk, {
+            ...existing, ...v,
+            salary:     existing.salary     || v.salary,
+            wage_level: existing.wage_level || v.wage_level,
+            url:        existing.url        || v.url,
+            isVerified: true,
+          });
+        }
+      });
+      const verifiedJobs = Array.from(verifiedByRole.values());
+
+      // ── Pass 1.5: DEEP FETCH sponsored metadata for ALL verified links ────────
+      // This ensures we have the 'title' column for 100% of verified data
+      const deepUrls = [...new Set(verifiedJobs.map(v => v.url))].filter(Boolean);
+      let deepSponsored = [];
+      if (deepUrls.length > 0) {
+        // Fetch in chunks of 100 to avoid URL length limits if any
+        for (let i = 0; i < deepUrls.length; i += 100) {
+          const chunk = deepUrls.slice(i, i + 100);
+          const { data: dData } = await supabase
+            .from('job_jobrole_sponsored_sync')
+            .select('*')
+            .in('url', chunk);
+          if (dData) deepSponsored.push(...dData);
+        }
+      }
+
+      const sponsoredJobs = [
+        ...(resSponsored.data || []),
+        ...deepSponsored
+      ].map(j => ({
         ...j,
         job_id: j.id,
-        role: j.job_role_name,
-        isTeaser: paymentStatus === 'pending'
+        title:  j.title, // Take the raw title column
+        role:   j.job_role_name,
+        isTeaser: paymentStatus === 'pending',
       }));
 
-      // Combine and deduplicate by BOTH job_id AND url
-      // Some jobs come from multiple tables with the same URL but different IDs —
-      // tracking both prevents duplicate keys and duplicate cards.
-      const combined = [...verifiedJobs, ...sponsoredJobs];
-      const seenIds = new Set();
-      const seenUrls = new Set();
-      const unique = combined.filter(j => {
-        // Robust deduplication: check both ID and URL
-        const idKey = (j.job_id || j.id || j.audit_id) ? String(j.job_id || j.id || j.audit_id) : null;
-        const urlKey = (j.url || j.job_link || '').trim();
-
-        if (idKey) {
-          if (seenIds.has(idKey)) return false;
-          seenIds.add(idKey);
-        }
-        if (urlKey) {
-          if (seenUrls.has(urlKey)) return false;
-          seenUrls.add(urlKey);
-        }
-        return idKey || urlKey;
+      // ── Pass 2: Map deep-fetched titles BACK to verified records ────────────
+      // This is the critical step: verified jobs must "know" their title before deduplication
+      const deepMetadata = new Map();
+      deepSponsored.forEach(s => {
+        const uk = _urlKey(s.url);
+        if (uk && !deepMetadata.has(uk)) deepMetadata.set(uk, s);
       });
 
-      const total = paymentStatus === 'pending' ? Math.min(2, (resSponsored.count || 0) + verifiedJobs.length) : ((resSponsored.count || 0) + verifiedJobs.length);
+      verifiedJobs.forEach(v => {
+        const uk = _urlKey(v.url);
+        const meta = deepMetadata.get(uk);
+        if (meta) {
+          v.title = meta.title;
+          v.id = meta.id; // Link to the real record id
+        }
+      });
+
+      // ── Pass 3: Combine jobs into unique map ────────────────────────────────
+      // Use logical Job Identity (Company + Title + Location) as the primary key
+      // to eliminate duplicates that have different tracking URLs but same content.
+      const finalMap = new Map();
+
+      // 1. Process sponsored jobs
+      sponsoredJobs.forEach(j => {
+        const jk = _jobKey(j);
+        const existing = finalMap.get(jk);
+        // If we have a duplicate link in the pool, keep the one with better metadata (salary/level)
+        if (!existing || (!existing.salary && j.salary)) {
+          finalMap.set(jk, {
+            ...j,
+            isVerified: verifiedByRole.has(_roleKey(j))
+          });
+        }
+      });
+
+      // 2. Process verified jobs (merge or add)
+      verifiedJobs.forEach(v => {
+        const jk = _jobKey(v);
+        const existing = finalMap.get(jk);
+        if (!existing) {
+          finalMap.set(jk, v);
+        } else {
+          // Merge verified status and richer data into the sponsored entry
+          finalMap.set(jk, {
+            ...existing,
+            ...v,
+            isVerified: true,
+            salary:     existing.salary     || v.salary,
+            wage_level: existing.wage_level || v.wage_level,
+            url:        existing.url        || v.url,
+            // Strictly prefer the sponsored title, then role from audit, then domain
+            title:      existing.title, 
+            job_id:     existing.job_id     || v.job_id,
+          });
+        }
+      });
+
+      let unique = Array.from(finalMap.values());
+
+
+      // --- STRICT LEVEL FILTER (Post-merge) ---
+      if (level && level.length > 0) {
+        const allowedDigits = new Set(level.map(l => l.match(/\d/)?.[0]).filter(Boolean));
+        unique = unique.filter(j => {
+          const jobLvlMatch = String(j.wage_level || '').match(/\d/);
+          let jobLvl = jobLvlMatch ? jobLvlMatch[0] : null;
+          if (!jobLvl) {
+            const s = String(j.wage_level || '').toUpperCase();
+            if (s.includes('IV')) jobLvl = '4';
+            else if (s.includes('III')) jobLvl = '3';
+            else if (s.includes('II')) jobLvl = '2';
+            else if (s.includes('I')) jobLvl = '1';
+          }
+          return jobLvl && allowedDigits.has(jobLvl);
+        });
+      }
+
+      const total = paymentStatus === 'pending' ? Math.min(2, unique.length) : unique.length;
 
       // Final Priority Sort: (1) Salary First, (2) Verified, (3) Newest
       unique.sort((a, b) => {
@@ -864,15 +1048,24 @@ const Homepage = () => {
       }
 
       const jobsWithFilings = unique.map(j => ({ ...j, lca_filings: lcaCount }));
-      const deduplicatedTotal = unique.length;
 
-      setCompanyJobs(jobsWithFilings);
-      setTotalCompanyJobs(deduplicatedTotal);
-      window._companyJobsCache.set(cacheKey, { jobs: jobsWithFilings, total: deduplicatedTotal });
+      // Pagination after sorting
+      const pagedUnique = jobsWithFilings.slice(from, to + 1);
+      
+      // Update cache even if stale (so it's available if user clicks back)
+      window._companyJobsCache.set(cacheKey, { jobs: pagedUnique, total });
+
+      // STALE CHECK: Ensure we only update state if this company is still the selected one
+      if (activeCompanyRef.current !== selectedCompany) return;
+
+      setCompanyJobs(pagedUnique);
+      setTotalCompanyJobs(total);
     } catch (err) {
       console.error("fetchCompanyJobs Error:", err);
     } finally {
-      setJobsLoading(false);
+      if (activeCompanyRef.current === selectedCompany) {
+        setJobsLoading(false);
+      }
     }
   }, [user, selectedCompany, subscriptionExpired, debouncedJobSearch, debouncedCompanySearch, jobSearch, jobPage, jobLevelFilter, paymentStatus]);
 
@@ -909,7 +1102,7 @@ const Homepage = () => {
             window._allProcessedCompanies = null;
             window._confirmedCompaniesCache = null;
             window._companyJobsCache = null; // Clear jobs cache as well
-            try { sessionStorage.removeItem('_companiesCache_v4'); } catch (_) { }
+            try { sessionStorage.removeItem('_companiesCache_v8'); } catch (_) { }
             setIsInitialLoadDone(false);
             setAllProcessedCompanies([]);
           }
@@ -963,11 +1156,12 @@ const Homepage = () => {
 
   const getInitials = (n) => n ? n.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase() : '??';
   const handleCompanySelect = (c) => {
+    setCompanyJobs([]); // Clear immediately
     setSelectedCompany(c.company);
     setSelectedCompanyData(c);
     setJobPage(1);
     setJobSearch('');
-    setJobLevelFilter('all'); // Reset job level filter when company changes
+    setJobLevelFilter([]); // Correctly reset as empty array
     if (isMobile) setMobileActiveCol('right');
   };
 
@@ -979,6 +1173,7 @@ const Homepage = () => {
   if (!isPaid) return <TeaserDashboard user={user} signOut={handleLogout} navigate={navigate} isMobile={isMobile} />;
 
   const navItems = [
+    { id: 'all_companies', label: 'All Companies\nthat Sponsor', icon: Building2 },
     { id: 'all_jobs', label: 'All Jobs', icon: Briefcase },
     { id: 'h1b_finder', label: 'H-1B Visa Sponsor Finder', icon: Globe },
     { id: 'billing', label: 'Billing & Plan', icon: CreditCard },
@@ -1057,7 +1252,7 @@ const Homepage = () => {
     coLogo: { width: isMobile ? '48px' : '56px', height: isMobile ? '48px' : '56px', borderRadius: '16px', background: '#24385E', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: isMobile ? '16px' : '18px', fontWeight: 900, color: '#fff', flexShrink: 0 },
     jobSearchPill: { flex: 1, display: 'flex', alignItems: 'center', gap: '10px', background: '#f9f9f9', border: '1.5px solid #e0e0e0', borderRadius: '60px', padding: '0 16px', height: isMobile ? '46px' : '50px' },
     jobSearchInput: { flex: 1, border: 'none', outline: 'none', fontSize: '14px', color: '#333', background: 'transparent', minWidth: 0 },
-    searchBtn: { height: isMobile ? '46px' : '50px', padding: isMobile ? '0 20px' : '0 28px', background: '#24385E', color: '#fff', border: 'none', borderRadius: '60px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, boxShadow: '0 2px 6px rgba(36,56,94,0.3)' },
+    searchBtn: { height: isMobile ? '46px' : '50px', padding: isMobile ? '0 20px' : '0 28px', background: '#24385E', color: '#fff', border: 'none', borderRadius: '60px', fontSize: '14px', fontWeight: 700, cursor: 'pointer', flexShrink: 0, boxShadow: '0 2px 6px rgba(36,56,94,0.3)' }
   };
 
   return (
@@ -1104,26 +1299,20 @@ const Homepage = () => {
           {navItems.map(item => {
             const Icon = item.icon;
             const active = activeView === item.id;
+            const isMultiLine = item.label.includes('\n');
             return (
               <button key={item.id} style={S.navItem(active)} onClick={() => { setActiveView(item.id); if (isMobile) setMobileMenuOpen(false); }}
                 onMouseEnter={e => { if (!active) { e.currentTarget.style.background = '#f5f5f5'; e.currentTarget.style.color = '#333'; } }}
                 onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#666'; } }}
               >
                 <Icon size={18} strokeWidth={active ? 2.2 : 1.6} />
-                <span>{item.label}</span>
+                {isMultiLine
+                  ? <span style={{ lineHeight: '1.35' }}>{item.label.split('\n').map((line, i) => i === 0 ? line : <><br key={i} />{line}</>)}</span>
+                  : <span>{item.label}</span>
+                }
               </button>
             );
           })}
-
-          <div style={{ height: '1px', background: '#efefef', margin: '8px 0 8px' }} />
-
-          <button style={S.navItem(activeView === 'all_companies')} onClick={() => { setActiveView('all_companies'); if (isMobile) setMobileMenuOpen(false); }}
-            onMouseEnter={e => { if (activeView !== 'all_companies') { e.currentTarget.style.background = '#f5f5f5'; e.currentTarget.style.color = '#333'; } }}
-            onMouseLeave={e => { if (activeView !== 'all_companies') { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#666'; } }}
-          >
-            <Building2 size={18} strokeWidth={2.2} />
-            <span style={{ lineHeight: '1.35' }}>All Companies<br />that Sponsor</span>
-          </button>
         </nav>
 
         {/* Bottom */}
@@ -1317,7 +1506,7 @@ const Homepage = () => {
                         onClick={() => setShowCompanyFilters(!showCompanyFilters)}
                       >
                         <SlidersHorizontal size={15} color={showCompanyFilters ? '#fff' : '#777'} />
-                        Filters {levelFilter !== 'all' ? `(${levelFilter})` : ''}
+                        Filters {levelFilter.length > 0 ? `(${levelFilter.length})` : ''}
                       </button>
                     )}
                   </div>
@@ -1325,28 +1514,56 @@ const Homepage = () => {
 
                 {/* ── Level Filter Buttons (Inside Toggle) ── */}
                 {showCompanyFilters && (
-                  <div style={{ padding: '0 20px 12px', display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none', background: '#fff', borderBottom: '1px solid #efefef', marginBottom: '16px' }} className="no-scrollbar">
-                    {['all', 'Lv 1', 'Lv 2', 'Lv 3', 'Lv 4'].map((lv) => (
+                  <div style={{ padding: '0 20px 12px', background: '#fff', borderBottom: '1px solid #efefef', marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '4px' }} className="no-scrollbar">
                       <button
-                        key={lv}
-                        onClick={() => { setLevelFilter(lv); setCompanyPage(1); }}
+                        onClick={() => { setLevelFilter([]); setCompanyPage(1); }}
                         style={{
-                          padding: '6px 14px',
+                          padding: '7px 16px',
                           borderRadius: '20px',
-                          fontSize: '11px',
+                          fontSize: '12px',
                           fontWeight: 800,
                           whiteSpace: 'nowrap',
                           cursor: 'pointer',
-                          transition: 'all 0.2s ease',
-                          border: levelFilter === lv ? '1.5px solid #24385E' : '1.5px solid #e5e7eb',
-                          background: levelFilter === lv ? '#24385E' : '#fff',
-                          color: levelFilter === lv ? '#fff' : '#6b7280',
-                          boxShadow: levelFilter === lv ? '0 4px 10px rgba(36, 56, 94, 0.15)' : 'none'
+                          transition: 'all 200ms ease',
+                          border: '1.5px solid',
+                          borderColor: levelFilter.length === 0 ? '#24385E' : '#ebebeb',
+                          background: levelFilter.length === 0 ? '#24385E' : '#fff',
+                          color: levelFilter.length === 0 ? '#fff' : '#6b7280',
+                          boxShadow: levelFilter.length === 0 ? '0 4px 12px rgba(36, 56, 94, 0.15)' : 'none',
                         }}
                       >
-                        {lv === 'all' ? 'All Roles' : lv}
+                        All Levels
                       </button>
-                    ))}
+                      {['Lv 1', 'Lv 2', 'Lv 3', 'Lv 4'].map((lv) => {
+                        const active = levelFilter.includes(lv);
+                        return (
+                          <button
+                            key={lv}
+                            onClick={() => {
+                              setLevelFilter(prev => active ? prev.filter(x => x !== lv) : [...prev, lv]);
+                              setCompanyPage(1);
+                            }}
+                            style={{
+                              padding: '7px 16px',
+                              borderRadius: '20px',
+                              fontSize: '12px',
+                              fontWeight: 800,
+                              whiteSpace: 'nowrap',
+                              cursor: 'pointer',
+                              transition: 'all 200ms ease',
+                              border: '1.5px solid',
+                              borderColor: active ? '#24385E' : '#ebebeb',
+                              background: active ? '#24385E' : '#fff',
+                              color: active ? '#fff' : '#6b7280',
+                              boxShadow: active ? '0 4px 12px rgba(36, 56, 94, 0.15)' : 'none',
+                            }}
+                          >
+                            {lv}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
@@ -1418,25 +1635,31 @@ const Homepage = () => {
                       )}
 
                       {/* ── Company header ── */}
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '20px', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '24px', gap: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <LogoBox name={selectedCompany} size={isMobile ? 44 : 56} fontSize={isMobile ? 15 : 18} />
+                          <LogoBox name={selectedCompany} size={isMobile ? 48 : 56} fontSize={isMobile ? 16 : 18} />
                           <div style={{ minWidth: 0 }}>
-                            <h2 style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 800, color: '#111', margin: '0 0 4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedCompany}</h2>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                              <h2 style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 800, color: '#111', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedCompany}</h2>
+                              {(filingCounts[selectedCompany.toLowerCase()] || filingCounts[normalizeName(selectedCompany)]) > 0 && (
+                                <div style={{
+                                  display: 'flex', alignItems: 'center', gap: '4px', background: '#f1f5f9', padding: '3px 10px',
+                                  borderRadius: '8px', fontSize: '11px', fontWeight: 800, color: '#24385E', flexShrink: 0
+                                }}>
+                                  <Globe size={11.5} strokeWidth={2.5} />
+                                  {(filingCounts[selectedCompany.toLowerCase()] || filingCounts[normalizeName(selectedCompany)]).toLocaleString()} Filings
+                                </div>
+                              )}
+                            </div>
                             <p style={{ fontSize: '12px', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <ExternalLink size={12} color="#999" />
                               <a
                                 href={`https://${selectedCompanyData?.domain || `${selectedCompany.toLowerCase().replace(/\s+/g, '')}.com`}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                style={{
-                                  color: '#24385E',
-                                  textDecoration: 'none',
-                                  fontWeight: 700,
-                                  transition: 'all 0.2s'
-                                }}
-                                onMouseEnter={e => { e.currentTarget.style.textDecoration = 'underline'; e.currentTarget.style.color = '#FDB913'; }}
-                                onMouseLeave={e => { e.currentTarget.style.textDecoration = 'none'; e.currentTarget.style.color = '#24385E'; }}
+                                style={{ color: '#24385E', textDecoration: 'none', fontWeight: 700 }}
+                                onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
+                                onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
                               >
                                 {selectedCompanyData?.domain || `${selectedCompany.toLowerCase().replace(/\s+/g, '')}.com`}
                               </a>
@@ -1444,14 +1667,12 @@ const Homepage = () => {
                           </div>
                         </div>
                         {!isMobile && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                            <button onClick={() => { setSelectedCompany(null); setSelectedCompanyData(null); }}
-                              style={{ padding: '6px', borderRadius: '8px', background: 'none', border: 'none', cursor: 'pointer' }}
-                              onMouseEnter={e => e.currentTarget.style.background = '#f5f5f5'}
-                              onMouseLeave={e => e.currentTarget.style.background = 'none'}>
-                              <X size={18} color="#aaa" />
-                            </button>
-                          </div>
+                          <button onClick={() => { setSelectedCompany(null); setSelectedCompanyData(null); }}
+                            style={{ padding: '6px', borderRadius: '8px', background: 'none', border: 'none', cursor: 'pointer' }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#f5f5f5'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                            <X size={18} color="#aaa" />
+                          </button>
                         )}
                       </div>
 
@@ -1478,26 +1699,46 @@ const Homepage = () => {
                       {/* ── Level Filters Toggle moved inside Filter Option ── */}
                       {showJobFilters && (
                         <div style={{ padding: '0 0 16px', display: 'flex', gap: '6px', overflowX: 'auto', scrollbarWidth: 'none' }} className="no-scrollbar">
-                          {['all', 'Lv 1', 'Lv 2', 'Lv 3', 'Lv 4'].map((lv) => (
-                            <button
-                              key={lv}
-                              onClick={() => { setJobLevelFilter(lv); setJobPage(1); }}
-                              style={{
-                                padding: '5px 10px',
-                                borderRadius: '12px',
-                                fontSize: '10px',
-                                fontWeight: 800,
-                                whiteSpace: 'nowrap',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                border: jobLevelFilter === lv ? '1.5px solid #24385E' : '1.5px solid #e5e7eb',
-                                background: jobLevelFilter === lv ? '#24385E' : '#fff',
-                                color: jobLevelFilter === lv ? '#fff' : '#6b7280',
-                              }}
-                            >
-                              {lv === 'all' ? 'All Levels' : lv}
-                            </button>
-                          ))}
+                          <button
+                            onClick={() => { setJobLevelFilter([]); setJobPage(1); }}
+                            style={{
+                              padding: '5px 10px',
+                              borderRadius: '12px',
+                              fontSize: '10px',
+                              fontWeight: 800,
+                              whiteSpace: 'nowrap',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s ease',
+                              border: jobLevelFilter.length === 0 ? '1.5px solid #24385E' : '1.5px solid #e5e7eb',
+                              background: jobLevelFilter.length === 0 ? '#24385E' : '#fff',
+                              color: jobLevelFilter.length === 0 ? '#fff' : '#6b7280',
+                            }}
+                          >
+                            All Levels
+                          </button>
+                          {['Lv 1', 'Lv 2', 'Lv 3', 'Lv 4'].map((lv) => {
+                            const active = jobLevelFilter.includes(lv);
+                            return (
+                              <button
+                                key={lv}
+                                onClick={() => { setJobLevelFilter(prev => active ? prev.filter(x => x !== lv) : [...prev, lv]); setJobPage(1); }}
+                                style={{
+                                  padding: '5px 10px',
+                                  borderRadius: '12px',
+                                  fontSize: '10px',
+                                  fontWeight: 800,
+                                  whiteSpace: 'nowrap',
+                                  cursor: 'pointer',
+                                  transition: 'all 0.2s ease',
+                                  border: active ? '1.5px solid #24385E' : '1.5px solid #e5e7eb',
+                                  background: active ? '#24385E' : '#fff',
+                                  color: active ? '#fff' : '#6b7280',
+                                }}
+                              >
+                                {lv}
+                              </button>
+                            );
+                          })}
                         </div>
                       )}
 

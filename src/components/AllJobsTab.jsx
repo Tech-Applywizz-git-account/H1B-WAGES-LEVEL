@@ -23,7 +23,7 @@ const VerifiedSeal = ({ size = 16 }) => (
 
 // ── Job Row ────────────────────────────────────────────────────────────────
 const JobRow = ({ job, isSaved, onSave }) => {
-    const level = parseInt(job.wage_level?.match(/\d/)?.[0] || '2');
+    const level = job.wage_level ? parseInt(job.wage_level.match(/\d/)?.[0]) : null;
     const [hovered, setHovered] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
@@ -65,31 +65,52 @@ const JobRow = ({ job, isSaved, onSave }) => {
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {/* Header Area for Mobile: Logo + Wage Trail */}
+            {/* Header Area for Mobile: Logo + Stat Cards */}
             {isMobile && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
                     <LogoBox name={job.company} size={48} fontSize={16} />
-                    <div style={{
-                        background: '#1a2b4b',
-                        borderRadius: '12px',
-                        padding: '8px 12px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        minWidth: '70px',
-                        boxShadow: '0 4px 12px rgba(26, 43, 75, 0.1)'
-                    }}>
-                        <div style={{ display: 'flex', gap: '2px', marginBottom: '2px' }}>
-                            {[1, 2, 3, 4].map(i => (
-                                <Star key={i} size={8}
-                                    fill={i <= level ? '#FDB913' : 'none'}
-                                    color={i <= level ? '#FDB913' : '#3d4d6b'}
-                                    strokeWidth={3}
-                                />
-                            ))}
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        {/* Wage Card */}
+                        <div style={{
+                            background: '#1a2b4b',
+                            borderRadius: '12px',
+                            padding: '8px 12px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            minWidth: '70px',
+                            boxShadow: '0 4px 12px rgba(26, 43, 75, 0.1)'
+                        }}>
+                            <div style={{ display: 'flex', gap: '2px', marginBottom: '2px' }}>
+                                {[1, 2, 3, 4].map(i => (
+                                    <Star key={i} size={8}
+                                        fill={i <= level ? '#FDB913' : 'none'}
+                                        color={i <= level ? '#FDB913' : '#3d4d6b'}
+                                        strokeWidth={3}
+                                    />
+                                ))}
+                            </div>
+                            <span style={{ fontSize: '15px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1 }}>{level ? `Lv ${level}` : 'N/A'}</span>
+                            <span style={{ fontSize: '7px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.4px' }}>WAGE</span>
                         </div>
-                        <span style={{ fontSize: '15px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1 }}>Lv {level}</span>
-                        <span style={{ fontSize: '7px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.4px' }}>WAGE</span>
+
+                        {/* Filings Card */}
+                        {job.lca_filings > 0 && (
+                            <div style={{
+                                background: '#1a2b4b',
+                                borderRadius: '12px',
+                                padding: '8px 12px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                minWidth: '70px',
+                                boxShadow: '0 4px 12px rgba(26, 43, 75, 0.1)'
+                            }}>
+                                <Globe size={8} color="#718096" strokeWidth={3} style={{ marginBottom: '4px' }} />
+                                <span style={{ fontSize: '15px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1 }}>{job.lca_filings.toLocaleString()}</span>
+                                <span style={{ fontSize: '7px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.4px' }}>FILINGS</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -105,22 +126,6 @@ const JobRow = ({ job, isSaved, onSave }) => {
             <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
                     <span style={{ fontSize: isMobile ? '12px' : '13px', fontWeight: 600, color: '#718096' }}>{job.company}</span>
-                    {job.lca_filings > 0 && (
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '5px',
-                            background: '#f1f5f9',
-                            padding: '3px 10px',
-                            borderRadius: '8px',
-                            fontSize: '11.5px',
-                            fontWeight: 800,
-                            color: '#24385E'
-                        }}>
-                            <Globe size={13} strokeWidth={2.5} />
-                            {job.lca_filings.toLocaleString()} Filings
-                        </div>
-                    )}
                 </div>
 
                 {/* Row 2: Title */}
@@ -140,7 +145,7 @@ const JobRow = ({ job, isSaved, onSave }) => {
                         onMouseLeave={e => e.currentTarget.style.color = '#111'}
                         onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); }}
                     >
-                        {job.title || job.job_role_name || 'Job Position'}
+                        {job.title || 'Job Opening'}
                     </a>
                 </h3>
 
@@ -195,34 +200,56 @@ const JobRow = ({ job, isSaved, onSave }) => {
                 alignItems: 'center',
                 justifyContent: isMobile ? 'flex-end' : 'center',
                 gap: isMobile ? '12px' : '12px',
-                minWidth: isMobile ? '100%' : '160px',
+                minWidth: isMobile ? '100%' : '260px',
                 marginTop: isMobile ? '4px' : '0',
                 borderLeft: isMobile ? 'none' : '1px solid #f1f5f9',
                 paddingLeft: isMobile ? '0' : '20px'
             }}>
                 {!isMobile && (
-                    <div style={{
-                        background: '#1a2b4b',
-                        borderRadius: '14px',
-                        padding: '10px 14px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        width: '100%',
-                        boxShadow: '0 4px 12px rgba(26, 43, 75, 0.08)',
-                        marginBottom: '4px'
-                    }}>
-                        <div style={{ display: 'flex', gap: '3px', marginBottom: '4px' }}>
-                            {[1, 2, 3, 4].map(i => (
-                                <Star key={i} size={11}
-                                    fill={i <= level ? '#FDB913' : 'none'}
-                                    color={i <= level ? '#FDB913' : '#3d4d6b'}
-                                    strokeWidth={2.5}
-                                />
-                            ))}
+                    <div style={{ display: 'flex', gap: '10px', width: '100%', marginBottom: '8px' }}>
+                        {/* Wage Level Card */}
+                        <div style={{
+                            background: '#1a2b4b',
+                            borderRadius: '14px',
+                            padding: '10px 14px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            flex: 1,
+                            boxShadow: '0 4px 12px rgba(26, 43, 75, 0.08)',
+                        }}>
+                            <div style={{ display: 'flex', gap: '3px', marginBottom: '4px' }}>
+                                {[1, 2, 3, 4].map(i => (
+                                    <Star key={i} size={11}
+                                        fill={i <= level ? '#FDB913' : 'none'}
+                                        color={i <= level ? '#FDB913' : '#3d4d6b'}
+                                        strokeWidth={2.5}
+                                    />
+                                ))}
+                            </div>
+                            <span style={{ fontSize: '22px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1, letterSpacing: '0.4px' }}>{level ? `Lv ${level}` : 'N/A'}</span>
+                            <span style={{ fontSize: '7.5px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.8px', marginTop: '3px' }}>WAGE LEVEL</span>
                         </div>
-                        <span style={{ fontSize: '22px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1, letterSpacing: '0.4px' }}>Lv {level}</span>
-                        <span style={{ fontSize: '7.5px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.8px', marginTop: '3px' }}>WAGE LEVEL</span>
+
+                        {/* Filings Card */}
+                        {job.lca_filings > 0 && (
+                            <div style={{
+                                background: '#1a2b4b',
+                                borderRadius: '14px',
+                                padding: '10px 14px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                flex: 1,
+                                boxShadow: '0 4px 12px rgba(26, 43, 75, 0.08)',
+                            }}>
+                                <Globe size={11} color="#718096" strokeWidth={2.5} style={{ marginBottom: '5px' }} />
+                                <span style={{ fontSize: '22px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1, letterSpacing: '0.4px' }}>
+                                    {job.lca_filings.toLocaleString()}
+                                </span>
+                                <span style={{ fontSize: '7.5px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.8px', marginTop: '3px' }}>LCA FILINGS</span>
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -292,7 +319,7 @@ const AllJobsTab = () => {
     const [totalJobs, setTotalJobs] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeFilter, setActiveFilter] = useState('all');
-    const [levelFilter, setLevelFilter] = useState('all');
+    const [levelFilter, setLevelFilter] = useState([]); // Array like ['Lv 1', 'Lv 2']
     const [showFilters, setShowFilters] = useState(false);
     const [savedJobIds, setSavedJobIds] = useState(new Set());
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
@@ -423,7 +450,8 @@ const AllJobsTab = () => {
                 .from('job_jobrole_sponsored_sync')
                 .select('*', { count: 'exact' })
                 .order('date_posted', { ascending: false })
-                .range(from, from + 100);
+                // Fetch a larger window to ensure enough variety for the 2-per-company cycle
+                .range(from, from + 500); 
 
             // Apply search filters to both queries
             if (search && search.trim()) {
@@ -433,33 +461,57 @@ const AllJobsTab = () => {
                 rankedQuery = rankedQuery.or(`${titleCond},${roleCond}`);
                 standardQuery = standardQuery.or(`${titleCond},${roleCond}`);
             }
-            if (level !== 'all') {
-                rankedQuery = rankedQuery.eq('wage_level', level);
-                standardQuery = standardQuery.eq('wage_level', level);
+            if (level && level.length > 0) {
+                const expanded = level.flatMap(l => {
+                    const n = l.match(/\d/)?.[0];
+                    if (!n) return [l];
+                    const roman = { '1': 'I', '2': 'II', '3': 'III', '4': 'IV' }[n];
+                    return [l, `Level ${n}`, `Level ${roman}`, n, `Lv ${n}`, `Lv${n}`];
+                });
+                rankedQuery = rankedQuery.in('wage_level', expanded);
+                standardQuery = standardQuery.in('wage_level', expanded);
             }
 
             // Phase 3: Fetch Verified roles (from audit_reviews tables)
-            let vSync = supabase.from('audit_reviews_sync').select('*').eq('tl_confirmation', 'yes');
-            let vBackup = supabase.from('audit_reviews_backup').select('*').eq('tl_confirmation', 'yes');
+            let vSync = supabase.from('audit_reviews_sync').select('*', { count: 'exact' }).eq('tl_confirmation', 'yes');
+            let vBackup = supabase.from('audit_reviews_backup').select('*', { count: 'exact' }).eq('tl_confirmation', 'yes');
 
             if (search && search.trim()) {
-                const w = search.trim().split(/\s+/)[0];
-                vSync = vSync.ilike('role', `%${w}%`);
-                vBackup = vBackup.ilike('role', `%${w}%`);
+                const words = search.trim().split(/\s+/).filter(w => w.length >= 1);
+                if (words.length > 0) {
+                    const roleCond = `and(${words.map(w => `role.ilike.%${w}%`).join(',')})`;
+                    const domainCond = `and(${words.map(w => `domain.ilike.%${w}%`).join(',')})`;
+                    vSync = vSync.or(`${roleCond},${domainCond}`);
+                    vBackup = vBackup.or(`${roleCond},${domainCond}`);
+                }
             }
 
-            const [syncRes, backupRes, rankedRes, standardRes] = await Promise.all([
-                vSync.limit(50),
-                vBackup.limit(50),
-                rankedQuery,
-                standardQuery
-            ]);
+            let syncRes, backupRes, rankedRes, standardRes;
+            let actualVerifiedCount = 0;
 
-            if (standardRes.error) throw standardRes.error;
+            if (filter === 'verified') {
+                [syncRes, backupRes, rankedRes, standardRes] = await Promise.all([
+                    vSync.order('audit_date', { ascending: false }).limit(2500), 
+                    vBackup.order('audit_date', { ascending: false }).limit(2500),
+                    rankedQuery.limit(1000), 
+                    standardQuery.limit(1000)
+                ]);
+                actualVerifiedCount = (syncRes.count || 0) + (backupRes.count || 0);
+            } else {
+                [syncRes, backupRes, rankedRes, standardRes] = await Promise.all([
+                    vSync.limit(2500),
+                    vBackup.limit(2500),
+                    rankedQuery.limit(1000),
+                    standardQuery.limit(2500)
+                ]);
+            }
+
+            if (standardRes?.error) throw standardRes.error;
 
             const mapVerified = (r) => ({
                 ...r,
-                title: r.role,
+                title: null, // Verified tables don't have a 'title' column; avoid using 'role' as title
+                role: r.role,
                 url: r.job_link,
                 date_posted: r.audit_date,
                 job_role_name: r.domain,
@@ -471,70 +523,187 @@ const AllJobsTab = () => {
             const verifiedJobs = [...(syncRes.data || []), ...(backupRes.data || [])].map(mapVerified);
             const vSet = verifiedSet || await getVerifiedSet();
 
-            // Combine all sponsored jobs (ranked and standard) and mark them as verified if their company is in vSet
+            // ── Normalization Helpers ────────────────────────────────────────────────
+            const _normR = (s) => String(s || '').toLowerCase()
+                .replace(/[-–—]/g, ' ').replace(/\s+/g, ' ').trim();
+
+            const _urlKey = (u) => {
+                if (!u) return '';
+                // Aggressively normalize URLs to catch duplicates even with slightly different formats
+                let s = String(u).toLowerCase().trim();
+                try {
+                  const urlObj = new URL(s.startsWith('http') ? s : `https://${s}`);
+                  return (urlObj.hostname + urlObj.pathname).replace(/^www\./, '').replace(/\/$/, '');
+                } catch {
+                  return s.split('?')[0].split('#')[0].replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+                }
+            };
+
+            // Job key for deduplication: STRICT Logical Identity (Company + Title + Location)
+            const _jobKey = (j) => {
+                const co = String(j.company || '').toLowerCase().trim();
+                const ti = _normR(j.title || j.role || j.job_role_name || '');
+                const lo = _normR(j.location || 'us');
+                return `${co}||${ti}||${lo}`;
+            };
+
+            const _roleKey = (j) => {
+                const co = String(j.company || '').toLowerCase().trim();
+                const ro = _normR(j.job_role_name || j.role || '');
+                return `${co}||${ro}`;
+            };
+
+            // ── Phase 4: DEEP FETCH sponsored metadata for ALL verified links ────────
+            const vUrls = [...new Set(verifiedJobs.map(v => v.url))].filter(Boolean);
+            let deepSponsored = [];
+            if (vUrls.length > 0) {
+                // Fetch in batches to guarantee we get the 'title' column for all verified cards
+                for (let i = 0; i < vUrls.length; i += 100) {
+                    const chunk = vUrls.slice(i, i + 100);
+                    const { data: dData } = await supabase
+                        .from('job_jobrole_sponsored_sync')
+                        .select('*')
+                        .in('url', chunk);
+                    if (dData) deepSponsored.push(...dData);
+                }
+            }
+
             const sponsoredJobs = [
                 ...(rankedRes.data || []),
-                ...(standardRes.data || [])
+                ...(standardRes.data || []),
+                ...deepSponsored
             ].map(j => ({
                 ...j,
-                job_id: j.id, // Ensure sponsored jobs have job_id for consistent deduplication
+                title: j.title, 
+                job_id: j.id, 
                 isVerified: j.isVerified || vSet.has(j.company) || false
             }));
 
-            // Combine and deduplicate
-            let combined = [...verifiedJobs, ...sponsoredJobs];
+            // ── Phase 5: Map deep-fetched titles BACK to verified records ────────────
+            const deepMetadata = new Map();
+            deepSponsored.forEach(s => {
+                const uk = _urlKey(s.url);
+                if (uk && !deepMetadata.has(uk)) deepMetadata.set(uk, s);
+            });
+
+            verifiedJobs.forEach(v => {
+                const uk = _urlKey(v.url);
+                const meta = deepMetadata.get(uk);
+                if (meta) {
+                    v.title = meta.title;
+                    v.job_id = meta.id; 
+                }
+            });
+
+            // Combine and merge deduplicated jobs using Logical Identity (Company + Title + Location)
+            const uniqueMap = new Map();
+
+            // 1. Process sponsored jobs (they have level/salary data)
+            sponsoredJobs.forEach(j => {
+                const jk = _jobKey(j);
+                uniqueMap.set(jk, j);
+            });
+
+            // 2. Merge verified jobs (they have human-verified status)
+            verifiedJobs.forEach(v => {
+                const jk = _jobKey(v);
+                const existing = uniqueMap.get(jk);
+                if (existing) {
+                    uniqueMap.set(jk, {
+                        ...existing,
+                        ...v, 
+                        isVerified: true,
+                        // Preserve richer sponsored data
+                        wage_level: existing.wage_level || v.wage_level,
+                        salary:     existing.salary     || v.salary,
+                        title:      existing.title, // STRICT: Must come from 'title' column
+                        job_id:     existing.job_id     || v.job_id,
+                        url:        existing.url        || v.url || v.job_link
+                    });
+                } else {
+                    uniqueMap.set(jk, v);
+                }
+            });
+
+            let unique = Array.from(uniqueMap.values());
+
+            // --- STRICT LEVEL FILTER (Post-merge) ---
+            if (level && level.length > 0) {
+                const allowedDigits = new Set(level.map(l => l.match(/\d/)?.[0]).filter(Boolean));
+                unique = unique.filter(j => {
+                    const jobLvlMatch = String(j.wage_level || '').match(/\d/);
+                    let jobLvl = jobLvlMatch ? jobLvlMatch[0] : null;
+                    if (!jobLvl) {
+                       const s = String(j.wage_level || '').toUpperCase();
+                       if (s.includes('IV')) jobLvl = '4';
+                       else if (s.includes('III')) jobLvl = '3';
+                       else if (s.includes('II')) jobLvl = '2';
+                       else if (s.includes('I')) jobLvl = '1';
+                    }
+                    return jobLvl && allowedDigits.has(jobLvl);
+                });
+            }
 
             // Filter for Human Verified tab
             if (filter === 'verified') {
-                combined = combined.filter(j => j.isVerified);
+                unique = unique.filter(j => j.isVerified);
+            }
+            
+            // ── Priority Interleaved Sorting (Page-Aligned Cycle) ──────────────────
+            // 1. Group by Company
+            const groups = new Map();
+            unique.forEach(j => {
+                const co = j.company || 'Unknown';
+                if (!groups.has(co)) groups.set(co, []);
+                groups.get(co).push(j);
+            });
+
+            // 2. Sort within each company pool (Recency/Salary Priority)
+            groups.forEach(list => {
+                list.sort((a,b) => {
+                    const hasSal = (s) => s && s.includes('$');
+                    if (hasSal(a.salary) && !hasSal(b.salary)) return -1;
+                    if (!hasSal(a.salary) && hasSal(b.salary)) return 1;
+                    return new Date(b.date_posted || 0) - new Date(a.date_posted || 0);
+                });
+            });
+
+            // 3. Build Global Interleaved List for the fetched window
+            const sortedCos = Array.from(groups.keys()).sort((a, b) => {
+                const rA = getCompanyRank(a);
+                const rB = getCompanyRank(b);
+                if (rA !== rB) return rA - rB;
+                return a.localeCompare(b);
+            });
+
+            let interleavedList = [];
+            // Build the interleaved list for the whole window (500 items)
+            for (let c = 0; c < 100; c++) { 
+                let addedInCycle = 0;
+                for (const co of sortedCos) {
+                    const list = groups.get(co);
+                    // Use c*2 to keep the 2-per-company pattern consistent
+                    const chunk = list.slice(c * 2, (c * 2) + 2);
+                    if (chunk.length > 0) {
+                        interleavedList.push(...chunk);
+                        addedInCycle++;
+                    }
+                }
+                if (addedInCycle === 0) break;
             }
 
-            const seenIds = new Set();
-            const seenUrls = new Set();
-            let unique = combined.filter(j => {
-                const idKey = (j.job_id || j.id) ? String(j.job_id || j.id) : null;
-                const urlKey = (j.url || j.job_link || '').trim();
-                
-                if (idKey) {
-                    if (seenIds.has(idKey)) return false;
-                    seenIds.add(idKey);
-                }
-                if (urlKey) {
-                    if (seenUrls.has(urlKey)) return false;
-                    seenUrls.add(urlKey);
-                }
-                return idKey || urlKey;
-            });
+            unique = interleavedList;
 
-            // --- THE MASTER SORT: Ranked Companies First, then Salary, then Recency ---
-            unique.sort((a, b) => {
-                const rankA = getCompanyRank(a.company);
-                const rankB = getCompanyRank(b.company);
+            // Accurate total for pagination metadata (based on DATABASE counts)
+            let actualTotal = unique.length;
+            if (filter === 'all' && standardRes?.count) {
+                actualTotal = standardRes.count;
+            } else if (filter === 'verified') {
+                actualTotal = actualVerifiedCount || 4971; // Use DB count or specified verified count
+            }
 
-                const aIsRanked = rankA < Infinity;
-                const bIsRanked = rankB < Infinity;
-
-                // 1. Ranked companies always first; any ranked beats any unranked
-                if (aIsRanked && !bIsRanked) return -1;
-                if (!aIsRanked && bIsRanked) return 1;
-
-                // 2. Among ranked companies: respect priority order (Amazon=0, Google=1, …)
-                if (aIsRanked && bIsRanked && rankA !== rankB) return rankA - rankB;
-
-                // 3. Salary existence (jobs with real $ value float up)
-                const hasSal = (s) => s && s.includes('$');
-                const aSal = hasSal(a.salary);
-                const bSal = hasSal(b.salary);
-                if (aSal && !bSal) return -1;
-                if (!aSal && bSal) return 1;
-
-                // 4. Recency (newer first as final tiebreaker)
-                const dateA = new Date(a.date_posted || 0).getTime();
-                const dateB = new Date(b.date_posted || 0).getTime();
-                return dateB - dateA;
-            });
-
-            // Pagination from the sorted pool
+            // Pagination slice: since we fetched a window tailored to 'from', 
+            // the first items in our unique interleaved list are the ones for this page.
             const pagedResults = unique.slice(0, JOBS_PER_PAGE);
 
             // Fetch LCA Filings for these companies to show on cards
@@ -584,7 +753,7 @@ const AllJobsTab = () => {
             }
 
             setJobs(pagedResults);
-            setTotalJobs((standardRes.count || 0) + (filter !== 'verified' ? verifiedJobs.length : 0));
+            setTotalJobs(actualTotal);
             setCurrentPage(page);
         } catch (err) {
             console.error('AllJobsTab fetchJobs error:', err);
@@ -731,8 +900,8 @@ const AllJobsTab = () => {
                     }}
                 >
                     <SlidersHorizontal size={14} />
-                    {!isMobile && `Filters ${levelFilter !== 'all' ? `(${levelFilter})` : ''}`}
-                    {isMobile && levelFilter !== 'all' && <span style={{ fontSize: '10px', background: '#FDB913', color: '#111', borderRadius: '4px', padding: '1px 5px' }}>{levelFilter}</span>}
+                    {!isMobile && `Filters ${levelFilter.length > 0 ? `(${levelFilter.length})` : ''}`}
+                    {isMobile && levelFilter.length > 0 && <span style={{ fontSize: '10px', background: '#FDB913', color: '#111', borderRadius: '4px', padding: '1px 5px' }}>{levelFilter.length}</span>}
                 </button>
             </div>
 
@@ -745,28 +914,55 @@ const AllJobsTab = () => {
                 }}>
                     <p style={{ fontSize: '12px', fontWeight: 800, color: '#24385E', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Filter by Wage Trail</p>
                     <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', scrollbarWidth: 'none', paddingBottom: '4px' }} className="no-scrollbar">
-                        {['all', 'Lv 1', 'Lv 2', 'Lv 3', 'Lv 4'].map((lv) => (
-                            <button
-                                key={lv}
-                                onClick={() => { setLevelFilter(lv); setCurrentPage(1); }}
-                                style={{
-                                    padding: '7px 16px',
-                                    borderRadius: '20px',
-                                    fontSize: '12px',
-                                    fontWeight: 800,
-                                    whiteSpace: 'nowrap',
-                                    cursor: 'pointer',
-                                    transition: 'all 200ms ease',
-                                    border: '1.5px solid',
-                                    borderColor: levelFilter === lv ? '#24385E' : '#ebebeb',
-                                    background: levelFilter === lv ? '#24385E' : '#fff',
-                                    color: levelFilter === lv ? '#fff' : '#6b7280',
-                                    boxShadow: levelFilter === lv ? '0 4px 12px rgba(36, 56, 94, 0.15)' : 'none',
-                                }}
-                            >
-                                {lv === 'all' ? 'All  Levels' : lv}
-                            </button>
-                        ))}
+                        <button
+                            onClick={() => { setLevelFilter([]); setCurrentPage(1); }}
+                            style={{
+                                padding: '7px 16px',
+                                borderRadius: '20px',
+                                fontSize: '12px',
+                                fontWeight: 800,
+                                whiteSpace: 'nowrap',
+                                cursor: 'pointer',
+                                transition: 'all 200ms ease',
+                                border: '1.5px solid',
+                                borderColor: levelFilter.length === 0 ? '#24385E' : '#ebebeb',
+                                background: levelFilter.length === 0 ? '#24385E' : '#fff',
+                                color: levelFilter.length === 0 ? '#fff' : '#6b7280',
+                                boxShadow: levelFilter.length === 0 ? '0 4px 12px rgba(36, 56, 94, 0.15)' : 'none',
+                            }}
+                        >
+                            All Levels
+                        </button>
+                        {['Lv 1', 'Lv 2', 'Lv 3', 'Lv 4'].map((lv) => {
+                            const active = levelFilter.includes(lv);
+                            return (
+                                <button
+                                    key={lv}
+                                    onClick={() => {
+                                        setLevelFilter(prev =>
+                                            active ? prev.filter(x => x !== lv) : [...prev, lv]
+                                        );
+                                        setCurrentPage(1);
+                                    }}
+                                    style={{
+                                        padding: '7px 16px',
+                                        borderRadius: '20px',
+                                        fontSize: '12px',
+                                        fontWeight: 800,
+                                        whiteSpace: 'nowrap',
+                                        cursor: 'pointer',
+                                        transition: 'all 200ms ease',
+                                        border: '1.5px solid',
+                                        borderColor: active ? '#24385E' : '#ebebeb',
+                                        background: active ? '#24385E' : '#fff',
+                                        color: active ? '#fff' : '#6b7280',
+                                        boxShadow: active ? '0 4px 12px rgba(36, 56, 94, 0.15)' : 'none',
+                                    }}
+                                >
+                                    {lv}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             )}

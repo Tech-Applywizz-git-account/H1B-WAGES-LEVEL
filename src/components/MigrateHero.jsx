@@ -204,10 +204,10 @@ const MigrateHero = () => {
                 const stats = companyStats.get(name);
                 stats.jobCount++;
 
-                const currentWageNum = parseInt(j.wage_num || '1');
+                const currentWageNum = parseInt(j.wage_num || j.wage_level?.match(/\d/)?.[0] || '1');
                 if (currentWageNum > stats.maxWageNum) {
                     stats.maxWageNum = currentWageNum;
-                    stats.wageLevel = j.wage_level || 'Lv 1';
+                    stats.wageLevel = `Lv ${currentWageNum}`;
                 }
 
                 if (j.job_role_name) {

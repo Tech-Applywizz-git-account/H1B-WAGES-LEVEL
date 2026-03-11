@@ -110,22 +110,6 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                         <div className="flex items-center justify-between mb-1.5 pr-4">
                             <div className="flex items-center gap-3">
                                 <span className="text-[14px] font-bold text-[#a0aec0] tracking-tight">{job.company || 'Company Name'}</span>
-                                {job.lca_filings > 0 && (
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '5px',
-                                        background: '#f1f5f9',
-                                        padding: '3px 10px',
-                                        borderRadius: '8px',
-                                        fontSize: '11.5px',
-                                        fontWeight: 800,
-                                        color: '#24385E'
-                                    }}>
-                                        <Globe size={13} strokeWidth={2.5} />
-                                        {job.lca_filings.toLocaleString()} Filings
-                                    </div>
-                                )}
                             </div>
                         </div>
 

@@ -16,7 +16,7 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
         } catch { return dateStr; }
     };
 
-    const level = parseInt(job.wage_level?.match(/\d/)?.[0] || '2');
+    const level = job.wage_level ? parseInt(job.wage_level.match(/\d/)?.[0]) : null;
     const timeAgo = formatTimeAgo(job.date_posted || job.time);
     const isNew = timeAgo.includes('m ago') || timeAgo === 'Just now';
 
@@ -104,22 +104,6 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '3px' }}>
                         <p style={{ fontSize: '11px', color: '#aaa', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
                             {job.company}
-                            {job.lca_filings > 0 && (
-                                <span style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px',
-                                    background: '#f1f5f9',
-                                    padding: '2px 8px',
-                                    borderRadius: '6px',
-                                    fontSize: '11px',
-                                    fontWeight: 800,
-                                    color: '#24385E'
-                                }}>
-                                    <Globe size={12} strokeWidth={2.5} />
-                                    {job.lca_filings.toLocaleString()} Filings
-                                </span>
-                            )}
                         </p>
                     </div>
 
@@ -137,7 +121,7 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                             onMouseLeave={e => e.currentTarget.style.color = '#111'}
                             onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); }}
                         >
-                            {job.title || job.role || 'Job Position'}
+                            {job.title || 'Job Opening'}
                         </a>
                     </h3>
 
@@ -200,7 +184,7 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                         ))}
                     </div>
                     <span style={{ fontSize: isMobile ? '16px' : '22px', fontWeight: 900, color: '#ffffff', lineHeight: 1, fontStyle: 'italic' }}>
-                        Lv {level}
+                        {level ? `Lv ${level}` : 'Lv 1'}
                     </span>
                     <span style={{ fontSize: '7px', fontWeight: 700, color: '#7a9bbf', textTransform: 'uppercase', marginTop: '1px', letterSpacing: '1px' }}>WAGE LEVEL</span>
                 </div>

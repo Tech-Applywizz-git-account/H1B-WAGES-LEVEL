@@ -498,8 +498,9 @@ export function AuthProvider({ children }) {
         setRole("user");
         setSubscriptionExpired(true);
         setSubscriptionEndDate(null);
+        setPaymentStatus("pending"); // Default for new/missing profiles
         localStorage.setItem("userRole", "user");
-        roleCache.set(userId, { role: "user", subscriptionExpired: true, subscriptionEndDate: null, timestamp: Date.now() });
+        roleCache.set(userId, { role: "user", subscriptionExpired: true, subscriptionEndDate: null, paymentStatus: "pending", timestamp: Date.now() });
       }
     } catch (err) {
       console.error("💥 Unexpected error loading profile role:", err);
@@ -507,11 +508,13 @@ export function AuthProvider({ children }) {
         setRole("user");
         setSubscriptionExpired(true);
         setSubscriptionEndDate(null);
+        setPaymentStatus("pending");
         localStorage.setItem("userRole", "user");
-        roleCache.set(userId, { role: "user", subscriptionExpired: true, subscriptionEndDate: null, timestamp: Date.now() });
+        roleCache.set(userId, { role: "user", subscriptionExpired: true, subscriptionEndDate: null, paymentStatus: "pending", timestamp: Date.now() });
       }
     } finally {
       isInitialLoad.current = false;
+      setPaymentLoading(false); // ALWAYS release the loading state so app can render
       setCheckingSub(false);
     }
   };
