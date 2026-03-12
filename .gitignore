@@ -31,3 +31,6 @@ dist-ssr
 *.sql
 *.txt
 *.md
+.env
+.env.example
+*.sql
