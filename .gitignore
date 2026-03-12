@@ -35,3 +35,4 @@ dist-ssr
 .env.example
 *.sql
 !README.md
+*.ps1
