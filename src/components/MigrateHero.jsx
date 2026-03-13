@@ -99,14 +99,8 @@ const MigrateHero = () => {
                 const nameCond = `and(${words.map(w => `company.ilike.%${w}%`).join(',')})`;
                 const roleCond = `and(${words.map(w => `job_role_name.ilike.%${w}%`).join(',')})`;
 
-                // Parallel search for company name (confirmed only) and role name (filter to confirmed later)
-                const [companySyncRes, companyBackupRes, roleRes] = await Promise.all([
-                    supabase
-                        .from('audit_reviews_sync')
-                        .select('company')
-                        .eq('tl_confirmation', 'yes')
-                        .or(nameCond)
-                        .limit(200),
+                // Search for backup only
+                const [companyBackupRes, roleRes] = await Promise.all([
                     supabase
                         .from('audit_reviews_backup')
                         .select('company')
@@ -120,29 +114,21 @@ const MigrateHero = () => {
                         .limit(200)
                 ]);
 
-                const namesFromSync = (companySyncRes.data || []).map(r => r.company);
                 const namesFromBackup = (companyBackupRes.data || []).map(r => r.company);
                 const namesFromRole = (roleRes.data || []).map(r => r.company);
-                const combined = Array.from(new Set([...namesFromSync, ...namesFromBackup, ...namesFromRole])).filter(Boolean);
+                const combined = Array.from(new Set([...namesFromBackup, ...namesFromRole])).filter(Boolean);
 
-                // Now verify which of namesFromRole are actually confirmed
+                // Now verify which of namesFromRole are actually confirmed in backup
                 if (namesFromRole.length > 0) {
-                    const [resSync, resBackup] = await Promise.all([
-                        supabase
-                            .from('audit_reviews_sync')
-                            .select('company')
-                            .eq('tl_confirmation', 'yes')
-                            .in('company', combined),
-                        supabase
-                            .from('audit_reviews_backup')
-                            .select('company')
-                            .eq('tl_confirmation', 'yes')
-                            .in('company', combined)
-                    ]);
-                    const verifiedOnes = [...(resSync.data || []), ...(resBackup.data || [])];
+                    const resBackup = await supabase
+                        .from('audit_reviews_backup')
+                        .select('company')
+                        .eq('tl_confirmation', 'yes')
+                        .in('company', combined);
+                    const verifiedOnes = [...(resBackup.data || [])];
                     confirmedNames = Array.from(new Set(verifiedOnes.map(v => v.company))).filter(Boolean);
                 } else {
-                    confirmedNames = Array.from(new Set([...namesFromSync, ...namesFromBackup])).filter(Boolean);
+                    confirmedNames = Array.from(new Set([...namesFromBackup])).filter(Boolean);
                 }
             } else {
                 const fetchAllConfirmed = async (tableName) => {
@@ -162,11 +148,8 @@ const MigrateHero = () => {
                     return names;
                 };
 
-                const [syncNames, backupNames] = await Promise.all([
-                    fetchAllConfirmed('audit_reviews_sync'),
-                    fetchAllConfirmed('audit_reviews_backup')
-                ]);
-                confirmedNames = Array.from(new Set([...syncNames, ...backupNames])).filter(Boolean);
+                const backupNames = await fetchAllConfirmed('audit_reviews_backup');
+                confirmedNames = Array.from(new Set([...backupNames])).filter(Boolean);
             }
 
             if (confirmedNames.length === 0) {

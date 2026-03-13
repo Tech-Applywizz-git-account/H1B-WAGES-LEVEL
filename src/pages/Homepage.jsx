@@ -28,6 +28,7 @@ import AllJobsTab from '../components/AllJobsTab';
 import H1BSponsorFinder from '../components/H1BSponsorFinder';
 import { fetchJobRoles, filterRoles } from '../utils/rolesSuggestions';
 import { isFamous } from '../utils/famousCompanies';
+import { getWageLevel } from '../dataSyncService';
 
 // Roles fetched dynamically from Supabase via rolesSuggestions utility
 
@@ -376,7 +377,7 @@ const Homepage = () => {
   const [debouncedCompanySearch, setDebouncedCompanySearch] = useState('');
   const [totalCompanies, setTotalCompanies] = useState(0);
   const [companyPage, setCompanyPage] = useState(1);
-  const [sortBy, setSortBy] = useState('most_jobs');
+  const [sortBy, setSortBy] = useState('highest_wage');
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [selectedCompanyData, setSelectedCompanyData] = useState(null);
   const [companyJobs, setCompanyJobs] = useState([]);
@@ -451,7 +452,16 @@ const Homepage = () => {
     setCompanySearch(val);
     setCompanyPage(1);
     if (val.trim().length > 0) {
-      const filtered = filterRoles(allRoles, val, 8);
+      // Suggest companies from allProcessedCompanies instead of roles
+      const words = val.toLowerCase().trim().split(/\s+/).filter(w => w.length >= 1);
+      const filtered = (allProcessedCompanies || [])
+        .filter(c => {
+          const name = c.company.toLowerCase();
+          return words.every(w => name.includes(w));
+        })
+        .slice(0, 8)
+        .map(c => c.company);
+
       setFilteredSuggestions(filtered);
       setShowSuggestions(filtered.length > 0);
     } else {
@@ -474,9 +484,9 @@ const Homepage = () => {
     }
   };
 
-  const handleSuggestionClick = (role) => {
-    setCompanySearch(role);
-    setDebouncedCompanySearch(role); // Instant update on select
+  const handleSuggestionClick = (companyName) => {
+    setCompanySearch(companyName);
+    setDebouncedCompanySearch(companyName); // Instant update on select
     setShowSuggestions(false);
     setCompanyPage(1);
   };
@@ -513,18 +523,23 @@ const Homepage = () => {
         });
       }
       if (levelFilter && levelFilter.length > 0) {
-        arr = arr.filter(n => levelFilter.includes(n.wageLevel));
+        arr = arr.filter(n => {
+          // If no levels are tracked yet (preliminary load), use the max level as before
+          if (!n.wageLevels || n.wageLevels.size === 0) return levelFilter.includes(n.wageLevel);
+          // Otherwise, show company if ANY of its levels match the filter
+          return levelFilter.some(lvl => n.wageLevels.has(lvl));
+        });
       }
       // Consolidated filter logic above replaces the redundant blocks here
       // Primary sort: Famous first. Secondary sort: Selected criteria.
       arr.sort((a, b) => {
+        if (sortBy === 'highest_wage') {
+          if (b.maxWageNum !== a.maxWageNum) return b.maxWageNum - a.maxWageNum;
+        }
         const aFamous = isFamous(a.company);
         const bFamous = isFamous(b.company);
         if (aFamous && !bFamous) return -1;
         if (!aFamous && bFamous) return 1;
-
-        if (sortBy === 'most_jobs') return b.jobCount - a.jobCount;
-        if (sortBy === 'highest_wage') return b.maxWageNum - a.maxWageNum;
         return a.company.localeCompare(b.company);
       });
       setTotalCompanies(arr.length);
@@ -558,16 +573,22 @@ const Homepage = () => {
             });
           }
           if (levelFilter && levelFilter.length > 0) {
-            arr = arr.filter(n => levelFilter.includes(n.wageLevel));
+            arr = arr.filter(n => {
+              if (!n.wageLevels || n.wageLevels.length === 0) return levelFilter.includes(n.wageLevel);
+              // Handle both Set (from live processing) and Array (from JSON parse)
+              const levels = Array.isArray(n.wageLevels) ? new Set(n.wageLevels) : n.wageLevels;
+              return levelFilter.some(lvl => levels.has(lvl));
+            });
           }
           // Priority Sort: Famous First
           arr.sort((a, b) => {
+            if (sortBy === 'highest_wage') {
+              if (b.maxWageNum !== a.maxWageNum) return b.maxWageNum - a.maxWageNum;
+            }
             const aFamous = isFamous(a.company);
             const bFamous = isFamous(b.company);
             if (aFamous && !bFamous) return -1;
             if (!aFamous && bFamous) return 1;
-            if (sortBy === 'most_jobs') return b.jobCount - a.jobCount;
-            if (sortBy === 'highest_wage') return b.maxWageNum - a.maxWageNum;
             return a.company.localeCompare(b.company);
           });
           setTotalCompanies(arr.length);
@@ -602,13 +623,12 @@ const Homepage = () => {
         return records;
       };
 
-      const [syncResults, backupResults, jobsRes] = await Promise.all([
-        fetchAllConfirmed('audit_reviews_sync'),
+      const [backupResults, jobsRes] = await Promise.all([
         fetchAllConfirmed('audit_reviews_backup'),
         supabase.from('job_jobrole_sponsored_sync').select('company, job_role_name, wage_level, wage_num').limit(5000)
       ]);
 
-      const allVerified = [...syncResults, ...backupResults];
+      const allVerified = [...backupResults];
       const confirmedNames = Array.from(new Set(allVerified.map(r => r.company))).filter(Boolean);
 
       let jobData = jobsRes.data || [];
@@ -646,42 +666,57 @@ const Homepage = () => {
 
     function buildAndSetCompanies(confirmedNames, jobData, allVerified = [], preliminary) {
       const companyStats = new Map();
-      confirmedNames.forEach(name => companyStats.set(name, { company: name, jobCount: 0, maxWageNum: 0, wageLevel: 'Lv 1', industries: new Set() }));
+      const normToOrig = new Map();
 
-      // Count, collect industries, AND track max wage level from ALL verified roles
+      confirmedNames.forEach(name => {
+        const stats = { company: name, jobCount: 0, maxWageNum: 0, wageLevel: 'Lv 1', wageLevels: new Set(), industries: new Set() };
+        companyStats.set(name, stats);
+        const norm = normalizeName(name);
+        if (norm && !normToOrig.has(norm)) normToOrig.set(norm, name);
+      });
+
+      const getHeuristicLevel = (title, salary) => {
+        if (!title) return 0;
+        const rt = String(title).toLowerCase();
+        if (salary) {
+          const sNum = parseInt(String(salary).replace(/[$,]/g, ''));
+          if (sNum >= 160000) return 4;
+          if (sNum >= 130000) return 3;
+          if (sNum > 0 && sNum <= 80000) return 1;
+        }
+        if (rt.match(/\blead\b|\bstaff\b|\bprincipal\b|\bdirector\b|\bvp\b|\bhead\b|\bchief\b/)) return 4;
+        if (rt.match(/\bsenior\b|\bsr[\s.]\b/)) return 3;
+        if (rt.match(/\bjunior\b|\bjr[\s.]\b|\bentry\b|\bintern\b|\bgraduate\b/)) return 1;
+        if (rt.match(/\b(iv|4)\b/)) return 4;
+        if (rt.match(/\b(iii|3)\b/)) return 3;
+        if (rt.match(/\b(ii|2)\b/)) return 2;
+        return 2; 
+      };
+
+      const getStatsFor = (rawName) => {
+        if (!rawName) return null;
+        if (companyStats.has(rawName)) return companyStats.get(rawName);
+        const norm = normalizeName(rawName);
+        if (normToOrig.has(norm)) return companyStats.get(normToOrig.get(norm));
+        return null;
+      };
+
       allVerified.forEach(v => {
-        if (companyStats.has(v.company)) {
-          const s = companyStats.get(v.company);
+        const s = getStatsFor(v.company);
+        if (s) {
           s.jobCount++;
           if (v.role) s.industries.add(v.role);
           if (v.domain) s.industries.add(v.domain);
-
-          // Extract wage level from verified record and update max if higher.
-          // Since audit tables don't have a dedicated wage_level column, we check salary/remarks.
           const rawLevel = String(v.wage_level || v.salary_level || v.salary || v.remarks || '').toUpperCase();
           let wageNum = 0;
-          
-          // 1. Explicit labels
           const explicitMatch = rawLevel.match(/LV\s*(\d)/) || rawLevel.match(/LEVEL\s*(\d)/);
-          if (explicitMatch) {
-            wageNum = parseInt(explicitMatch[1]);
-          } else if (rawLevel.includes('IV') || rawLevel.match(/\bLEVEL 4\b/)) wageNum = 4;
-          else if (rawLevel.includes('III') || rawLevel.match(/\bLEVEL 3\b/)) wageNum = 3;
-          else if (rawLevel.includes('II') || rawLevel.match(/\bLEVEL 2\b/)) wageNum = 2;
-          else if (rawLevel.match(/\bLEVEL 1\b/) || rawLevel.match(/\bI\b/)) wageNum = 1;
-
-          // 2. Title-based heuristic fallback (matches getWageLevel logic)
-          if (wageNum === 0 && v.role) {
-            const rt = v.role.toLowerCase();
-            if (rt.match(/\blead\b|\bstaff\b|\bprincipal\b|\bdirector\b|\bvp\b|\bhead\b|\bchief\b/)) wageNum = 4;
-            else if (rt.match(/\bsenior\b|\bsr[\s.]\b/)) wageNum = 3;
-            else if (rt.match(/\bjunior\b|\bjr[\s.]\b|\bentry\b|\bintern\b|\bgraduate\b/)) wageNum = 1;
-            else if (rt.match(/\b(ii|2)\b/)) wageNum = 2;
-            else if (rt.match(/\b(iii|3)\b/)) wageNum = 3;
-            else if (rt.match(/\b(iv|4)\b/)) wageNum = 4;
-            else wageNum = 2; // Baseline for typical roles
-          }
-
+          if (explicitMatch) wageNum = parseInt(explicitMatch[1]);
+          else if (rawLevel.match(/\bIV\b/) || rawLevel.match(/\bLEVEL 4\b/)) wageNum = 4;
+          else if (rawLevel.match(/\bIII\b/) || rawLevel.match(/\bLEVEL 3\b/)) wageNum = 3;
+          else if (rawLevel.match(/\bII\b/) || rawLevel.match(/\bLEVEL 2\b/)) wageNum = 2;
+          else if (rawLevel.match(/\bI\b/) || rawLevel.match(/\bLEVEL 1\b/)) wageNum = 1;
+          if (wageNum > 0) s.wageLevels.add(`Lv ${wageNum}`);
+          if (wageNum === 0) wageNum = Math.max(getHeuristicLevel(v.role, v.salary), getHeuristicLevel(v.domain, v.salary));
           if (wageNum > s.maxWageNum) {
             s.maxWageNum = wageNum;
             s.wageLevel = `Lv ${wageNum}`;
@@ -690,17 +725,18 @@ const Homepage = () => {
       });
 
       jobData.forEach(j => {
-        if (companyStats.has(j.company)) {
-          const s = companyStats.get(j.company);
+        const s = getStatsFor(j.company);
+        if (s) {
           s.jobCount++;
-          // For sponsored jobs, default to 2 if missing (matching heuristic above)
-          const currentWage = parseInt(j.wage_num || j.wage_level?.match(/\d/)?.[0] || '2');
+          let currentWage = parseInt(j.wage_num || j.wage_level?.match(/\d/)?.[0] || '0');
+          if (currentWage === 0) currentWage = getHeuristicLevel(j.job_role_name, j.wage_num || j.wage_level);
+          if (currentWage === 0) currentWage = 2;
+          s.wageLevels.add(`Lv ${currentWage}`);
           if (currentWage > s.maxWageNum) {
             s.maxWageNum = currentWage;
             s.wageLevel = `Lv ${currentWage}`;
           }
           if (j.job_role_name) {
-            // Split comma-separated role names for cleaner tags
             const roles = j.job_role_name.split(',').map(r => r.trim()).filter(Boolean);
             roles.forEach(r => s.industries.add(r));
           }
@@ -732,13 +768,13 @@ const Homepage = () => {
 
       // Final sorting with Famous Priority
       finalArr.sort((a, b) => {
+        if (sortBy === 'highest_wage') {
+          if (b.maxWageNum !== a.maxWageNum) return b.maxWageNum - a.maxWageNum;
+        }
         const aFamous = isFamous(a.company);
         const bFamous = isFamous(b.company);
         if (aFamous && !bFamous) return -1;
         if (!aFamous && bFamous) return 1;
-
-        if (sortBy === 'most_jobs') return b.jobCount - a.jobCount;
-        if (sortBy === 'highest_wage') return b.maxWageNum - a.maxWageNum;
         return a.company.localeCompare(b.company);
       });
 
@@ -746,7 +782,11 @@ const Homepage = () => {
       setAllProcessedCompanies(finalArr);
       if (!preliminary) {
         setIsInitialLoadDone(true);
-        try { sessionStorage.setItem('_companiesCache_v8', JSON.stringify(finalArr)); } catch (e) { }
+        try { 
+          // Sets don't stringify to JSON arrays automatically, so we map them
+          const serializable = finalArr.map(c => ({ ...c, industries: Array.from(c.industries), wageLevels: Array.from(c.wageLevels) }));
+          sessionStorage.setItem('_companiesCache_v8', JSON.stringify(serializable)); 
+        } catch (e) { }
       }
 
       let viewArr = finalArr;
@@ -817,16 +857,7 @@ const Homepage = () => {
         q1 = q1.in('wage_level', expanded);
       }
 
-      // 2. Audit reviews sync (human verified)
-      let q2 = supabase.from('audit_reviews_sync').select('*').eq('company', selectedCompany).eq('tl_confirmation', 'yes');
-      if (search && search.trim()) {
-        const words = search.trim().split(/\s+/).filter(w => w.length >= 1);
-        if (words.length > 0) {
-          const roleCond = `and(${words.map(w => `role.ilike.%${w}%`).join(',')})`;
-          const domainCond = `and(${words.map(w => `domain.ilike.%${w}%`).join(',')})`;
-          q2 = q2.or(`${roleCond},${domainCond}`);
-        }
-      }
+
 
       // 3. Audit reviews backup (human verified)
       let q3 = supabase.from('audit_reviews_backup').select('*').eq('company', selectedCompany).eq('tl_confirmation', 'yes');
@@ -839,9 +870,8 @@ const Homepage = () => {
         }
       }
 
-      const [resSponsored, resSync, resBackup] = await Promise.all([
+      const [resSponsored, resBackup] = await Promise.all([
         q1.order('wage_num', { ascending: false, nullsFirst: false }).order('date_posted', { ascending: false }),
-        q2.order('audit_date', { ascending: false }),
         q3.order('audit_date', { ascending: false })
       ]);
 
@@ -863,6 +893,12 @@ const Homepage = () => {
 
       // Job key for deduplication: STRICT Logical Identity (Company + Title + Location)
       // We no longer use URL as a key differentiator because duplicate listings often use different tracking URLs
+      const _lvlKey = (lv) => {
+        if (!lv) return '';
+        const m = String(lv).match(/\d/);
+        return m ? m[0] : '';
+      };
+
       const _jobKey = (j) => {
         const co = String(j.company || selectedCompany || '').toLowerCase().trim();
         const ti = _normR(j.title || j.role || j.job_role_name || '');
@@ -879,7 +915,6 @@ const Homepage = () => {
 
       // ── Pass 1: Flatten + dedup verified jobs (sync + backup) ────────────────
       const allVerifiedRaw = [
-        ...(resSync.data || []),
         ...(resBackup.data || [])
       ].map(r => ({
         ...r,
@@ -940,19 +975,23 @@ const Homepage = () => {
       }));
 
       // ── Pass 2: Map deep-fetched titles BACK to verified records ────────────
-      // This is the critical step: verified jobs must "know" their title before deduplication
-      const deepMetadata = new Map();
-      deepSponsored.forEach(s => {
+      // This is the critical step: verified jobs must "know" their title and level before deduplication
+      const urlMetadata = new Map();
+      // Include BOTH regular results and deep-fetched ones to ensure full coverage
+      sponsoredJobs.forEach(s => {
         const uk = _urlKey(s.url);
-        if (uk && !deepMetadata.has(uk)) deepMetadata.set(uk, s);
+        if (uk && !urlMetadata.has(uk)) urlMetadata.set(uk, s);
       });
 
       verifiedJobs.forEach(v => {
         const uk = _urlKey(v.url);
-        const meta = deepMetadata.get(uk);
+        const meta = urlMetadata.get(uk);
         if (meta) {
           v.title = meta.title;
           v.id = meta.id; // Link to the real record id
+          // Sync levels and location so they produce the same _jobKey and merge correctly
+          v.wage_level = meta.wage_level || v.wage_level;
+          v.location = meta.location || v.location;
         }
       });
 
@@ -965,8 +1004,12 @@ const Homepage = () => {
       sponsoredJobs.forEach(j => {
         const jk = _jobKey(j);
         const existing = finalMap.get(jk);
-        // If we have a duplicate link in the pool, keep the one with better metadata (salary/level)
-        if (!existing || (!existing.salary && j.salary)) {
+        
+        const curLvl = parseInt(_lvlKey(j.wage_level || j.wage_num) || '1');
+        const exLvl = existing ? parseInt(_lvlKey(existing.wage_level || existing.wage_num) || '0') : 0;
+
+        // If we have a duplicate link in the pool, keep the one with better metadata (higher level or has salary)
+        if (!existing || curLvl > exLvl || (!existing.salary && j.salary)) {
           finalMap.set(jk, {
             ...j,
             isVerified: verifiedByRole.has(_roleKey(j))
@@ -982,12 +1025,15 @@ const Homepage = () => {
           finalMap.set(jk, v);
         } else {
           // Merge verified status and richer data into the sponsored entry
+          const curLvl = parseInt(_lvlKey(v.wage_level) || '1');
+          const exLvl = parseInt(_lvlKey(existing.wage_level) || '1');
+
           finalMap.set(jk, {
             ...existing,
             ...v,
             isVerified: true,
             salary:     existing.salary     || v.salary,
-            wage_level: existing.wage_level || v.wage_level,
+            wage_level: exLvl >= curLvl ? existing.wage_level : v.wage_level,
             url:        existing.url        || v.url,
             // Strictly prefer the sponsored title, then role from audit, then domain
             title:      existing.title, 
@@ -999,6 +1045,7 @@ const Homepage = () => {
       let unique = Array.from(finalMap.values());
 
 
+
       // --- STRICT LEVEL FILTER (Post-merge) ---
       if (level && level.length > 0) {
         const allowedDigits = new Set(level.map(l => l.match(/\d/)?.[0]).filter(Boolean));
@@ -1007,10 +1054,10 @@ const Homepage = () => {
           let jobLvl = jobLvlMatch ? jobLvlMatch[0] : null;
           if (!jobLvl) {
             const s = String(j.wage_level || '').toUpperCase();
-            if (s.includes('IV')) jobLvl = '4';
-            else if (s.includes('III')) jobLvl = '3';
-            else if (s.includes('II')) jobLvl = '2';
-            else if (s.includes('I')) jobLvl = '1';
+            if (s.match(/\bIV\b/) || s.includes('LEVEL 4')) jobLvl = '4';
+            else if (s.match(/\bIII\b/) || s.includes('LEVEL 3')) jobLvl = '3';
+            else if (s.match(/\bII\b/) || s.includes('LEVEL 2')) jobLvl = '2';
+            else if (s.match(/\bI\b/) || s.includes('LEVEL 1')) jobLvl = '1';
           }
           return jobLvl && allowedDigits.has(jobLvl);
         });
@@ -1047,18 +1094,39 @@ const Homepage = () => {
         lcaCount = typeof val === 'number' ? val : parseInt(String(val || 0).replace(/,/g, '')) || 0;
       }
 
-      const jobsWithFilings = unique.map(j => ({ ...j, lca_filings: lcaCount }));
+      const jobsWithFilings = unique.map(j => ({ 
+        ...j, 
+        lca_filings: lcaCount,
+        isTeaser: paymentStatus === 'pending'
+      }));
 
-      // Pagination after sorting
       const pagedUnique = jobsWithFilings.slice(from, to + 1);
-      
-      // Update cache even if stale (so it's available if user clicks back)
-      window._companyJobsCache.set(cacheKey, { jobs: pagedUnique, total });
-
-      // STALE CHECK: Ensure we only update state if this company is still the selected one
-      if (activeCompanyRef.current !== selectedCompany) return;
 
       setCompanyJobs(pagedUnique);
+      setJobsLoading(false);
+
+      // (A) Calculate wage_level for paged verified-only jobs
+      const jobsNeedingWage = pagedUnique.filter(j => !j.wage_level);
+      if (jobsNeedingWage.length > 0) {
+          await Promise.all(jobsNeedingWage.map(async (j) => {
+              try {
+                  const occupation = j.title || j.role || j.job_role_name || '';
+                  const location = j.location || '';
+                  if (!occupation || occupation === 'null') return;
+                  const results = await getWageLevel(occupation, location, j.salary);
+                  if (results && results.length > 0) {
+                      j.wage_level = results[0]['Wage Level'] || 'Lv 2';
+                      j.wage_num = parseInt(j.wage_level.match(/\d/)?.[0] || '2');
+                  }
+              } catch (err) {
+                  // Silently fail
+              }
+          }));
+          setCompanyJobs([...pagedUnique]); // Update state once enriched
+      }
+      
+      // Update cache
+      window._companyJobsCache.set(cacheKey, { jobs: pagedUnique, total });
       setTotalCompanyJobs(total);
     } catch (err) {
       console.error("fetchCompanyJobs Error:", err);
@@ -1307,7 +1375,7 @@ const Homepage = () => {
               >
                 <Icon size={18} strokeWidth={active ? 2.2 : 1.6} />
                 {isMultiLine
-                  ? <span style={{ lineHeight: '1.35' }}>{item.label.split('\n').map((line, i) => i === 0 ? line : <><br key={i} />{line}</>)}</span>
+                  ? <span style={{ lineHeight: '1.35' }}>{item.label.split('\n').map((line, i) => i === 0 ? <React.Fragment key="l0">{line}</React.Fragment> : <React.Fragment key={i}><br />{line}</React.Fragment>)}</span>
                   : <span>{item.label}</span>
                 }
               </button>
@@ -1467,12 +1535,12 @@ const Homepage = () => {
                           paddingTop: '52px'
                         }}>
                           <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', marginTop: '4px' }}>
-                            {filteredSuggestions.map((role, idx) => (
+                            {filteredSuggestions.map((companyName, idx) => (
                               <div
-                                key={role}
+                                key={companyName + idx}
                                 onMouseDown={(e) => {
                                   e.preventDefault();
-                                  handleSuggestionClick(role);
+                                  handleSuggestionClick(companyName);
                                 }}
                                 style={{
                                   padding: '12px 20px',
@@ -1492,8 +1560,8 @@ const Homepage = () => {
                                   e.currentTarget.style.backgroundColor = 'transparent';
                                 }}
                               >
-                                <Search size={14} color="#94a3b8" />
-                                <span style={{ fontWeight: 400 }}>{role}</span>
+                                <Building2 size={14} color="#94a3b8" />
+                                <span style={{ fontWeight: 400 }}>{companyName}</span>
                               </div>
                             ))}
                           </div>
@@ -1572,9 +1640,9 @@ const Homepage = () => {
                   Showing <strong style={{ color: '#333' }}>{totalCompanies.toLocaleString()}</strong> Human verified companies
                 </div>
                 <div style={{ padding: isMobile ? '0 12px 10px' : '0 20px 12px' }}>
-                  <button onClick={() => { setSortBy(p => p === 'most_jobs' ? 'highest_wage' : p === 'highest_wage' ? 'name' : 'most_jobs'); setCompanyPage(1); }}
+                  <button onClick={() => { setSortBy(p => p === 'highest_wage' ? 'name' : 'highest_wage'); setCompanyPage(1); }}
                     style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: '#333', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-                    {sortBy === 'most_jobs' ? 'Most visas' : sortBy === 'highest_wage' ? 'Highest wage' : 'By name'} <ArrowUpDown size={13} />
+                    {sortBy === 'highest_wage' ? 'Highest wage' : 'By name'} <ArrowUpDown size={13} />
                   </button>
                 </div>
 

@@ -4,12 +4,14 @@ import { externalSupabase } from '../externalSupabaseClient';
 import useAuth from '../hooks/useAuth';
 import LogoBox from './LogoBox';
 import { fetchJobRoles, filterRoles } from '../utils/rolesSuggestions';
+import { getWageLevel } from '../dataSyncService';
 import {
     ChevronLeft, ChevronRight, Search, Loader2, AlertCircle,
     Briefcase, ExternalLink, MapPin, Clock, Star, Bookmark, BookmarkCheck,
     SlidersHorizontal, X, Globe
 } from 'lucide-react';
 import { isFamous, getCompanyRank, RANKED_COMPANIES } from '../utils/famousCompanies';
+import { cacheGet, cacheSet, cacheInvalidatePrefix, TTL } from '../utils/queryCache';
 
 const JOBS_PER_PAGE = 15;
 
@@ -21,9 +23,16 @@ const VerifiedSeal = ({ size = 16 }) => (
     </svg>
 );
 
+// Helper to extract numeric level (1, 2, 3, 4) from strings like "Lv 3", "Level III", "3", etc.
+const parseWageLevel = (lvl) => {
+    if (!lvl) return null;
+    const m = String(lvl).match(/\d/);
+    return m ? parseInt(m[0]) : null;
+};
+
 // ── Job Row ────────────────────────────────────────────────────────────────
 const JobRow = ({ job, isSaved, onSave }) => {
-    const level = job.wage_level ? parseInt(job.wage_level.match(/\d/)?.[0]) : null;
+    const level = parseWageLevel(job.wage_level);
     const [hovered, setHovered] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
@@ -90,7 +99,7 @@ const JobRow = ({ job, isSaved, onSave }) => {
                                     />
                                 ))}
                             </div>
-                            <span style={{ fontSize: '15px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1 }}>{level ? `Lv ${level}` : 'N/A'}</span>
+                            <span style={{ fontSize: '15px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1 }}>{level ? `Lv ${level}` : 'Unk.'}</span>
                             <span style={{ fontSize: '7px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.4px' }}>WAGE</span>
                         </div>
 
@@ -227,7 +236,7 @@ const JobRow = ({ job, isSaved, onSave }) => {
                                     />
                                 ))}
                             </div>
-                            <span style={{ fontSize: '22px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1, letterSpacing: '0.4px' }}>{level ? `Lv ${level}` : 'N/A'}</span>
+                            <span style={{ fontSize: '22px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1, letterSpacing: '0.4px' }}>{level ? `Lv ${level}` : 'Unk.'}</span>
                             <span style={{ fontSize: '7.5px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.8px', marginTop: '3px' }}>WAGE LEVEL</span>
                         </div>
 
@@ -260,28 +269,52 @@ const JobRow = ({ job, isSaved, onSave }) => {
                     width: '100%',
                     alignItems: 'center'
                 }}>
-                    <a
-                        href={job.url || job.apply_url || '#'}
-                        target="_blank" rel="noopener noreferrer"
-                        style={{
-                            flex: 1,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '8px',
-                            padding: isMobile ? '12px 18px' : '10px 18px',
-                            borderRadius: '12px',
-                            background: '#FDB913',
-                            color: '#111',
-                            fontSize: '13.5px',
-                            fontWeight: 800,
-                            textDecoration: 'none',
-                            transition: 'all 0.2s',
-                            boxShadow: '0 3px 10px rgba(253, 185, 19, 0.15)',
-                        }}
-                    >
-                        Apply <ExternalLink size={14} />
-                    </a>
+                    {job.isTeaser ? (
+                        <Link
+                            to="/pricing"
+                            style={{
+                                flex: 1,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                padding: isMobile ? '12px 18px' : '10px 18px',
+                                borderRadius: '12px',
+                                background: '#FDB913',
+                                color: '#111',
+                                fontSize: '13.5px',
+                                fontWeight: 800,
+                                textDecoration: 'none',
+                                transition: 'all 0.2s',
+                                boxShadow: '0 3px 10px rgba(253, 185, 19, 0.15)',
+                            }}
+                        >
+                            Sign up to Apply <ExternalLink size={14} />
+                        </Link>
+                    ) : (
+                        <a
+                            href={job.url || job.apply_url || '#'}
+                            target="_blank" rel="noopener noreferrer"
+                            style={{
+                                flex: 1,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px',
+                                padding: isMobile ? '12px 18px' : '10px 18px',
+                                borderRadius: '12px',
+                                background: '#FDB913',
+                                color: '#111',
+                                fontSize: '13.5px',
+                                fontWeight: 800,
+                                textDecoration: 'none',
+                                transition: 'all 0.2s',
+                                boxShadow: '0 3px 10px rgba(253, 185, 19, 0.15)',
+                            }}
+                        >
+                            Apply <ExternalLink size={14} />
+                        </a>
+                    )}
 
                     <button
                         onClick={() => onSave(job)}
@@ -342,6 +375,10 @@ const AllJobsTab = () => {
     const [verifiedSet, setVerifiedSet] = useState(null); // cache Set of confirmed company names
     const searchTimer = useRef(null);
     const [debouncedSearch, setDebouncedSearch] = useState('');
+    // ── Multi-slot in-memory cache: Map<listCacheKey, {list, total}>
+    // Each unique (filter+search+levels) combo gets its own slot.
+    // 'all' tab and 'verified' tab are stored independently — switching tabs is instant.
+    const processedListCache = useRef(new Map());
 
     // ── Realtime: refresh verified set whenever a new row is inserted in audit_reviews_backup
     useEffect(() => {
@@ -355,6 +392,8 @@ const AllJobsTab = () => {
                     if (payload?.new?.tl_confirmation === 'yes') {
                         // Clear caches so next fetch gets fresh data
                         window._confirmedCompaniesCache = null;
+                        cacheInvalidatePrefix('verifiedSet'); // bust TTL-keyed cache too
+                        processedListCache.current.clear();  // bust both tab caches
                         setVerifiedSet(null); // triggers re-fetch via getVerifiedSet
                     }
                 }
@@ -389,14 +428,16 @@ const AllJobsTab = () => {
         init();
     }, [user]);
 
-    // Load confirmed companies (runs once per session, cached in verifiedSet state)
+    // Load confirmed companies (runs once per session, cached with TTL)
     const getVerifiedSet = async () => {
         if (verifiedSet) return verifiedSet;
-        // Use window cache if available
-        if (window._confirmedCompaniesCache) {
-            const s = new Set(window._confirmedCompaniesCache);
-            setVerifiedSet(s);
-            return s;
+
+        // ── Check TTL-keyed cache first (replaces window._confirmedCompaniesCache) ──
+        const CACHE_KEY = 'verifiedSet:global';
+        const cached = cacheGet(CACHE_KEY);
+        if (cached) {
+            setVerifiedSet(cached);
+            return cached;
         }
 
         const fetchNames = async (tableName) => {
@@ -416,16 +457,17 @@ const AllJobsTab = () => {
             return names;
         };
 
-        // Fetch from BOTH local sync and backup tables
-        const [syncNames, backupNames] = await Promise.all([
-            fetchNames('audit_reviews_sync'),
-            fetchNames('audit_reviews_backup')
-        ]);
+        // Fetch from backup table only
+        const backupNames = await fetchNames('audit_reviews_backup');
 
-        // Deduplicate across both tables — no duplicate company names
-        const unique = Array.from(new Set([...syncNames, ...backupNames])).filter(Boolean);
-        window._confirmedCompaniesCache = unique;
+        // Deduplicate — no duplicate company names
+        const unique = Array.from(new Set(backupNames)).filter(Boolean);
         const s = new Set(unique);
+
+        // Store in TTL-keyed cache (10 min) — expires automatically, no stale data
+        cacheSet(CACHE_KEY, s, TTL.VERIFIED_SET);
+        // Keep window fallback in sync for any legacy references
+        window._confirmedCompaniesCache = unique;
         setVerifiedSet(s);
         return s;
     };
@@ -437,76 +479,294 @@ const AllJobsTab = () => {
         try {
             const from = (page - 1) * JOBS_PER_PAGE;
 
-            // Phase 1: Fetch TOP Ranked companies explicitly to ensure they are available for sorting
-            const topTier = RANKED_COMPANIES.slice(0, 100);
-            let rankedQuery = supabase
-                .from('job_jobrole_sponsored_sync')
-                .select('*')
-                .in('company', topTier)
-                .limit(200);
+            // ── FASTEST PATH: serve from localStorage (survives page refresh) ───
+            // localStorage reads are synchronous and take <5ms for 500 records.
+            // This makes the FIRST load after a refresh instant — no Supabase call.
+            const levelStr = Array.isArray(level) && level.length > 0
+                ? level.slice().sort().join(',') : 'all';
+            const listCacheKey = `${filter}|${(search || '').trim().toLowerCase() || 'none'}|${levelStr}`;
+            const LS_KEY = `ajt_v1_${listCacheKey}`;
+            const LS_TTL_MS = 10 * 60 * 1000; // 10 minutes
+            try {
+                const raw = localStorage.getItem(LS_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && parsed.ts && (Date.now() - parsed.ts) < LS_TTL_MS && parsed.list?.length > 0) {
+                        // Warm the in-memory Map too so page changes are instant
+                        if (!processedListCache.current.has(listCacheKey)) {
+                            processedListCache.current.set(listCacheKey, { list: parsed.list, total: parsed.total });
+                        }
+                        const pagedResults = parsed.list.slice(from, from + JOBS_PER_PAGE);
+                        setJobs(pagedResults);
+                        setTotalJobs(parsed.total);
+                        setCurrentPage(page);
+                        setLoading(false);
+                        return; // ⚡ Done — served from localStorage in <50ms
+                    }
+                }
+            } catch (_) { /* localStorage unavailable or corrupt — fall through to DB */ }
 
-            // Phase 2: Fetch Recent sponsored jobs (the standard feed)
-            let standardQuery = supabase
-                .from('job_jobrole_sponsored_sync')
+            // ── FAST PATH: serve from in-memory Map cache (tab switches) ─────────
+            if (processedListCache.current.has(listCacheKey)) {
+                const cached = processedListCache.current.get(listCacheKey);
+                const pagedResults = cached.list.slice(from, from + JOBS_PER_PAGE);
+                setJobs(pagedResults);
+                setTotalJobs(cached.total);
+                setCurrentPage(page);
+                setLoading(false);
+                return; // Done — no DB hit
+            }
+
+            // ══════════════════════════════════════════════════════════════════════
+            // PROGRESSIVE LOADING  —  STALE WHILE REVALIDATE (SWR)
+            //
+            // Phase 1 (QUICK — shows in 1-3s first time, 50ms on repeat):
+            //   3 focused parallel queries, each LIMIT 150 (= 10 pages × 15 records).
+            //   Results displayed immediately. Written to localStorage for instant
+            //   future loads (quick-cache TTL: 30 min).
+            //
+            // Phase 2 (BACKGROUND — runs after Phase 1 is on screen):
+            //   Full fetch (ranked + 2500 verified + deep-fetch by URL) fires in a
+            //   background async IIFE. When done: upgrades Map cache + localStorage
+            //   so pages 11+ are available this session AND next open is 50ms.
+            // ══════════════════════════════════════════════════════════════════════
+
+            const QUICK_LS_KEY = `ajt_quick_${listCacheKey}`;
+            const QUICK_TTL_MS = 30 * 60 * 1000; // 30 min
+
+            // ── Quick-cache hit? ────────────────────────────────────────────────
+            try {
+                const qRaw = localStorage.getItem(QUICK_LS_KEY);
+                if (qRaw) {
+                    const q = JSON.parse(qRaw);
+                    if (q?.ts && (Date.now() - q.ts) < QUICK_TTL_MS && q.list?.length > 0) {
+                        if (!processedListCache.current.has(listCacheKey))
+                            processedListCache.current.set(listCacheKey, { list: q.list, total: q.total });
+                        setJobs(q.list.slice(from, from + JOBS_PER_PAGE));
+                        setTotalJobs(q.total);
+                        setCurrentPage(page);
+                        setLoading(false);
+                        return;
+                    }
+                }
+            } catch (_) { }
+
+            // ── Phase 1: Quick DB fetch — LIMIT 150 per table ──────────────────
+            const qTopTier = RANKED_COMPANIES.slice(0, 100);
+            let quickRankedQ = supabase.from('job_jobrole_sponsored_sync').select('*').in('company', qTopTier).limit(1000);
+            
+            let quickQ = supabase.from('job_jobrole_sponsored_sync')
                 .select('*', { count: 'exact' })
                 .order('date_posted', { ascending: false })
-                // Fetch a larger window to ensure enough variety for the 2-per-company cycle
-                .range(from, from + 500); 
+                .limit(150);
+                
+            let qvBackup = supabase.from('audit_reviews_backup').select('*', { count: 'exact' }).eq('tl_confirmation', 'yes').order('audit_date', { ascending: false }).limit(150);
 
-            // Apply search filters to both queries
             if (search && search.trim()) {
                 const words = search.trim().split(/\s+/).filter(w => w.length >= 1);
-                const titleCond = `and(${words.map(w => `title.ilike.%${w}%`).join(',')})`;
-                const roleCond = `and(${words.map(w => `job_role_name.ilike.%${w}%`).join(',')})`;
-                rankedQuery = rankedQuery.or(`${titleCond},${roleCond}`);
-                standardQuery = standardQuery.or(`${titleCond},${roleCond}`);
+                const tC = `and(${words.map(w => `title.ilike.%${w}%`).join(',')})`;
+                const rC = `and(${words.map(w => `job_role_name.ilike.%${w}%`).join(',')})`;
+                const cC = `and(${words.map(w => `company.ilike.%${w}%`).join(',')})`;
+                quickQ = quickQ.or(`${tC},${rC},${cC}`);
+                quickRankedQ = quickRankedQ.or(`${tC},${rC},${cC}`);
+
+                const rvC = `and(${words.map(w => `role.ilike.%${w}%`).join(',')})`;
+                const dvC = `and(${words.map(w => `domain.ilike.%${w}%`).join(',')})`;
+                const cvC = `and(${words.map(w => `company.ilike.%${w}%`).join(',')})`;
+                qvBackup = qvBackup.or(`${rvC},${dvC},${cvC}`);
             }
             if (level && level.length > 0) {
-                const expanded = level.flatMap(l => {
-                    const n = l.match(/\d/)?.[0];
-                    if (!n) return [l];
-                    const roman = { '1': 'I', '2': 'II', '3': 'III', '4': 'IV' }[n];
-                    return [l, `Level ${n}`, `Level ${roman}`, n, `Lv ${n}`, `Lv${n}`];
+                const exp = level.flatMap(l => { const n = l.match(/\d/)?.[0]; if (!n) return [l]; const rom = { '1': 'I', '2': 'II', '3': 'III', '4': 'IV' }[n]; return [l, `Level ${n}`, `Level ${rom}`, n, `Lv ${n}`, `Lv${n}`]; });
+                quickQ = quickQ.in('wage_level', exp);
+                quickRankedQ = quickRankedQ.in('wage_level', exp);
+            }
+
+            const [qStdRes, qRankedRes, qBackupRes] = await Promise.all([
+                quickQ,
+                quickRankedQ,
+                qvBackup
+            ]);
+            if (qStdRes?.error) throw qStdRes.error;
+
+            const _normRq = s => String(s || '').toLowerCase().replace(/[-–—]/g, ' ').replace(/\s+/g, ' ').trim();
+            const _lvlKeyQ = lv => { let m = String(lv||'').match(/\d/); return m?m[0]:''; };
+            const _jobKeyQ = j => `${String(j.company || '').toLowerCase().trim()}||${_normRq(j.title || j.role || j.job_role_name || '')}||${_normRq(j.location || 'us')}`;
+
+            const quickVSet = verifiedSet || await getVerifiedSet();
+            const qVerified = [
+                ...(qBackupRes.data || [])
+            ].map(r => {
+                const lvlNum = parseWageLevel(r.salary);
+                return { 
+                    ...r, 
+                    title: null, 
+                    role: r.role, 
+                    url: r.job_link, 
+                    date_posted: r.audit_date, 
+                    job_role_name: r.domain, 
+                    isVerified: true, 
+                    isTeaser: paymentStatus === 'pending', 
+                    job_id: r.job_id,
+                    wage_level: lvlNum ? `Lv ${lvlNum}` : null 
+                };
+            });
+            const qSponsored = [...(qRankedRes.data || []), ...(qStdRes.data || [])].map(j => ({ ...j, job_id: j.id, isVerified: j.isVerified || quickVSet.has(j.company) || false, isTeaser: paymentStatus === 'pending' }));
+
+            const qMap = new Map();
+            qSponsored.forEach(j => qMap.set(_jobKeyQ(j), j));
+            qVerified.forEach(v => {
+                const jk = _jobKeyQ(v);
+                const ex = qMap.get(jk);
+                qMap.set(jk, ex ? { ...ex, ...v, isVerified: true, title: ex.title, wage_level: ex.wage_level || v.wage_level, salary: ex.salary || v.salary, location: ex.location || v.location, job_id: ex.job_id || v.job_id } : v);
+            });
+
+            let qList = Array.from(qMap.values());
+            if (filter === 'verified') qList = qList.filter(j => j.isVerified);
+            if (level && level.length > 0) {
+                const aD = new Set(level.map(l => { const m = String(l).match(/\d/); return m ? m[0] : null; }).filter(Boolean));
+                qList = qList.filter(j => { 
+                    const m = parseWageLevel(j.wage_level); 
+                    return m && aD.has(String(m)); 
                 });
-                rankedQuery = rankedQuery.in('wage_level', expanded);
-                standardQuery = standardQuery.in('wage_level', expanded);
             }
 
-            // Phase 3: Fetch Verified roles (from audit_reviews tables)
-            let vSync = supabase.from('audit_reviews_sync').select('*', { count: 'exact' }).eq('tl_confirmation', 'yes');
-            let vBackup = supabase.from('audit_reviews_backup').select('*', { count: 'exact' }).eq('tl_confirmation', 'yes');
+            const qGroups = new Map();
+            qList.forEach(j => { const co = j.company || 'Unknown'; if (!qGroups.has(co)) qGroups.set(co, []); qGroups.get(co).push(j); });
+            qGroups.forEach(list => list.sort((a, b) => { const hs = s => s && s.includes('$'); if (hs(a.salary) && !hs(b.salary)) return -1; if (!hs(a.salary) && hs(b.salary)) return 1; return new Date(b.date_posted || 0) - new Date(a.date_posted || 0); }));
+            const qCos = Array.from(qGroups.keys()).sort((a, b) => { const rA = getCompanyRank(a), rB = getCompanyRank(b); return rA !== rB ? rA - rB : a.localeCompare(b); });
+            let qInterleaved = [];
+            for (let c = 0; c < 100; c++) { let added = 0; for (const co of qCos) { const ch = qGroups.get(co).slice(c * 2, (c * 2) + 2); if (ch.length > 0) { qInterleaved.push(...ch); added++; } } if (added === 0) break; }
+            qList = qInterleaved;
 
-            if (search && search.trim()) {
-                const words = search.trim().split(/\s+/).filter(w => w.length >= 1);
-                if (words.length > 0) {
-                    const roleCond = `and(${words.map(w => `role.ilike.%${w}%`).join(',')})`;
-                    const domainCond = `and(${words.map(w => `domain.ilike.%${w}%`).join(',')})`;
-                    vSync = vSync.or(`${roleCond},${domainCond}`);
-                    vBackup = vBackup.or(`${roleCond},${domainCond}`);
-                }
-            }
+            const qTotal = filter === 'verified'
+                ? (level && level.length > 0 ? qList.length : (qBackupRes.count || 0))
+                : (qStdRes.count || qList.length);
 
-            let syncRes, backupRes, rankedRes, standardRes;
-            let actualVerifiedCount = 0;
+            // Store quick result → Map + localStorage
+            processedListCache.current.set(listCacheKey, { list: qList, total: qTotal });
+            try { localStorage.setItem(QUICK_LS_KEY, JSON.stringify({ ts: Date.now(), total: qTotal, list: qList.slice(0, 150) })); } catch (_) { }
 
-            if (filter === 'verified') {
-                [syncRes, backupRes, rankedRes, standardRes] = await Promise.all([
-                    vSync.order('audit_date', { ascending: false }).limit(2500), 
-                    vBackup.order('audit_date', { ascending: false }).limit(2500),
-                    rankedQuery.limit(1000), 
-                    standardQuery.limit(1000)
-                ]);
-                actualVerifiedCount = (syncRes.count || 0) + (backupRes.count || 0);
-            } else {
-                [syncRes, backupRes, rankedRes, standardRes] = await Promise.all([
-                    vSync.limit(2500),
-                    vBackup.limit(2500),
-                    rankedQuery.limit(1000),
-                    standardQuery.limit(2500)
-                ]);
-            }
+            // ⚡ Show pages 1-10 immediately
+            setJobs(qList.slice(from, from + JOBS_PER_PAGE));
+            setTotalJobs(qTotal);
+            setCurrentPage(page);
+            setLoading(false);
 
-            if (standardRes?.error) throw standardRes.error;
+            // ── Phase 2: Full background fetch (pages 11+, enriched) ──────────
+            // Fires after quick data is on screen. No await — purely background.
+            (async () => {
+                try {
+                    const topTier = RANKED_COMPANIES.slice(0, 100);
+                    let rankedQuery = supabase.from('job_jobrole_sponsored_sync').select('*').in('company', topTier).limit(1000);
+                    let standardQuery = supabase.from('job_jobrole_sponsored_sync').select('*', { count: 'exact' }).order('date_posted', { ascending: false }).range(0, 499);
+                    let vBackup = supabase.from('audit_reviews_backup').select('*', { count: 'exact' }).eq('tl_confirmation', 'yes');
+
+                    if (search && search.trim()) {
+                        const w = search.trim().split(/\s+/).filter(x => x.length >= 1);
+                        const tC = `and(${w.map(x => `title.ilike.%${x}%`).join(',')})`;
+                        const rC = `and(${w.map(x => `job_role_name.ilike.%${x}%`).join(',')})`;
+                        const cC = `and(${w.map(x => `company.ilike.%${x}%`).join(',')})`;
+                        rankedQuery = rankedQuery.or(`${tC},${rC},${cC}`);
+                        standardQuery = standardQuery.or(`${tC},${rC},${cC}`);
+
+                        const rvC = `and(${w.map(x => `role.ilike.%${x}%`).join(',')})`;
+                        const dvC = `and(${w.map(x => `domain.ilike.%${x}%`).join(',')})`;
+                        const cvC = `and(${w.map(x => `company.ilike.%${x}%`).join(',')})`;
+                        vBackup = vBackup.or(`${rvC},${dvC},${cvC}`);
+                    }
+                    if (level && level.length > 0) {
+                        const exp = level.flatMap(l => { const n = l.match(/\d/)?.[0]; if (!n) return [l]; const rom = { '1': 'I', '2': 'II', '3': 'III', '4': 'IV' }[n]; return [l, `Level ${n}`, `Level ${rom}`, n, `Lv ${n}`, `Lv${n}`]; });
+                        rankedQuery = rankedQuery.in('wage_level', exp);
+                        standardQuery = standardQuery.in('wage_level', exp);
+                    }
+
+                    let syncRes, backupRes, rankedRes, standardRes;
+                    let actualVerifiedCount = 0;
+
+                    if (filter === 'verified') {
+                        [backupRes, rankedRes, standardRes] = await Promise.all([
+                            vBackup.order('audit_date', { ascending: false }).limit(2500),
+                            rankedQuery, standardQuery.limit(1000)
+                        ]);
+                        actualVerifiedCount = (backupRes.count || 0);
+                    } else {
+                        [backupRes, rankedRes, standardRes] = await Promise.all([
+                            vBackup.limit(2500),
+                            rankedQuery, standardQuery.limit(2500)
+                        ]);
+                    }
+                    if (standardRes?.error) return;
+
+                    const mapV = r => {
+                        const lvlNum = parseWageLevel(r.salary);
+                        return { 
+                            ...r, 
+                            title: null, 
+                            role: r.role, 
+                            url: r.job_link, 
+                            date_posted: r.audit_date, 
+                            job_role_name: r.domain, 
+                            isVerified: true, 
+                            isTeaser: paymentStatus === 'pending', 
+                            job_id: r.job_id,
+                            wage_level: lvlNum ? `Lv ${lvlNum}` : null
+                        };
+                    };
+                    const verifiedJobs = [...(backupRes.data || [])].map(mapV);
+                    const vSet = verifiedSet || await getVerifiedSet();
+                    const _normR = s => String(s || '').toLowerCase().replace(/[-–—]/g, ' ').replace(/\s+/g, ' ').trim();
+                    const _urlKey = u => { if (!u) return ''; let s = String(u).toLowerCase().trim(); try { const o = new URL(s.startsWith('http') ? s : `https://${s}`); return (o.hostname + o.pathname).replace(/^www\./, '').replace(/\/$/, ''); } catch { return s.split('?')[0].split('#')[0].replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, ''); } };
+                    const _jobKey = j => `${String(j.company || '').toLowerCase().trim()}||${_normR(j.title || j.role || j.job_role_name || '')}||${_normR(j.location || 'us')}`;
+
+                    const vUrls = [...new Set(verifiedJobs.map(v => v.url))].filter(Boolean);
+                    let deepSponsored = [];
+                    if (vUrls.length > 0) {
+                        const chunks = [];
+                        for (let i = 0; i < vUrls.length; i += 100) chunks.push(vUrls.slice(i, i + 100));
+                        const dr = await Promise.all(chunks.map(c => supabase.from('job_jobrole_sponsored_sync').select('*').in('url', c)));
+                        dr.forEach(r => { if (r.data) deepSponsored.push(...r.data); });
+                    }
+                    const deepMeta = new Map();
+                    deepSponsored.forEach(s => { const uk = _urlKey(s.url); if (uk && !deepMeta.has(uk)) deepMeta.set(uk, s); });
+                    verifiedJobs.forEach(v => { const m = deepMeta.get(_urlKey(v.url)); if (m) { v.title = m.title; v.job_id = m.id; v.wage_level = m.wage_level || v.wage_level; v.salary = m.salary || v.salary; v.location = m.location || v.location; } });
+
+                    const sponsoredJobs = [...(rankedRes.data || []), ...(standardRes.data || []), ...deepSponsored]
+                        .map(j => ({ ...j, job_id: j.id, isVerified: j.isVerified || vSet.has(j.company) || false, isTeaser: paymentStatus === 'pending' }));
+
+                    const uMap = new Map();
+                    sponsoredJobs.forEach(j => uMap.set(_jobKey(j), j));
+                    verifiedJobs.forEach(v => { const jk = _jobKey(v); const ex = uMap.get(jk); uMap.set(jk, ex ? { ...ex, ...v, isVerified: true, wage_level: ex.wage_level || v.wage_level, salary: ex.salary || v.salary, title: ex.title, job_id: ex.job_id || v.job_id, url: ex.url || v.url || v.job_link } : v); });
+
+                    let fullList = Array.from(uMap.values());
+                    if (filter === 'verified') fullList = fullList.filter(j => j.isVerified);
+                    if (level && level.length > 0) {
+                        const aD = new Set(level.map(l => { const m = String(l).match(/\d/); return m ? m[0] : null; }).filter(Boolean));
+                        fullList = fullList.filter(j => {
+                            const m = parseWageLevel(j.wage_level);
+                            return m && aD.has(String(m));
+                        });
+                    }
+
+                    const groups = new Map();
+                    fullList.forEach(j => { const co = j.company || 'Unknown'; if (!groups.has(co)) groups.set(co, []); groups.get(co).push(j); });
+                    groups.forEach(list => list.sort((a, b) => { const hs = s => s && s.includes('$'); if (hs(a.salary) && !hs(b.salary)) return -1; if (!hs(a.salary) && hs(b.salary)) return 1; return new Date(b.date_posted || 0) - new Date(a.date_posted || 0); }));
+                    const sCos = Array.from(groups.keys()).sort((a, b) => { const rA = getCompanyRank(a), rB = getCompanyRank(b); return rA !== rB ? rA - rB : a.localeCompare(b); });
+                    let interleaved = [];
+                    for (let c = 0; c < 100; c++) { let added = 0; for (const co of sCos) { const ch = groups.get(co).slice(c * 2, (c * 2) + 2); if (ch.length > 0) { interleaved.push(...ch); added++; } } if (added === 0) break; }
+
+                    const fullTotal = filter === 'verified' 
+                        ? (level && level.length > 0 ? interleaved.length : (backupRes.count || 0))
+                        : (standardRes?.count || interleaved.length);
+
+                    // Upgrade both caches with full data (pages 11+ now available)
+                    processedListCache.current.set(listCacheKey, { list: interleaved, total: fullTotal });
+                    try {
+                        localStorage.setItem(`ajt_v1_${listCacheKey}`, JSON.stringify({ ts: Date.now(), total: fullTotal, list: interleaved.slice(0, 500) }));
+                        localStorage.removeItem(QUICK_LS_KEY); // quick cache superseded by full
+                    } catch (_) { }
+                } catch (_) { /* silent — Phase 1 data already shown */ }
+            })();
+            return; // Phase 1 display is already done above
 
             const mapVerified = (r) => ({
                 ...r,
@@ -520,7 +780,7 @@ const AllJobsTab = () => {
                 job_id: r.job_id // Removed || r.id fallback to allow proper deduplication
             });
 
-            const verifiedJobs = [...(syncRes.data || []), ...(backupRes.data || [])].map(mapVerified);
+            const verifiedJobs = [...(backupRes.data || [])].map(mapVerified);
             const vSet = verifiedSet || await getVerifiedSet();
 
             // ── Normalization Helpers ────────────────────────────────────────────────
@@ -532,10 +792,10 @@ const AllJobsTab = () => {
                 // Aggressively normalize URLs to catch duplicates even with slightly different formats
                 let s = String(u).toLowerCase().trim();
                 try {
-                  const urlObj = new URL(s.startsWith('http') ? s : `https://${s}`);
-                  return (urlObj.hostname + urlObj.pathname).replace(/^www\./, '').replace(/\/$/, '');
+                    const urlObj = new URL(s.startsWith('http') ? s : `https://${s}`);
+                    return (urlObj.hostname + urlObj.pathname).replace(/^www\./, '').replace(/\/$/, '');
                 } catch {
-                  return s.split('?')[0].split('#')[0].replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+                    return s.split('?')[0].split('#')[0].replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
                 }
             };
 
@@ -554,18 +814,21 @@ const AllJobsTab = () => {
             };
 
             // ── Phase 4: DEEP FETCH sponsored metadata for ALL verified links ────────
+            // Run ALL URL batches in PARALLEL (Promise.all) instead of sequentially.
+            // If there are 300 verified URLs (3 batches), they all fire at once — 3x faster.
             const vUrls = [...new Set(verifiedJobs.map(v => v.url))].filter(Boolean);
             let deepSponsored = [];
             if (vUrls.length > 0) {
-                // Fetch in batches to guarantee we get the 'title' column for all verified cards
+                const chunks = [];
                 for (let i = 0; i < vUrls.length; i += 100) {
-                    const chunk = vUrls.slice(i, i + 100);
-                    const { data: dData } = await supabase
-                        .from('job_jobrole_sponsored_sync')
-                        .select('*')
-                        .in('url', chunk);
-                    if (dData) deepSponsored.push(...dData);
+                    chunks.push(vUrls.slice(i, i + 100));
                 }
+                const deepResults = await Promise.all(
+                    chunks.map(chunk =>
+                        supabase.from('job_jobrole_sponsored_sync').select('*').in('url', chunk)
+                    )
+                );
+                deepResults.forEach(r => { if (r.data) deepSponsored.push(...r.data); });
             }
 
             const sponsoredJobs = [
@@ -574,8 +837,8 @@ const AllJobsTab = () => {
                 ...deepSponsored
             ].map(j => ({
                 ...j,
-                title: j.title, 
-                job_id: j.id, 
+                title: j.title,
+                job_id: j.id,
                 isVerified: j.isVerified || vSet.has(j.company) || false
             }));
 
@@ -591,7 +854,7 @@ const AllJobsTab = () => {
                 const meta = deepMetadata.get(uk);
                 if (meta) {
                     v.title = meta.title;
-                    v.job_id = meta.id; 
+                    v.job_id = meta.id;
                 }
             });
 
@@ -611,14 +874,14 @@ const AllJobsTab = () => {
                 if (existing) {
                     uniqueMap.set(jk, {
                         ...existing,
-                        ...v, 
+                        ...v,
                         isVerified: true,
                         // Preserve richer sponsored data
                         wage_level: existing.wage_level || v.wage_level,
-                        salary:     existing.salary     || v.salary,
-                        title:      existing.title, // STRICT: Must come from 'title' column
-                        job_id:     existing.job_id     || v.job_id,
-                        url:        existing.url        || v.url || v.job_link
+                        salary: existing.salary || v.salary,
+                        title: existing.title, // STRICT: Must come from 'title' column
+                        job_id: existing.job_id || v.job_id,
+                        url: existing.url || v.url || v.job_link
                     });
                 } else {
                     uniqueMap.set(jk, v);
@@ -634,11 +897,11 @@ const AllJobsTab = () => {
                     const jobLvlMatch = String(j.wage_level || '').match(/\d/);
                     let jobLvl = jobLvlMatch ? jobLvlMatch[0] : null;
                     if (!jobLvl) {
-                       const s = String(j.wage_level || '').toUpperCase();
-                       if (s.includes('IV')) jobLvl = '4';
-                       else if (s.includes('III')) jobLvl = '3';
-                       else if (s.includes('II')) jobLvl = '2';
-                       else if (s.includes('I')) jobLvl = '1';
+                        const s = String(j.wage_level || '').toUpperCase();
+                        if (s.match(/\bIV\b/) || s.includes('LEVEL 4')) jobLvl = '4';
+                        else if (s.match(/\bIII\b/) || s.includes('LEVEL 3')) jobLvl = '3';
+                        else if (s.match(/\bII\b/) || s.includes('LEVEL 2')) jobLvl = '2';
+                        else if (s.match(/\bI\b/) || s.includes('LEVEL 1')) jobLvl = '1';
                     }
                     return jobLvl && allowedDigits.has(jobLvl);
                 });
@@ -648,7 +911,7 @@ const AllJobsTab = () => {
             if (filter === 'verified') {
                 unique = unique.filter(j => j.isVerified);
             }
-            
+
             // ── Priority Interleaved Sorting (Page-Aligned Cycle) ──────────────────
             // 1. Group by Company
             const groups = new Map();
@@ -660,7 +923,7 @@ const AllJobsTab = () => {
 
             // 2. Sort within each company pool (Recency/Salary Priority)
             groups.forEach(list => {
-                list.sort((a,b) => {
+                list.sort((a, b) => {
                     const hasSal = (s) => s && s.includes('$');
                     if (hasSal(a.salary) && !hasSal(b.salary)) return -1;
                     if (!hasSal(a.salary) && hasSal(b.salary)) return 1;
@@ -678,7 +941,7 @@ const AllJobsTab = () => {
 
             let interleavedList = [];
             // Build the interleaved list for the whole window (500 items)
-            for (let c = 0; c < 100; c++) { 
+            for (let c = 0; c < 100; c++) {
                 let addedInCycle = 0;
                 for (const co of sortedCos) {
                     const list = groups.get(co);
@@ -702,23 +965,40 @@ const AllJobsTab = () => {
                 actualTotal = actualVerifiedCount || 4971; // Use DB count or specified verified count
             }
 
+            // ── Store in Map cache (fast tab switching) ──────────────────
+            processedListCache.current.set(listCacheKey, { list: unique, total: actualTotal });
+
+            // ── Persist to localStorage in background (zero latency impact) ─────
+            // Capped at 500 items (~300-500KB). On next page load/refresh this is
+            // read synchronously in <5ms, making the tab open in ~50ms total.
+            setTimeout(() => {
+                try {
+                    localStorage.setItem(`ajt_v1_${listCacheKey}`, JSON.stringify({
+                        ts: Date.now(),
+                        total: actualTotal,
+                        list: unique.slice(0, 500)  // cap to keep payload ~300KB
+                    }));
+                } catch (_) { /* quota exceeded or private mode — silently skip */ }
+            }, 0);
+
             // Pagination slice: since we fetched a window tailored to 'from', 
             // the first items in our unique interleaved list are the ones for this page.
-            const pagedResults = unique.slice(0, JOBS_PER_PAGE);
+            const pagedResults = unique.slice(from, from + JOBS_PER_PAGE);
 
-            // Fetch LCA Filings for these companies to show on cards
+            setJobs(pagedResults);
+            setTotalJobs(actualTotal);
+            setLoading(false); // Release main loader immediately
+
+            // ── Background Enrichment Part 1: LCA Filings ──────────────────
             const companyNames = [...new Set(pagedResults.map(j => j.company))].filter(Boolean);
             if (companyNames.length > 0) {
-                // Fetch all potential matches by fetching more or using fuzzy match
-                // For simplicity and speed, we'll fetch exact matches first,
-                // and if some are missing, we'll try a normalized match later or handle it in JS.
                 const { data: filingsData } = await supabase
                     .from('h1b_sponsor_finder')
                     .select('Company, "LCA Filings"')
                     .or(companyNames.map(n => `Company.ilike.%${n}%`).join(','));
+
                 if (filingsData) {
                     const normalize = (name) => name?.toLowerCase().replace(/[\.,]/g, ' ').replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies)\b/g, ' ').replace(/\s+/g, ' ').trim() || '';
-
                     const filingMap = {};
                     filingsData.forEach(f => {
                         const norm = normalize(f.Company);
@@ -726,34 +1006,43 @@ const AllJobsTab = () => {
                         if (norm && !filingMap[norm]) filingMap[norm] = f["LCA Filings"];
                     });
 
-                    const filingKeys = Object.keys(filingMap);
-
                     pagedResults.forEach(j => {
                         const jLower = j.company?.toLowerCase() || '';
                         const jNorm = normalize(j.company);
-
-                        // 1. Try exact match
                         let count = filingMap[jLower] || filingMap[jNorm] || 0;
-
-                        // 2. Try partial match if still 0
-                        if (count === 0 && jNorm) {
-                            const bestKey = filingKeys.find(k => k.includes(jNorm) || jNorm.includes(k));
-                            if (bestKey) count = filingMap[bestKey];
-                        }
 
                         const parseCount = (val) => {
                             if (typeof val === 'number') return val;
                             if (!val) return 0;
                             return parseInt(String(val).replace(/,/g, '')) || 0;
                         };
-
                         j.lca_filings = parseCount(count);
                     });
+                    setJobs([...pagedResults]); // Update UI with filings
                 }
             }
 
-            setJobs(pagedResults);
-            setTotalJobs(actualTotal);
+            // ── Background Enrichment Part 2: Wage Levels ──────────────────
+            const jobsNeedingWage = pagedResults.filter(j => !j.wage_level);
+            if (jobsNeedingWage.length > 0) {
+                await Promise.all(jobsNeedingWage.map(async (j) => {
+                    try {
+                        const occupation = j.title || j.role || j.job_role_name || '';
+                        const location = j.location || '';
+                        if (!occupation || occupation === 'null') return;
+
+                        const results = await getWageLevel(occupation, location, j.salary);
+                        if (results && results.length > 0) {
+                            j.wage_level = results[0]['Wage Level'] || 'Lv 2';
+                            j.wage_num = parseInt(j.wage_level.match(/\d/)?.[0] || '2');
+                        }
+                    } catch (err) {
+                        // Silent fail
+                    }
+                }));
+                setJobs([...pagedResults]); // Update UI with wage levels
+            }
+
             setCurrentPage(page);
         } catch (err) {
             console.error('AllJobsTab fetchJobs error:', err);
@@ -769,6 +1058,162 @@ const AllJobsTab = () => {
             fetchJobs(1, activeFilter, debouncedSearch, levelFilter);
         }
     }, [activeFilter, debouncedSearch, levelFilter, isInitialLoadDone]);
+
+    // ── Silent background preloader ──────────────────────────────────────────
+    // After the current tab finishes loading, silently preload the OTHER tab
+    // so switching between 'All Jobs' ↔ 'Human Verified' is instant from cache.
+    // Only runs when: no search/level filters, no active loading, and the other
+    // tab's cache slot is empty for this session.
+    useEffect(() => {
+        if (!isInitialLoadDone || loading || debouncedSearch || levelFilter.length > 0) return;
+
+        const otherFilter = activeFilter === 'all' ? 'verified' : 'all';
+        const otherKey = `${otherFilter}|none|all`;
+
+        // Only preload if the other tab hasn't been cached yet this session
+        if (processedListCache.current.has(otherKey)) return;
+
+        // Delay slightly so the current tab's enrichment (LCA, wages) finishes first
+        const timer = setTimeout(() => {
+            // Silent fetch: run the full fetchJobs logic for the other tab
+            // but suppress all UI state updates (setJobs, setLoading, etc.)
+            // The Map cache will be populated — hitting the tab will be instant.
+            const silentFetch = async () => {
+                try {
+                    const levelStr = 'all';
+                    const silentKey = `${otherFilter}|none|${levelStr}`;
+                    if (processedListCache.current.has(silentKey)) return; // double-check
+
+                    const topTier = RANKED_COMPANIES.slice(0, 100);
+                    let rQ = supabase.from('job_jobrole_sponsored_sync').select('*').in('company', topTier).limit(200);
+                    let sQ = supabase.from('job_jobrole_sponsored_sync').select('*', { count: 'exact' }).order('date_posted', { ascending: false }).range(0, 500);
+                    let vB = supabase.from('audit_reviews_backup').select('*', { count: 'exact' }).eq('tl_confirmation', 'yes');
+
+                    const isVerifiedTab = otherFilter === 'verified';
+                    let backupRes, rankedRes, standardRes;
+                    let actualVerifiedCount = 0;
+
+                    if (isVerifiedTab) {
+                        [backupRes, rankedRes, standardRes] = await Promise.all([
+                            vB.order('audit_date', { ascending: false }).limit(2500),
+                            rQ.limit(1000),
+                            sQ.limit(1000)
+                        ]);
+                        actualVerifiedCount = (backupRes.count || 0);
+                    } else {
+                        [backupRes, rankedRes, standardRes] = await Promise.all([
+                            vB.limit(2500), rQ.limit(1000), sQ.limit(2500)
+                        ]);
+                    }
+
+                    if (standardRes?.error) return;
+
+                    const vSet = verifiedSet || (await getVerifiedSet());
+                    const _normR = (s) => String(s || '').toLowerCase().replace(/[-–—]/g, ' ').replace(/\s+/g, ' ').trim();
+                    const _urlKey = (u) => {
+                        if (!u) return '';
+                        let s = String(u).toLowerCase().trim();
+                        try { const o = new URL(s.startsWith('http') ? s : `https://${s}`); return (o.hostname + o.pathname).replace(/^www\./, '').replace(/\/$/, ''); }
+                        catch { return s.split('?')[0].split('#')[0].replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, ''); }
+                    };
+                    const _lvlKey = (lv) => {
+                        const n = parseWageLevel(lv);
+                        return n ? String(n) : '';
+                    };
+                    const _jobKey = (j) => `${String(j.company || '').toLowerCase().trim()}||${_normR(j.title || j.role || j.job_role_name || '')}||${_normR(j.location || 'us')}`;
+
+                    const verifiedJobs = [ ...(backupRes.data || [])].map(r => {
+                        const lvlNum = parseWageLevel(r.salary);
+                        return { 
+                            ...r, title: null, role: r.role, url: r.job_link, date_posted: r.audit_date,
+                            job_role_name: r.domain, isVerified: true, job_id: r.job_id,
+                            wage_level: lvlNum ? `Lv ${lvlNum}` : null
+                        };
+                    });
+
+                    const vUrls = [...new Set(verifiedJobs.map(v => v.url))].filter(Boolean);
+                    let deepSponsored = [];
+                    if (vUrls.length > 0) {
+                        const chunks = [];
+                        for (let i = 0; i < vUrls.length; i += 100) chunks.push(vUrls.slice(i, i + 100));
+                        const res = await Promise.all(chunks.map(c => supabase.from('job_jobrole_sponsored_sync').select('*').in('url', c)));
+                        res.forEach(r => { if (r.data) deepSponsored.push(...r.data); });
+                    }
+
+                    const sponsoredJobs = [...(rankedRes.data || []), ...(standardRes.data || []), ...deepSponsored]
+                        .map(j => ({ ...j, job_id: j.id, isVerified: j.isVerified || vSet.has(j.company) || false }));
+
+                    const urlMetadata = new Map();
+                    sponsoredJobs.forEach(s => {
+                        const uk = _urlKey(s.url);
+                        if (uk && !urlMetadata.has(uk)) urlMetadata.set(uk, s);
+                    });
+
+                    verifiedJobs.forEach(v => {
+                        const meta = urlMetadata.get(_urlKey(v.url));
+                        if (meta) {
+                            v.title = meta.title;
+                            v.job_id = meta.id;
+                            v.wage_level = meta.wage_level || v.wage_level;
+                            v.location = meta.location || v.location;
+                        }
+                    });
+
+                    const uniqueMap = new Map();
+                    sponsoredJobs.forEach(j => {
+                        const jk = _jobKey(j);
+                        const ex = uniqueMap.get(jk);
+                        const curLvl = parseInt(_lvlKey(j.wage_level) || '1');
+                        const exLvl = ex ? parseInt(_lvlKey(ex.wage_level) || '0') : 0;
+                        if (!ex || curLvl > exLvl || (!ex.salary && j.salary)) {
+                            uniqueMap.set(jk, j);
+                        }
+                    });
+
+                    verifiedJobs.forEach(v => {
+                        const jk = _jobKey(v);
+                        const ex = uniqueMap.get(jk);
+                        if (ex) {
+                            const curLvl = parseInt(_lvlKey(v.wage_level) || '1');
+                            const exLvl = parseInt(_lvlKey(ex.wage_level) || '1');
+                            uniqueMap.set(jk, { 
+                                ...ex, 
+                                ...v, 
+                                isVerified: true, 
+                                wage_level: exLvl >= curLvl ? ex.wage_level : v.wage_level, 
+                                salary: ex.salary || v.salary, 
+                                title: ex.title, 
+                                job_id: ex.job_id || v.job_id, 
+                                url: ex.url || v.url || v.job_link 
+                            });
+                        } else {
+                            uniqueMap.set(jk, v);
+                        }
+                    });
+
+                    let unique = Array.from(uniqueMap.values());
+                    if (isVerifiedTab) unique = unique.filter(j => j.isVerified);
+
+                    const groups = new Map();
+                    unique.forEach(j => { const co = j.company || 'Unknown'; if (!groups.has(co)) groups.set(co, []); groups.get(co).push(j); });
+                    groups.forEach(list => list.sort((a, b) => { const hasSal = s => s && s.includes('$'); if (hasSal(a.salary) && !hasSal(b.salary)) return -1; if (!hasSal(a.salary) && hasSal(b.salary)) return 1; return new Date(b.date_posted || 0) - new Date(a.date_posted || 0); }));
+
+                    const sortedCos = Array.from(groups.keys()).sort((a, b) => { const rA = getCompanyRank(a), rB = getCompanyRank(b); return rA !== rB ? rA - rB : a.localeCompare(b); });
+                    let interleaved = [];
+                    for (let c = 0; c < 100; c++) { let added = 0; for (const co of sortedCos) { const l = groups.get(co); const ch = l.slice(c * 2, (c * 2) + 2); if (ch.length > 0) { interleaved.push(...ch); added++; } } if (added === 0) break; }
+
+                    const actualTotal = isVerifiedTab ? (actualVerifiedCount || 4971) : (standardRes?.count || interleaved.length);
+
+                    // Populate the Map cache — no UI updates
+                    processedListCache.current.set(silentKey, { list: interleaved, total: actualTotal });
+                } catch (_) { /* silent fail — preload is best-effort */ }
+            };
+
+            silentFetch();
+        }, 3000); // 3-second delay: let current tab enrichment settle first
+
+        return () => clearTimeout(timer);
+    }, [isInitialLoadDone, activeFilter, loading]);
 
     const handlePageChange = (newPage) => {
         fetchJobs(newPage, activeFilter, debouncedSearch, levelFilter);

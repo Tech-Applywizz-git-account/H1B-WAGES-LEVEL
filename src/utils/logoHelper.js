@@ -52,9 +52,8 @@ export const getCompanyLogo = (companyName) => {
         'latitude ai': 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Latitude_AI_Logo.png/512px-Latitude_AI_Logo.png',
         'palo alto networks': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/PaloAltoNetworks_2020_Logo.svg/512px-PaloAltoNetworks_2020_Logo.svg.png',
         'university of pittsburgh': 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/University_of_Pittsburgh_wordmark.png/512px-University_of_Pittsburgh_wordmark.png',
-        'zurich north america': 'https://www.google.com/s2/favicons?domain=zurichna.com&sz=128&default=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Fc%2Fca%2F1x1.png',
-        'bright vision technologies': 'https://www.google.com/s2/favicons?domain=bvteck.com&sz=128&default=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Fc%2Fca%2F1x1.png',
-        'kohler ventures': 'https://www.google.com/s2/favicons?domain=kohler.com&sz=128&default=https%3A%2F%2Fupload.wikimedia.org%2Fwikipedia%2Fcommons%2Fc%2Fca%2F1x1.png'
+        'bnsf railway': 'https://upload.wikimedia.org/wikipedia/commons/c/c2/BNSF_Railway_logo.svg',
+        'magic': 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Magic_Leap_logo.svg/240px-Magic_Leap_logo.svg.png'
     };
 
     // ── DOMAIN CORRECTIONS: For companies where the guessing logic fails ────────
@@ -63,25 +62,36 @@ export const getCompanyLogo = (companyName) => {
         'palo alto networks': 'paloaltonetworks.com',
         'university of pittsburgh': 'pitt.edu',
         'latitude ai': 'latitude.ai',
-        'zurich north america': 'zurichna.com'
+        'zurich north america': 'zurichna.com',
+        'bnsf railway': 'bnsf.com',
+        'magic lab': 'magic.io',
+        'magic': 'magic.io',
+        'fidelity investments': 'fidelity.com',
+        'fidelity': 'fidelity.com',
+        'bright vision technologies': 'brightvisiontechnology.com',
+        'brightvisiontechnologies': 'brightvisiontechnology.com'
     };
 
     if (officialLogos[lc]) return officialLogos[lc];
     for (const [key, url] of Object.entries(officialLogos)) {
-        if (lc.includes(key)) return url;
+        const regex = new RegExp(`\\b${key}\\b`, 'i');
+        if (regex.test(lc)) return url;
     }
 
     // ── DYNAMIC FALLBACK: Use Google Favicon Service (Resilient & Globally Accessible) ──
-    const noisyWords = ['inc', 'corp', 'ltd', 'llc', 'group', 'services', 'systems', 'consulting', 'solutions'];
+    const noisyWords = ['inc', 'corp', 'ltd', 'llc', 'group', 'services', 'systems', 'consulting', 'solutions', 'company'];
     const suffixRegex = new RegExp(`\\s+(${noisyWords.join('|')})`, 'gi');
 
-    // Check corrections first for domain guessing
-    if (domainCorrections[lc]) {
+    // Check corrections first for domain guessing (stricter trimming)
+    const trimmedLc = lc.replace(suffixRegex, '').trim();
+    const finalDomain = domainCorrections[lc] || domainCorrections[trimmedLc];
+
+    if (finalDomain) {
         const silentFallback = encodeURIComponent('https://upload.wikimedia.org/wikipedia/commons/c/ca/1x1.png');
-        return `https://www.google.com/s2/favicons?domain=${domainCorrections[lc]}&sz=128&default=${silentFallback}`;
+        return `https://www.google.com/s2/favicons?domain=${finalDomain}&sz=128&default=${silentFallback}`;
     }
 
-    let domainGuess = company.toLowerCase().replace(suffixRegex, '').replace(/[^a-z0-9]/g, '').trim();
+    let domainGuess = trimmedLc.replace(/[^a-z0-9]/g, '').trim();
     if (!domainGuess || domainGuess.length < 2) return null;
 
     // Use Google's service with a BLANK PIXEL as default to avoid 404 logs.

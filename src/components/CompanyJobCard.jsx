@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MapPin, DollarSign, Clock, ExternalLink, Star, Globe } from 'lucide-react';
 import LogoBox from './LogoBox';
+import useAuth from '../hooks/useAuth';
 
 const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, isMobile }) => {
+    const { user } = useAuth();
     const formatTimeAgo = (dateStr) => {
         if (!dateStr) return 'Recently';
         try {
@@ -43,8 +45,8 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
 
         if (isLandingPage) {
             return (
-                <Link to="/signup" style={baseStyle} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-                    Sign Up to Apply <ExternalLink size={13} />
+                <Link to={user ? "/pricing" : "/signup"} style={baseStyle} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+                    {user ? "Sign up to Apply" : "Sign up to Apply"} <ExternalLink size={13} />
                 </Link>
             );
         }
@@ -52,7 +54,7 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
         if (job.isTeaser) {
             return (
                 <Link to="/pricing" style={baseStyle} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-                    Get Access to Apply <ExternalLink size={13} />
+                    Sign up to Apply <ExternalLink size={13} />
                 </Link>
             );
         }

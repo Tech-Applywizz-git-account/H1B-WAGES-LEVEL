@@ -1,4 +1,4 @@
-﻿// src/pages/Signup.jsx
+// src/pages/Signup.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, ArrowLeft, CheckCircle, User, Phone } from 'lucide-react';
@@ -200,6 +200,7 @@ const Signup = () => {
     const [otpToken, setOtpToken] = useState(''); // stateless HMAC token from server
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [fieldErrors, setFieldErrors] = useState({ firstName: '', lastName: '', mobileNumber: '' });
     const [resendCooldown, setResendCooldown] = useState(0);
     const [landmarkIdx, setLandmarkIdx] = useState(0);
     const [googleLoading, setGoogleLoading] = useState(false);
@@ -644,12 +645,24 @@ const Signup = () => {
                                                 <input
                                                     type="text"
                                                     value={formData[field]}
-                                                    onChange={(e) => setFormData((p) => ({ ...p, [field]: e.target.value }))}
+                                                    onChange={(e) => {
+                                                        const raw = e.target.value;
+                                                        if (/\d/.test(raw)) {
+                                                            setFieldErrors(prev => ({ ...prev, [field]: 'Numbers not allowed in the name field' }));
+                                                        } else {
+                                                            setFieldErrors(prev => ({ ...prev, [field]: '' }));
+                                                        }
+                                                        const val = raw.replace(/[^a-zA-Z\s]/g, '');
+                                                        setFormData((p) => ({ ...p, [field]: val }));
+                                                    }}
                                                     placeholder={placeholder}
                                                     className="flex-1 bg-transparent text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
                                                     required
                                                 />
                                             </div>
+                                            {fieldErrors[field] && (
+                                                <p className="text-red-500 text-[10px] mt-1 ml-2 font-bold animate-pulse">{fieldErrors[field]}</p>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -671,13 +684,26 @@ const Signup = () => {
                                             <input
                                                 type="tel"
                                                 value={formData.mobileNumber}
-                                                onChange={(e) => setFormData((p) => ({ ...p, mobileNumber: e.target.value }))}
+                                                onChange={(e) => {
+                                                    const raw = e.target.value;
+                                                    if (/[a-zA-Z]/.test(raw)) {
+                                                        setFieldErrors(prev => ({ ...prev, mobileNumber: 'Alphabets not allowed' }));
+                                                    } else {
+                                                        setFieldErrors(prev => ({ ...prev, mobileNumber: '' }));
+                                                    }
+                                                    const val = raw.replace(/\D/g, '').slice(0, 10);
+                                                    setFormData((p) => ({ ...p, mobileNumber: val }));
+                                                }}
+                                                maxLength={10}
                                                 placeholder="1234567890"
                                                 className="flex-1 bg-transparent text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
                                                 required
                                             />
                                         </div>
                                     </div>
+                                    {fieldErrors.mobileNumber && (
+                                        <p className="text-red-500 text-[10px] mt-1 ml-2 font-bold animate-pulse">{fieldErrors.mobileNumber}</p>
+                                    )}
                                 </div>
 
                                 <div>

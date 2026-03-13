@@ -72,10 +72,8 @@ const fetchAllExistingFromMain = async (table, selectStr) => {
  * Sync audit_reviews from external DB to local audit_reviews_sync table
  */
 export const syncAuditReviews = async () => {
-    if (!IS_SYNC_ENABLED) {
-        console.log('⏭️ Sync is currently disabled.');
-        return { success: true, recordsSynced: 0, message: 'Sync disabled' };
-    }
+    console.log('⏭️ audit_reviews sync is deprecated and disabled.');
+    return { success: true, recordsSynced: 0, message: 'Deprecated' };
     console.log('🔄 Starting audit_reviews sync...');
 
     try {
@@ -334,8 +332,10 @@ export const syncSponsoredJobs = async () => {
         // Helper to fix invalid "null" strings in timestamps
         const fixTimestamp = (ts) => (ts === 'null' || !ts) ? null : ts;
 
-        // Insert in smaller batches to handle parallel wage lookups safely
-        const batchSize = 5;
+        // Insert in batches with explicit column mapping (never spread ...record)
+        // The external table has extra columns not in local schema — the spread
+        // was causing every batch to fail with HTTP 400 Bad Request.
+        const batchSize = 20; // increased from 5 — 4x fewer round-trips per sync
         let totalInserted = 0;
         const delay = (ms) => new Promise(res => setTimeout(res, ms));
 
@@ -344,28 +344,39 @@ export const syncSponsoredJobs = async () => {
 
             // PRE-CALCULATE wage level for global sorting
             const batch = await Promise.all(batchRaw.map(async (record) => {
+                let wageLevelStr = 'Lv 2';
+                let wageNum = 2;
                 try {
                     const results = await getWageLevel(record.title || record.job_role_name, record.location);
-                    const wageLevelStr = (results && results.length > 0) ? results[0]['Wage Level'] : 'Lv 2';
-                    const wageNum = parseInt(wageLevelStr.match(/\d/)?.[0] || '2');
-                    return {
-                        ...record,
-                        date_posted: fixTimestamp(record.date_posted),
-                        upload_date: fixTimestamp(record.upload_date),
-                        wage_level: wageLevelStr,
-                        wage_num: wageNum,
-                        synced_at: new Date().toISOString()
-                    };
-                } catch (err) {
-                    return {
-                        ...record,
-                        date_posted: fixTimestamp(record.date_posted),
-                        upload_date: fixTimestamp(record.upload_date),
-                        wage_level: 'Lv 2',
-                        wage_num: 2,
-                        synced_at: new Date().toISOString()
-                    };
-                }
+                    if (results && results.length > 0) {
+                        wageLevelStr = results[0]['Wage Level'];
+                        wageNum = parseInt(wageLevelStr.match(/\d/)?.[0] || '2');
+                    }
+                } catch (_) { /* silent fail — default wage used */ }
+
+                // Explicit column map — ONLY include columns that exist in the local
+                // job_jobrole_sponsored_sync table. DO NOT use ...record spread.
+                return {
+                    id:               record.id,
+                    title:            record.title            || null,
+                    company:          record.company          || null,
+                    location:         record.location         || null,
+                    url:              record.url              || null,
+                    description:      record.description      || null,
+                    date_posted:      fixTimestamp(record.date_posted),
+                    years_exp_required: record.years_exp_required || null,
+                    upload_date:      fixTimestamp(record.upload_date),
+                    job_role_name:    record.job_role_name    || null,
+                    sponsored_job:    record.sponsored_job    || null,
+                    country:          record.country          || null,
+                    jobId:            record.jobId            || null,
+                    assigned_to:      record.assigned_to      || null,
+                    salary:           record.salary           || null,
+                    apply_type:       record.apply_type       || null,
+                    wage_level:       wageLevelStr,
+                    wage_num:         wageNum,
+                    synced_at:        new Date().toISOString()
+                };
             }));
 
             const { error: insertError } = await supabase
@@ -380,7 +391,7 @@ export const syncSponsoredJobs = async () => {
 
             // Small cooldown to prevent rate limiting/525 errors
             if (i + batchSize < newData.length) {
-                await delay(200);
+                await delay(100);
             }
         }
 
@@ -430,16 +441,7 @@ export const runFullSync = async (force = false) => {
 
     const results = {};
 
-    // Sync audit reviews
-    const auditResult = await syncAuditReviews();
-    results.auditReviews = auditResult;
-    await logSync(
-        'audit_reviews_sync',
-        'full',
-        auditResult.recordsSynced,
-        auditResult.success ? 'success' : 'error',
-        auditResult.error || null
-    );
+
 
     // Sync sponsored jobs
     const sponsoredResult = await syncSponsoredJobs();

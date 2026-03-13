@@ -538,7 +538,16 @@ export function AuthProvider({ children }) {
         // 1. Get session first (usually from local storage, very fast)
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-        if (sessionError) throw sessionError;
+        if (sessionError) {
+          // If the session is invalid (stale refresh token), clear local data
+          if (sessionError.message?.includes('Refresh Token')) {
+            localStorage.removeItem("userRole");
+            localStorage.removeItem("userId");
+            setUser(null);
+            setRole(null);
+          }
+          throw sessionError;
+        }
 
         let currentUser = session?.user || null;
 
@@ -578,11 +587,14 @@ export function AuthProvider({ children }) {
         }
 
       } catch (err) {
+        const isAuthError = err.message?.includes('Refresh Token') || err.message?.includes('Invalid token');
         const isNetworkError = err.message?.includes('fetch') || !window.navigator.onLine;
-        if (!isNetworkError) {
-          // Only log unexpected non-network errors
+        
+        if (!isNetworkError && !isAuthError) {
+          // Only log unexpected non-network, non-auth errors
           console.error("💥 Error during auth init:", err);
         }
+        
         if (isMounted) {
           isAuthInitialized.current = true;
           clearTimeout(initTimeout);
