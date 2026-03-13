@@ -154,7 +154,7 @@ const JobRow = ({ job, isSaved, onSave }) => {
                         onMouseLeave={e => e.currentTarget.style.color = '#111'}
                         onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); }}
                     >
-                        {job.title || 'Job Opening'}
+                        {job.title || 'Data  Science'}
                     </a>
                 </h3>
 
@@ -554,12 +554,12 @@ const AllJobsTab = () => {
             // ── Phase 1: Quick DB fetch — LIMIT 150 per table ──────────────────
             const qTopTier = RANKED_COMPANIES.slice(0, 100);
             let quickRankedQ = supabase.from('job_jobrole_sponsored_sync').select('*').in('company', qTopTier).limit(1000);
-            
+
             let quickQ = supabase.from('job_jobrole_sponsored_sync')
                 .select('*', { count: 'exact' })
                 .order('date_posted', { ascending: false })
                 .limit(150);
-                
+
             let qvBackup = supabase.from('audit_reviews_backup').select('*', { count: 'exact' }).eq('tl_confirmation', 'yes').order('audit_date', { ascending: false }).limit(150);
 
             if (search && search.trim()) {
@@ -589,7 +589,7 @@ const AllJobsTab = () => {
             if (qStdRes?.error) throw qStdRes.error;
 
             const _normRq = s => String(s || '').toLowerCase().replace(/[-–—]/g, ' ').replace(/\s+/g, ' ').trim();
-            const _lvlKeyQ = lv => { let m = String(lv||'').match(/\d/); return m?m[0]:''; };
+            const _lvlKeyQ = lv => { let m = String(lv || '').match(/\d/); return m ? m[0] : ''; };
             const _jobKeyQ = j => `${String(j.company || '').toLowerCase().trim()}||${_normRq(j.title || j.role || j.job_role_name || '')}||${_normRq(j.location || 'us')}`;
 
             const quickVSet = verifiedSet || await getVerifiedSet();
@@ -597,17 +597,17 @@ const AllJobsTab = () => {
                 ...(qBackupRes.data || [])
             ].map(r => {
                 const lvlNum = parseWageLevel(r.salary);
-                return { 
-                    ...r, 
-                    title: null, 
-                    role: r.role, 
-                    url: r.job_link, 
-                    date_posted: r.audit_date, 
-                    job_role_name: r.domain, 
-                    isVerified: true, 
-                    isTeaser: paymentStatus === 'pending', 
+                return {
+                    ...r,
+                    title: null,
+                    role: r.role,
+                    url: r.job_link,
+                    date_posted: r.audit_date,
+                    job_role_name: r.domain,
+                    isVerified: true,
+                    isTeaser: paymentStatus === 'pending',
                     job_id: r.job_id,
-                    wage_level: lvlNum ? `Lv ${lvlNum}` : null 
+                    wage_level: lvlNum ? `Lv ${lvlNum}` : null
                 };
             });
             const qSponsored = [...(qRankedRes.data || []), ...(qStdRes.data || [])].map(j => ({ ...j, job_id: j.id, isVerified: j.isVerified || quickVSet.has(j.company) || false, isTeaser: paymentStatus === 'pending' }));
@@ -624,9 +624,9 @@ const AllJobsTab = () => {
             if (filter === 'verified') qList = qList.filter(j => j.isVerified);
             if (level && level.length > 0) {
                 const aD = new Set(level.map(l => { const m = String(l).match(/\d/); return m ? m[0] : null; }).filter(Boolean));
-                qList = qList.filter(j => { 
-                    const m = parseWageLevel(j.wage_level); 
-                    return m && aD.has(String(m)); 
+                qList = qList.filter(j => {
+                    const m = parseWageLevel(j.wage_level);
+                    return m && aD.has(String(m));
                 });
             }
 
@@ -699,15 +699,15 @@ const AllJobsTab = () => {
 
                     const mapV = r => {
                         const lvlNum = parseWageLevel(r.salary);
-                        return { 
-                            ...r, 
-                            title: null, 
-                            role: r.role, 
-                            url: r.job_link, 
-                            date_posted: r.audit_date, 
-                            job_role_name: r.domain, 
-                            isVerified: true, 
-                            isTeaser: paymentStatus === 'pending', 
+                        return {
+                            ...r,
+                            title: null,
+                            role: r.role,
+                            url: r.job_link,
+                            date_posted: r.audit_date,
+                            job_role_name: r.domain,
+                            isVerified: true,
+                            isTeaser: paymentStatus === 'pending',
                             job_id: r.job_id,
                             wage_level: lvlNum ? `Lv ${lvlNum}` : null
                         };
@@ -754,7 +754,7 @@ const AllJobsTab = () => {
                     let interleaved = [];
                     for (let c = 0; c < 100; c++) { let added = 0; for (const co of sCos) { const ch = groups.get(co).slice(c * 2, (c * 2) + 2); if (ch.length > 0) { interleaved.push(...ch); added++; } } if (added === 0) break; }
 
-                    const fullTotal = filter === 'verified' 
+                    const fullTotal = filter === 'verified'
                         ? (level && level.length > 0 ? interleaved.length : (backupRes.count || 0))
                         : (standardRes?.count || interleaved.length);
 
@@ -1122,9 +1122,9 @@ const AllJobsTab = () => {
                     };
                     const _jobKey = (j) => `${String(j.company || '').toLowerCase().trim()}||${_normR(j.title || j.role || j.job_role_name || '')}||${_normR(j.location || 'us')}`;
 
-                    const verifiedJobs = [ ...(backupRes.data || [])].map(r => {
+                    const verifiedJobs = [...(backupRes.data || [])].map(r => {
                         const lvlNum = parseWageLevel(r.salary);
-                        return { 
+                        return {
                             ...r, title: null, role: r.role, url: r.job_link, date_posted: r.audit_date,
                             job_role_name: r.domain, isVerified: true, job_id: r.job_id,
                             wage_level: lvlNum ? `Lv ${lvlNum}` : null
@@ -1176,15 +1176,15 @@ const AllJobsTab = () => {
                         if (ex) {
                             const curLvl = parseInt(_lvlKey(v.wage_level) || '1');
                             const exLvl = parseInt(_lvlKey(ex.wage_level) || '1');
-                            uniqueMap.set(jk, { 
-                                ...ex, 
-                                ...v, 
-                                isVerified: true, 
-                                wage_level: exLvl >= curLvl ? ex.wage_level : v.wage_level, 
-                                salary: ex.salary || v.salary, 
-                                title: ex.title, 
-                                job_id: ex.job_id || v.job_id, 
-                                url: ex.url || v.url || v.job_link 
+                            uniqueMap.set(jk, {
+                                ...ex,
+                                ...v,
+                                isVerified: true,
+                                wage_level: exLvl >= curLvl ? ex.wage_level : v.wage_level,
+                                salary: ex.salary || v.salary,
+                                title: ex.title,
+                                job_id: ex.job_id || v.job_id,
+                                url: ex.url || v.url || v.job_link
                             });
                         } else {
                             uniqueMap.set(jk, v);

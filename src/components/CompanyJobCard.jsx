@@ -123,7 +123,7 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                             onMouseLeave={e => e.currentTarget.style.color = '#111'}
                             onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); }}
                         >
-                            {job.title || 'Job Opening'}
+                            {job.title || 'Data  Science'}
                         </a>
                     </h3>
 

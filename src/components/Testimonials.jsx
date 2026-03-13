@@ -3,7 +3,7 @@ import { Star } from 'lucide-react';
 
 const testimonials = [
     {
-        content: "Definitely worth subscribing. I was a bit hesitant at first to subscribe but realised that I really had no other options out there to find currently open jobs that sponsor visas so I thought I'd give Wage Trail a try. I'm so happy I did because I've heard back from multiple job openings. This is by far the best job platform I've used.",
+        content: "Definitely worth subscribing. I was a bit hesitant at first to subscribe but realised that I really had no other options out there to find currently open jobs that sponsor visas so I thought I'd give Wage Trail a try. I'm so happy I did because I've heard back from multiple Job Openings. This is by far the best job platform I've used.",
         rating: 5,
         initials: 'A',
         color: 'from-orange-400 to-red-500',
