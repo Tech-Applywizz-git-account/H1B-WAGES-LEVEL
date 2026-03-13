@@ -1,0 +1,26 @@
+node_modules
+
+# unwanted extensions for pushing
+*.sql
+*.md
+*.ps1
+
+# testing/debug scripts / temp files
+debug_*.js
+tmp*
+*.log
+npm-debug.log*
+
+# build / production
+dist
+build
+
+# env
+.env
+.env.local
+.env.*.local
+
+# misc
+.DS_Store
+.vscode/
+.idea/
