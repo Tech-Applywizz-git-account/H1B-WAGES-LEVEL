@@ -103,13 +103,27 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                 <LogoBox name={job.company} size={isMobile ? 32 : 38} fontSize={11} />
 
                 <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '3px' }}>
-                        <p style={{ fontSize: '11px', color: '#aaa', margin: 0, fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {job.company}
-                        </p>
+                    {/* Row 1: Salary & Location First */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
+                        {job.salary && (
+                            <span style={{
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                color: '#24385E',
+                                background: '#f1f5f9',
+                                borderRadius: '6px',
+                                padding: '3px 8px'
+                            }}>
+                                {job.salary}
+                            </span>
+                        )}
+                        <span style={{ fontSize: '11px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
+                            <MapPin size={12} /> {job.location || 'United States'}
+                        </span>
                     </div>
 
-                    <h3 style={{ fontSize: isMobile ? '14px' : '15px', fontWeight: 700, margin: '0 0 5px', lineHeight: 1.3 }}>
+                    {/* Row 2: Job Title as Main Link */}
+                    <h3 style={{ fontSize: isMobile ? '16px' : '17px', fontWeight: 800, margin: '0 0 2px', lineHeight: 1.3 }}>
                         <a
                             href={job.url || job.apply_url || '#'}
                             target="_blank"
@@ -123,18 +137,13 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                             onMouseLeave={e => e.currentTarget.style.color = '#111'}
                             onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); }}
                         >
-                            {job.title || 'Data  Science'}
+                            {job.title || 'Data Science Role'}
                         </a>
                     </h3>
 
-                    <p style={{ fontSize: '11px', color: '#aaa', margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <MapPin size={12} />{job.location || 'United States'}
-                    </p>
-
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '10px' }}>
-                        {job.salary && (
-                            <span style={{ fontSize: '11px', fontWeight: 600, color: '#24385E', background: '#f1f5f9', borderRadius: '6px', padding: '3px 8px' }}>{job.salary}</span>
-                        )}
+                    {/* Row 3: Company Name as Subtext */}
+                    <div style={{ fontSize: '13px', fontWeight: 500, color: '#718096', marginBottom: '8px' }}>
+                        {job.company}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

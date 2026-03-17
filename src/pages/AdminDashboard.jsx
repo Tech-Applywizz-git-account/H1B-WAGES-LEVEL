@@ -98,8 +98,8 @@ const OverviewTab = ({ setActiveTab }) => {
             ]);
 
             const users = usersRes.data || [];
-            const paid = users.filter(u => u.payment_status === 'completed' || u.payment_status === 'paid' || u.payment_status === 'active').length;
-            const pending = users.filter(u => u.payment_status === 'pending').length;
+            const paid = users.filter(u => u.role !== 'admin' && (u.payment_status === 'completed' || u.payment_status === 'paid' || u.payment_status === 'active')).length;
+            const pending = users.filter(u => u.role !== 'admin' && u.payment_status === 'pending').length;
 
             setStats({ totalUsers: users.length, paidUsers: paid, pendingUsers: pending, activeJobs: jobsRes.count || 0 });
             setActivity(recentRes.data || []);
@@ -229,7 +229,7 @@ const UsersTab = () => {
         showToast('User deleted');
     };
 
-    const paidCount = users.filter(u => ['completed', 'paid', 'active'].includes(u.payment_status)).length;
+    const paidCount = users.filter(u => u.role !== 'admin' && ['completed', 'paid', 'active'].includes(u.payment_status)).length;
     const adminCount = users.filter(u => u.role === 'admin').length;
 
     return (
@@ -241,7 +241,7 @@ const UsersTab = () => {
                 {[
                     { label: 'Total Users', val: users.length, bg: '#dbeafe', col: '#1d4ed8' },
                     { label: 'Paid', val: paidCount, bg: '#d1fae5', col: '#059669' },
-                    { label: 'Pending', val: users.length - paidCount - adminCount, bg: '#fef3c7', col: '#d97706' },
+                    { label: 'Pending', val: users.filter(u => u.role !== 'admin' && u.payment_status === 'pending').length, bg: '#fef3c7', col: '#d97706' },
                     { label: 'Admins', val: adminCount, bg: '#ede9fe', col: '#7c3aed' },
                 ].map(({ label, val, bg, col }) => (
                     <div key={label} style={{ background: bg, borderRadius: 12, padding: '14px 18px' }}>
@@ -403,7 +403,7 @@ const PaymentsTab = () => {
         })();
     }, []);
 
-    const paid = profiles.filter(p => ['completed', 'paid', 'active'].includes(p.payment_status));
+    const paid = profiles.filter(p => p.role !== 'admin' && ['completed', 'paid', 'active'].includes(p.payment_status));
     const filtered = profiles.filter(p => {
         const q = search.toLowerCase();
         return !q || p.email?.toLowerCase().includes(q) || p.first_name?.toLowerCase().includes(q) || p.last_name?.toLowerCase().includes(q);
@@ -480,8 +480,8 @@ const AnalyticsTab = () => {
 
     const maxC = Math.max(...months.map(m => m.count), 1);
     const total = data.length;
-    const paidC = data.filter(d => ['completed', 'paid', 'active'].includes(d.payment_status)).length;
-    const pendC = data.filter(d => d.payment_status === 'pending').length;
+    const paidC = data.filter(d => d.role !== 'admin' && ['completed', 'paid', 'active'].includes(d.payment_status)).length;
+    const pendC = data.filter(d => d.role !== 'admin' && d.payment_status === 'pending').length;
     const adminC = data.filter(d => d.role === 'admin').length;
 
     return (

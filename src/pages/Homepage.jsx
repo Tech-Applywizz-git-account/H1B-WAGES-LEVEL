@@ -1044,7 +1044,19 @@ const Homepage = () => {
 
       let unique = Array.from(finalMap.values());
 
-
+      // ── pass 4: STRICT EXACT NORMALIZED MATCHING (v11) ──
+      if (search && search.trim()) {
+        const n = (s) => String(s || '').toLowerCase()
+          .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "")
+          .trim()
+          .replace(/\s+/g, ' ');
+        const nS = n(search);
+        unique = unique.filter(j => {
+          // Field Lockdown: Match only the primary displayed title
+          const primaryTitle = j.title || j.role || j.job_role_name || '';
+          return n(primaryTitle) === nS;
+        });
+      }
 
       // --- STRICT LEVEL FILTER (Post-merge) ---
       if (level && level.length > 0) {

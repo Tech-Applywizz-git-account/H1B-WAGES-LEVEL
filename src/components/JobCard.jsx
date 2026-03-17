@@ -106,36 +106,9 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                     </div>
 
                     <div className="flex-1 min-w-0">
-                        {/* Row 1: Company + Date */}
-                        <div className="flex items-center justify-between mb-1.5 pr-4">
-                            <div className="flex items-center gap-3">
-                                <span className="text-[14px] font-bold text-[#a0aec0] tracking-tight">{job.company || 'Company Name'}</span>
-                            </div>
-                        </div>
-
-                        {/* Row 2: Title */}
-                        <h2 className="text-[24px] font-black leading-tight mb-2.5 truncate">
-                            <a
-                                href={job.url || '#'}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-[#111] hover:text-[#FDB913] transition-colors duration-200"
-                                style={{ textDecoration: 'none' }}
-                                onClick={e => { if (!job.url) e.preventDefault(); }}
-                            >
-                                {job.title || job.role || 'Not Specified'}
-                            </a>
-                        </h2>
-
-                        {/* Row 3: Location */}
-                        <div className="flex items-center gap-1.5 mb-4 text-[#a0aec0]">
-                            <MapPin size={16} color="#cbd5e0" />
-                            <span className="text-[14px] font-bold">{job.location || 'United States'}</span>
-                        </div>
-
-                        {/* Row 4: Salary */}
-                        {job.salary && (
-                            <div className="flex items-center gap-1.5 mb-4">
+                        {/* Row 1: Salary & Location First */}
+                        <div className="flex flex-wrap items-center gap-4 mb-3">
+                            {job.salary && (
                                 <span style={{
                                     fontSize: '13px',
                                     fontWeight: 700,
@@ -148,12 +121,33 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                                 }}>
                                     {job.salary}
                                 </span>
+                            )}
+                            <div className="flex items-center gap-1.5 text-[#64748b]">
+                                <MapPin size={16} color="#cbd5e0" />
+                                <span className="text-[14px] font-bold">{job.location || 'United States'}</span>
                             </div>
-                        )}
+                        </div>
 
+                        {/* Row 2: Job Title as Main Link */}
+                        <h2 className="text-[24px] font-black leading-tight mb-1 truncate">
+                            <a
+                                href={job.url || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[#111] hover:text-[#FDB913] transition-colors duration-200"
+                                style={{ textDecoration: 'none' }}
+                                onClick={e => { if (!job.url) e.preventDefault(); }}
+                            >
+                                {job.title || job.role || 'Job Opening'}
+                            </a>
+                        </h2>
 
+                        {/* Row 3: Company Name as Subtext */}
+                        <div className="text-[16px] font-bold text-[#718096] mb-4">
+                            {job.company || 'Company Name'}
+                        </div>
 
-                        {/* Row 5: Badges */}
+                        {/* Row 4: Badges */}
                         <div className="flex items-center gap-3">
                             {job.isVerified && (
                                 <span className="text-[11px] font-black text-[#059669] bg-[#f0fdf4] px-3.5 py-2 rounded-xl uppercase tracking-widest flex items-center gap-2 border border-[#dcfce7]">

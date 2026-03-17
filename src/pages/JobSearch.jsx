@@ -81,6 +81,19 @@ const JobSearch = () => {
             if (error) throw error;
 
             let jobData = data || [];
+
+            // ── PASS 2: STRICT EXACT NORMALIZED MATCHING (v10) ──
+            if (debouncedSearch.trim()) {
+                const n = (s) => String(s || '').toLowerCase()
+                    .replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "")
+                    .trim()
+                    .replace(/\s+/g, ' ');
+                const nS = n(debouncedSearch);
+                jobData = jobData.filter(j => {
+                    return n(j.title) === nS || n(j.job_role_name) === nS;
+                });
+            }
+
             // Priority Sort: (1) Visible Salary First, (2) Apply Link, (3) Freshness
             jobData.sort((a, b) => {
                 const aHasSal = !!(a.salary && a.salary.trim().length > 0);
@@ -100,7 +113,7 @@ const JobSearch = () => {
             });
 
             setJobs(jobData);
-            setTotalJobs(count || 0);
+            setTotalJobs(jobData.length); // Use filtered length
             if (jobData.length > 0 && !selectedJob) setSelectedJob(jobData[0]);
         } catch (err) {
             console.error('JobSearch Fetch Error:', err);
@@ -294,30 +307,35 @@ const JobSearch = () => {
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-start justify-between gap-4 mb-2">
-                                                    <div>
-                                                        <h3 className="text-lg font-bold transition-colors truncate">
+                                                    <div className="w-full">
+                                                        {/* Row 1: Salary & Location First */}
+                                                        <div className="flex items-center gap-3 mb-2">
+                                                            <span className="text-green-600 font-bold text-sm bg-green-50 px-2 py-0.5 rounded border border-green-100">
+                                                                {job.salary || '$120k – $180k'}
+                                                            </span>
+                                                            <span className="text-gray-400 text-sm flex items-center gap-1.5 font-medium">
+                                                                <MapPin size={14} /> {job.location || 'USA'}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Row 2: Job Title as Main Link */}
+                                                        <h3 className="text-lg font-bold transition-colors truncate mb-1">
                                                             <a
                                                                 href={job.url || job.apply_url || '#'}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="text-gray-900 group-hover:text-[#24385E]"
+                                                                className="text-gray-900 hover:text-[#24385E]"
                                                                 style={{ textDecoration: 'none' }}
                                                                 onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); e.stopPropagation(); }}
                                                             >
-                                                                {job.title}
+                                                                {job.title || 'Job Opening'}
                                                             </a>
                                                         </h3>
-                                                        <div className="flex items-center gap-3 mt-1">
-                                                            <span className="text-[#24385E] font-bold text-sm flex items-center gap-1.5">
-                                                                <Building size={14} /> {job.company}
-                                                            </span>
-                                                            <span className="text-gray-400 text-sm flex items-center gap-1.5">
-                                                                <MapPin size={14} /> {job.location || 'USA'}
-                                                            </span>
+
+                                                        {/* Row 3: Company Name as Subtext */}
+                                                        <div className="text-[#24385E] font-bold text-sm flex items-center gap-1.5 opacity-75">
+                                                            <Briefcase size={14} /> {job.company}
                                                         </div>
-                                                    </div>
-                                                    <div className="text-right flex-shrink-0">
-                                                        <div className="text-green-600 font-bold text-sm mb-1">{job.salary || '$120k – $180k'}</div>
                                                     </div>
                                                 </div>
 

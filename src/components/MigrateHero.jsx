@@ -35,12 +35,15 @@ const MigrateHero = () => {
     const [companyPage, setCompanyPage] = useState(1);
     const [totalCompanies, setTotalCompanies] = useState(0);
     const [sortBy, setSortBy] = useState('most_jobs');
+    const [allCompanies, setAllCompanies] = useState([]);
     const [filteredSuggestions, setFilteredSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
-    const [allRoles, setAllRoles] = useState([]);
 
-    // Load job roles from Supabase on mount (globally cached)
-    useEffect(() => { fetchJobRoles().then(setAllRoles); }, []);
+    // Load target company names for suggestions
+    useEffect(() => {
+        const TARGETS = ['Google', 'Microsoft', 'Meta'];
+        setAllCompanies(TARGETS);
+    }, []);
 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
@@ -61,10 +64,9 @@ const MigrateHero = () => {
     // Fetch Companies Logic (Mirrors Homepage but without forced auth check for viewing)
     const fetchCompanies = useCallback(async () => {
         // 1. Check if we have a global cache for the processed company list to prevent re-fetching
-        if (window._landingPageCompaniesCache && !debouncedCompanySearch) {
-            let arr = [...window._landingPageCompaniesCache];
+        if (window._landingPageCompaniesCache_v11 && !debouncedCompanySearch) {
+            let arr = [...window._landingPageCompaniesCache_v11];
 
-            // Apply local sorting
             // Apply local sorting with Famous Priority
             arr.sort((a, b) => {
                 const aF = isFamous(a.company);
@@ -77,8 +79,7 @@ const MigrateHero = () => {
             });
 
             setTotalCompanies(arr.length);
-            const from = (companyPage - 1) * COMPANIES_PER_PAGE;
-            const pagedArr = arr.slice(from, from + COMPANIES_PER_PAGE);
+            const pagedArr = arr.slice(0, 3);
             setCompanies(pagedArr);
 
             // Auto-select first company on load if none selected
@@ -91,79 +92,13 @@ const MigrateHero = () => {
 
         setCompaniesLoading(true);
         try {
-            // STEP 1: Get confirmed companies
-            let confirmedNames = [];
-
-            if (debouncedCompanySearch && debouncedCompanySearch.trim()) {
-                const words = debouncedCompanySearch.trim().split(/\s+/).filter(w => w.length >= 1);
-                const nameCond = `and(${words.map(w => `company.ilike.%${w}%`).join(',')})`;
-                const roleCond = `and(${words.map(w => `job_role_name.ilike.%${w}%`).join(',')})`;
-
-                // Search for backup only
-                const [companyBackupRes, roleRes] = await Promise.all([
-                    supabase
-                        .from('audit_reviews_backup')
-                        .select('company')
-                        .eq('tl_confirmation', 'yes')
-                        .or(nameCond)
-                        .limit(200),
-                    supabase
-                        .from('job_jobrole_sponsored_sync')
-                        .select('company')
-                        .or(roleCond)
-                        .limit(200)
-                ]);
-
-                const namesFromBackup = (companyBackupRes.data || []).map(r => r.company);
-                const namesFromRole = (roleRes.data || []).map(r => r.company);
-                const combined = Array.from(new Set([...namesFromBackup, ...namesFromRole])).filter(Boolean);
-
-                // Now verify which of namesFromRole are actually confirmed in backup
-                if (namesFromRole.length > 0) {
-                    const resBackup = await supabase
-                        .from('audit_reviews_backup')
-                        .select('company')
-                        .eq('tl_confirmation', 'yes')
-                        .in('company', combined);
-                    const verifiedOnes = [...(resBackup.data || [])];
-                    confirmedNames = Array.from(new Set(verifiedOnes.map(v => v.company))).filter(Boolean);
-                } else {
-                    confirmedNames = Array.from(new Set([...namesFromBackup])).filter(Boolean);
-                }
-            } else {
-                const fetchAllConfirmed = async (tableName) => {
-                    const names = [];
-                    let pg = 0;
-                    while (true) {
-                        const { data, error } = await supabase
-                            .from(tableName)
-                            .select('company')
-                            .eq('tl_confirmation', 'yes')
-                            .range(pg * 1000, (pg + 1) * 1000 - 1);
-                        if (error || !data || data.length === 0) break;
-                        data.forEach(r => r.company && names.push(r.company));
-                        if (data.length < 1000) break;
-                        pg++;
-                    }
-                    return names;
-                };
-
-                const backupNames = await fetchAllConfirmed('audit_reviews_backup');
-                confirmedNames = Array.from(new Set([...backupNames])).filter(Boolean);
-            }
-
-            if (confirmedNames.length === 0) {
-                setCompanies([]);
-                setTotalCompanies(0);
-                return;
-            }
-
-            // STEP 2: Fetch job counts and info for these companies in ONE batch.
-            // No complex ordering here to prevent CORS/timeout issues.
+            const TARGETS = ['Google', 'Microsoft', 'Meta'];
+            
+            // STEP 1: Fetch job counts and info for these companies in ONE batch.
             const { data: jobData, error: jobError } = await supabase
                 .from('job_jobrole_sponsored_sync')
                 .select('company, job_role_name, wage_level, wage_num')
-                .in('company', confirmedNames)
+                .in('company', TARGETS)
                 .limit(1000);
 
             if (jobError) console.warn('Job fetch warning (non-fatal):', jobError);
@@ -199,8 +134,8 @@ const MigrateHero = () => {
                 }
             });
 
-            // Ensure every company from Step 1 exists in the final array
-            confirmedNames.forEach(name => {
+            // Ensure every target brand exists in the final array
+            TARGETS.forEach(name => {
                 if (!companyStats.has(name)) {
                     companyStats.set(name, {
                         company: name,
@@ -212,28 +147,31 @@ const MigrateHero = () => {
                 }
             });
 
-            let arr = Array.from(companyStats.values()).map(c => {
-                const industriesArr = Array.from(c.industries);
-                // Prioritize matching industries in display
-                if (debouncedCompanySearch) {
-                    const words = debouncedCompanySearch.toLowerCase().trim().split(/\s+/).filter(w => w.length >= 1);
-                    industriesArr.sort((a, b) => {
-                        const aMatch = words.every(w => a.toLowerCase().includes(w));
-                        const bMatch = words.every(w => b.toLowerCase().includes(w));
-                        if (aMatch && !bMatch) return -1;
-                        if (!aMatch && bMatch) return 1;
-                        return 0;
-                    });
-                }
-                return {
-                    ...c,
-                    industries: industriesArr // Keep full list for accurate sorting/display prioritization
-                };
-            });
+            let arr = Array.from(companyStats.values());
+
+            // ── MANDATORY PRECISE FILTERING (v11) ──
+            if (debouncedCompanySearch && debouncedCompanySearch.trim()) {
+                const n = (s) => String(s || '').toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim().replace(/\s+/g, ' ');
+                const nS = n(debouncedCompanySearch);
+                
+                arr = arr.filter(c => {
+                    const cName = n(c.company);
+                    // Allow partial match for the company cards themselves so they don't vanish while typing
+                    const matchName = cName.includes(nS) || nS.includes(cName);
+                    // Keep role matching strict
+                    const matchRole = Array.from(c.industries).some(r => n(r) === nS);
+                    return matchName || matchRole;
+                });
+            }
+
+            arr = arr.map(c => ({
+                ...c,
+                industries: Array.from(c.industries)
+            }));
 
             // Cache the results
             if (!debouncedCompanySearch) {
-                window._landingPageCompaniesCache = arr;
+                window._landingPageCompaniesCache_v11 = arr;
             }
 
             // Apply selected sorting with Famous Priority
@@ -248,8 +186,7 @@ const MigrateHero = () => {
             });
 
             setTotalCompanies(arr.length);
-            const from = (companyPage - 1) * COMPANIES_PER_PAGE;
-            const pagedArr = arr.slice(from, from + COMPANIES_PER_PAGE);
+            const pagedArr = arr.slice(0, 3);
             setCompanies(pagedArr);
 
             // Auto-select logic
@@ -295,19 +232,29 @@ const MigrateHero = () => {
                 .order('wage_num', { ascending: false, nullsFirst: false })
                 .order('date_posted', { ascending: false });
 
-            // Strict Role Search: (Title has all words) OR (Role has all words)
+            const { data: rawData, error, count } = await q.range(from, from + JOBS_PER_PAGE - 1);
+            if (error) throw error;
+            let data = rawData || [];
+
+            // ── MANDATORY PRECISE MATCHING (v11) ──
             if (debouncedCompanySearch && debouncedCompanySearch.trim()) {
-                const words = debouncedCompanySearch.trim().split(/\s+/).filter(w => w.length >= 1);
-                if (words.length > 0) {
-                    const titleCond = `and(${words.map(w => `title.ilike.%${w}%`).join(',')})`;
-                    const roleCond = `and(${words.map(w => `job_role_name.ilike.%${w}%`).join(',')})`;
-                    q = q.or(`${titleCond},${roleCond}`);
+                const n = (s) => String(s || '').toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim().replace(/\s+/g, ' ');
+                const nS = n(debouncedCompanySearch);
+                
+                // If search is NOT a company brand match (prefix or exact), apply strict role matching
+                const TARGETS = ['Google', 'Microsoft', 'Meta'];
+                const isCompanySearch = TARGETS.some(t => {
+                    const nt = n(t);
+                    return nt.includes(nS) || nS.includes(nt);
+                });
+                
+                if (!isCompanySearch) {
+                    data = data.filter(j => {
+                        const primary = j.title || j.job_role_name || '';
+                        return n(primary) === nS;
+                    });
                 }
             }
-
-            const { data, error, count } = await q.range(from, from + JOBS_PER_PAGE - 1);
-
-            if (error) throw error;
 
             // Map for compatibility with CompanyJobCard
             const mappedData = (data || []).map(j => ({
@@ -349,7 +296,7 @@ const MigrateHero = () => {
     }, [selectedCompany, jobPage, debouncedCompanySearch]);
 
     useEffect(() => { fetchCompanies(); }, [debouncedCompanySearch, sortBy, companyPage]);
-    useEffect(() => { fetchCompanyJobs(); }, [selectedCompany, jobPage]);
+    useEffect(() => { fetchCompanyJobs(); }, [selectedCompany, jobPage, debouncedCompanySearch]);
 
     const handleCompanySelect = (co) => {
         setSelectedCompany(co.company);
@@ -357,9 +304,9 @@ const MigrateHero = () => {
         setJobPage(1);
     };
 
-    const handleSuggestionClick = (role) => {
-        setCompanySearch(role);
-        setDebouncedCompanySearch(role); // Instant update on select
+    const handleSuggestionClick = (coName) => {
+        setCompanySearch(coName);
+        setDebouncedCompanySearch(coName); // Instant update on select
         setShowSuggestions(false);
         setCompanyPage(1);
     };
@@ -370,7 +317,9 @@ const MigrateHero = () => {
         setCompanyPage(1);
 
         if (val.trim().length > 0) {
-            const filtered = filterRoles(allRoles, val, 8);
+            const filtered = allCompanies
+                .filter(c => c.toLowerCase().includes(val.toLowerCase()))
+                .slice(0, 8);
             setFilteredSuggestions(filtered);
             setShowSuggestions(filtered.length > 0);
         } else {
@@ -437,7 +386,7 @@ const MigrateHero = () => {
                                             if (companySearch.length > 0) setShowSuggestions(true);
                                         }}
                                         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                                        placeholder="Search roles or companies"
+                                        placeholder="Search companies (e.g. Google, Meta)"
                                         style={{
                                             flex: 1,
                                             border: 'none',
@@ -473,12 +422,12 @@ const MigrateHero = () => {
                                         paddingTop: '52px'
                                     }}>
                                         <div style={{ borderTop: '0.5px solid rgba(255,255,255,0.1)' }}>
-                                            {filteredSuggestions.map((role, idx) => (
+                                            {filteredSuggestions.map((coName, idx) => (
                                                 <div
-                                                    key={role}
+                                                    key={coName}
                                                     onMouseDown={(e) => {
                                                         e.preventDefault();
-                                                        handleSuggestionClick(role);
+                                                        handleSuggestionClick(coName);
                                                     }}
                                                     style={{
                                                         padding: '12px 20px',
@@ -499,7 +448,7 @@ const MigrateHero = () => {
                                                     }}
                                                 >
                                                     <Search size={14} color="#94a3b8" />
-                                                    <span style={{ fontWeight: 400 }}>{role}</span>
+                                                    <span style={{ fontWeight: 400 }}>{coName}</span>
                                                 </div>
                                             ))}
                                         </div>
