@@ -418,7 +418,7 @@ const JobRow = ({ job, isSaved, onSave }) => {
                                 boxShadow: '0 3px 10px rgba(253, 185, 19, 0.15)',
                             }}
                         >
-                            Sign up to Apply <ExternalLink size={14} />
+                            Get Access to Apply <ExternalLink size={14} />
                         </Link>
                     ) : (
                         <a

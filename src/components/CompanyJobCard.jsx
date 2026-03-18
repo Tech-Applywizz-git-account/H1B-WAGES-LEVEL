@@ -98,7 +98,7 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
         if (isLandingPage) {
             return (
                 <Link to={user ? "/pricing" : "/signup"} style={baseStyle} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-                    {user ? "Sign up to Apply" : "Sign up to Apply"} <ExternalLink size={13} />
+                    {user ? "Get Access to Apply" : "Get Access to Apply"} <ExternalLink size={13} />
                 </Link>
             );
         }
@@ -106,7 +106,7 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
         if (job.isTeaser) {
             return (
                 <Link to="/pricing" style={baseStyle} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-                    Sign up to Apply <ExternalLink size={13} />
+                    Get Access to Apply <ExternalLink size={13} />
                 </Link>
             );
         }
