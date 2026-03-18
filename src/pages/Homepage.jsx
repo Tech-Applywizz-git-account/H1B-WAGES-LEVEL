@@ -1210,8 +1210,19 @@ const Homepage = () => {
 
       const total = paymentStatus === 'pending' ? Math.min(2, unique.length) : unique.length;
 
-      // Final Priority Sort: (1) Salary First, (2) Verified, (3) Newest
+      // Final Priority Sort: (0) Wage Level (if filtered), (1) Salary First, (2) Verified, (3) Newest
       unique.sort((a, b) => {
+        // Explictly sort Lv 1 mathematically above Lv 2 when multiple levels selected
+        if (level && level.length > 1) {
+            const getLv = (j) => {
+                const m = String(j.wage_level || j.wage_num || '').match(/\d/);
+                return m ? parseInt(m[0]) : 99;
+            };
+            const wA = getLv(a);
+            const wB = getLv(b);
+            if (wA !== wB) return wA - wB; 
+        }
+
         const hasSal = (s) => s && s.includes('$');
         const aHasSal = hasSal(a.salary);
         const bHasSal = hasSal(b.salary);

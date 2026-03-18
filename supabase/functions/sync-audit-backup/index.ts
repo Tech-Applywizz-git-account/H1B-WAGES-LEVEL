@@ -46,38 +46,45 @@ Deno.serve(async (req) => {
         const source = createClient(SOURCE_URL, SOURCE_KEY, { auth: { persistSession: false } });
         const target = createClient(TARGET_URL, TARGET_KEY, { auth: { persistSession: false } });
 
-        // ── Step 1: Read all IDs already in the TARGET ────────────────────────
-        // Using id (record ID) for deduplication to allow multiple audits for same job_id
+        // ── Step 1: Read all IDs and job_ids in TARGET (Double Lock!) ─────────
         let existingIds: Set<string> = new Set();
+        let existingJobIds: Set<string> = new Set();
         let targetPage = 0;
         const PAGE_SIZE = 1000;
 
         while (true) {
             const { data: existing, error: existErr } = await target
                 .from('audit_reviews_backup')
-                .select('id')
+                .select('id, job_id')
+                .order('id', { ascending: true }) // Crucial for stable pagination!
                 .range(targetPage * PAGE_SIZE, (targetPage + 1) * PAGE_SIZE - 1);
 
             if (existErr) throw new Error(`Target read failed: ${existErr.message}`);
             if (!existing || existing.length === 0) break;
 
-            existing.forEach(r => existingIds.add(r.id));
+            existing.forEach(r => {
+                existingIds.add(r.id);
+                if (r.job_id) existingJobIds.add(stringNormalization(r.job_id));
+            });
             if (existing.length < PAGE_SIZE) break;
             targetPage++;
         }
 
-        console.log(`[sync] Target has ${existingIds.size} existing records`);
+        function stringNormalization(s: string) {
+            return String(s || '').trim().toLowerCase();
+        }
+
+        console.log(`[sync] Target has ${existingIds.size} existing IDs and ${existingJobIds.size} unique Job IDs`);
 
         // ── Step 2: Read all records from SOURCE ───────────────────────────────
-        // Fixed: source table name should be 'audit_reviews' not 'audit_reviews_backup'
         let sourceRecords: any[] = [];
         let sourcePage = 0;
 
         while (true) {
             const { data, error } = await source
-                .from('audit_reviews')
+                .from('audit_reviews_backup')
                 .select('id, job_id, company, role, domain, job_link, decision, remarks, observant_name, audit_date, created_at, tl_confirmation, tl_name, admin_confirmation, admin_name, audit_link_review, salary')
-                .order('created_at', { ascending: true }) // Ascending so we don't skip records during pagination
+                .order('id', { ascending: true }) // Fixed: order by UUID for guaranteed stability
                 .range(sourcePage * PAGE_SIZE, (sourcePage + 1) * PAGE_SIZE - 1);
 
             if (error) throw new Error(`Source read failed: ${error.message}`);
@@ -90,8 +97,11 @@ Deno.serve(async (req) => {
 
         console.log(`[sync] Source has ${sourceRecords.length} total records`);
 
-        // ── Step 3: Filter to ONLY new records (not in target) ─────────────────
-        const newRecords = sourceRecords.filter(r => !existingIds.has(r.id));
+        // ── Step 3: Filter (Double-Lock Check) ─────────────────────────────────
+        const newRecords = sourceRecords.filter(r => 
+            !existingIds.has(r.id) && 
+            !existingJobIds.has(stringNormalization(r.job_id))
+        );
 
         if (newRecords.length === 0) {
             return new Response(JSON.stringify({ success: true, inserted: 0, message: 'Already up to date' }), {
@@ -99,9 +109,9 @@ Deno.serve(async (req) => {
             });
         }
 
-        console.log(`[sync] Inserting ${newRecords.length} new records`);
+        console.log(`[sync] Found ${newRecords.length} new records (not in Target). Inserting...`);
 
-        // ── Step 4: INSERT new records in batches ──────────────────────────────
+        // ── Step 4: INSERT ────────────────────────────────────────────────────
         const BATCH = 100;
         let totalInserted = 0;
         const errors: string[] = [];
@@ -133,7 +143,7 @@ Deno.serve(async (req) => {
 
             if (insertErr) {
                 errors.push(`batch ${Math.floor(i / BATCH) + 1}: ${insertErr.message}`);
-                console.error(`[sync] Insert error batch ${Math.floor(i / BATCH) + 1}:`, insertErr.message);
+                console.error(`[sync] Insert error:`, insertErr.message);
             } else {
                 totalInserted += batch.length;
             }
@@ -143,7 +153,7 @@ Deno.serve(async (req) => {
             success: errors.length === 0,
             inserted: totalInserted,
             sourceCount: sourceRecords.length,
-            targetExistingCount: existingIds.size,
+            targetCount: existingIds.size + totalInserted,
             errors: errors.length > 0 ? errors : undefined,
         };
 

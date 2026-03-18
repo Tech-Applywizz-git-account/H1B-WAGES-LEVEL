@@ -627,8 +627,13 @@ const AllJobsTab = () => {
                 if (!groups.has(co)) groups.set(co, []);
                 groups.get(co).push(j);
             });
-            // Recency sort within company
-            groups.forEach(g => g.sort((a, b) => new Date(b.date_posted || 0) - new Date(a.date_posted || 0)));
+            // Sort within company: Wage Level (ascending) -> Recency (descending)
+            groups.forEach(g => g.sort((a, b) => {
+                const wA = parseWageLevel(a.wage_level) || 99;
+                const wB = parseWageLevel(b.wage_level) || 99;
+                if (wA !== wB) return wA - wB;
+                return new Date(b.date_posted || 0) - new Date(a.date_posted || 0);
+            }));
             const cos = Array.from(groups.keys()).sort((a, b) => {
                 const rA = getCompanyRank(a), rB = getCompanyRank(b);
                 return rA !== rB ? rA - rB : a.localeCompare(b);
@@ -892,6 +897,16 @@ const AllJobsTab = () => {
 
             qList = interleaveJobs(qList);
 
+            // Re-sort the final interleaved list by Wage Level so Lv 1 mathematically MUST appear before Lv 2
+            if (level && level.length > 1) {
+                qList.sort((a, b) => {
+                    const wA = parseWageLevel(a.wage_level) || 99;
+                    const wB = parseWageLevel(b.wage_level) || 99;
+                    if (wA !== wB) return wA - wB; // Lower wage levels first
+                    return 0; // Maintain interleaved order for matching wage levels
+                });
+            }
+
             const qTotal = (search && search.trim())
                 ? qList.length
                 : (filter === 'verified'
@@ -1074,7 +1089,17 @@ const AllJobsTab = () => {
                         });
                     }
 
-                    const interleaved = interleaveJobs(fullList);
+                    let interleaved = interleaveJobs(fullList);
+
+                    // Re-sort the final interleaved list by Wage Level so Lv 1 mathematically MUST appear before Lv 2
+                    if (level && level.length > 1) {
+                        interleaved.sort((a, b) => {
+                            const wA = parseWageLevel(a.wage_level) || 99;
+                            const wB = parseWageLevel(b.wage_level) || 99;
+                            if (wA !== wB) return wA - wB;
+                            return 0;
+                        });
+                    }
 
                     const fullTotal = (search && search.trim())
                         ? interleaved.length
