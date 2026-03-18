@@ -15,32 +15,152 @@ import { cacheGet, cacheSet, cacheInvalidatePrefix, TTL } from '../utils/queryCa
 
 const JOBS_PER_PAGE = 15;
 
-// ── Verified seal SVG ──────────────────────────────────────────────────────
-const VerifiedSeal = ({ size = 16 }) => (
-    <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
-        <path d="M50 4 L57 16 L70 10 L70 24 L84 24 L78 37 L91 44 L81 55 L88 68 L74 69 L70 83 L57 78 L50 90 L43 78 L30 83 L26 69 L12 68 L19 55 L9 44 L22 37 L16 24 L30 24 L30 10 L43 16 Z" fill="#22c55e" />
-        <polyline points="33,52 44,63 68,38" fill="none" stroke="white" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-);
-
 // Helper to extract numeric level (1, 2, 3, 4) from strings like "Lv 3", "Level III", "3", etc.
-const parseWageLevel = (lvl) => {
+function parseWageLevel(lvl) {
     if (!lvl) return null;
     const m = String(lvl).match(/\d/);
     return m ? parseInt(m[0]) : null;
-};
+}
+
+// ── Global Helpers for Identity & Normalization ─────────────────────────
+function _normR(s) {
+    return String(s || '').toLowerCase().replace(/[-–—]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function _lvlKey(lv) {
+    const n = parseWageLevel(lv);
+    return n ? String(n) : '';
+}
+
+function _urlKey(u) {
+    if (!u) return '';
+    let s = String(u).toLowerCase().trim();
+    try {
+        const o = new URL(s.startsWith('http') ? s : `https://${s}`);
+        let hostname = o.hostname.replace(/^www\./, '');
+        if (hostname.includes('linkedin.com')) hostname = 'linkedin.com';
+        const m = o.pathname.match(/\d{9,}/); 
+        if (m) return hostname + '||' + m[0];
+        return (hostname + o.pathname).replace(/\/$/, '');
+    } catch {
+        return s.split('?')[0].split('#')[0].replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
+    }
+}
+
+function VerifiedSeal({ size = 16 }) {
+    return (
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#22c55e', flexShrink: 0 }}>
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+            </svg>
+        </div>
+    );
+}
+
+function getCanonicalCompany(name) {
+    if (!name) return 'Unknown';
+    const n = String(name).toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
+    if (n.match(/\bamazon\b|\baws\b|\bamazon\.com\b/i)) return 'Amazon';
+    if (n.match(/\bgoogle\b|\balphabet\b/i)) return 'Google';
+    if (n.match(/\bmeta\b|\bfacebook\b/i)) return 'Meta';
+    if (n.match(/\bmicrosoft\b/i)) return 'Microsoft';
+    if (n.match(/\bapple\b/i)) return 'Apple';
+    return name;
+}
+
+function _jobKeyRaw(company, title, location) {
+    return `${getCanonicalCompany(company).toLowerCase()}||${_normR(title || '')}||${_normR(location || 'united states')}`;
+}
+function _jobKey(j) { return _jobKeyRaw(j.company, j.title, j.location); }
 
 // ── Job Row ────────────────────────────────────────────────────────────────
 const JobRow = ({ job, isSaved, onSave }) => {
     const level = parseWageLevel(job.wage_level);
     const [hovered, setHovered] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+    const [filingCount, setFilingCount] = useState(job.lca_filings || null);
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 1024);
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    // Self-enrichment for filings
+    useEffect(() => {
+        if (job.lca_filings !== undefined) {
+            setFilingCount(job.lca_filings);
+            return;
+        }
+
+        const fetchFilings = async () => {
+            if (!job.company) {
+                setFilingCount(0);
+                return;
+            }
+
+            const normalize = (name) => {
+                if (!name) return '';
+                let n = name.toLowerCase()
+                    .replace(/\([^)]*\)/g, ' ')
+                    .replace(/[.,\-\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
+                    .replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies|group|holdings|usa|us|intl|international|solutions|aws|related|web|tech|software|management|financial|insurance|banking|health|healthcare|travel|company)\b/g, ' ')
+                    .replace(/\s+/g, ' ')
+                    .trim();
+                if (n.includes('amazon')) return 'amazon';
+                if (n.includes('google') || n.includes('alphabet')) return 'google';
+                if (n.includes('meta') || n.includes('facebook')) return 'meta';
+                if (n.includes('microsoft')) return 'microsoft';
+                if (n.includes('apple')) return 'apple';
+                return n;
+            };
+
+            const norm = normalize(job.company);
+            const words = norm.split(' ').filter(Boolean);
+            const coreTerm = words.length > 0 ? words[0] : norm;
+
+            try {
+                const { data } = await supabase
+                    .from('h1b_sponsor_finder')
+                    .select('Company, "LCA Filings"')
+                    .ilike('Company', `%${coreTerm}%`)
+                    .limit(10);
+
+                if (data && data.length > 0) {
+                    const parseCount = (v) => typeof v === 'number' ? v : parseInt(String(v).replace(/,/g, '')) || 0;
+                    const sorted = [...data].sort((a, b) => parseCount(b["LCA Filings"]) - parseCount(a["LCA Filings"]));
+                    let best = 0;
+                    const nNorm = normalize(job.company);
+
+                    for (const m of sorted) {
+                        const mNorm = normalize(m.Company);
+                        const nNormLower = nNorm.toLowerCase().trim();
+                        const mNormLower = mNorm.toLowerCase().trim();
+
+                        if (mNormLower === nNormLower || mNormLower.includes(nNormLower) || nNormLower.includes(mNormLower)) {
+                            best = parseCount(m["LCA Filings"]);
+                            break;
+                        }
+
+                        // Fallback matching
+                        const mWords = mNormLower.split(' ');
+                        const nWords = nNormLower.split(' ');
+                        if (mWords[0] === nWords[0] && mWords[0].length > 3) {
+                            if (parseCount(m["LCA Filings"]) > best) best = parseCount(m["LCA Filings"]);
+                        }
+                    }
+                    setFilingCount(best);
+                } else {
+                    setFilingCount(0);
+                }
+            } catch (e) {
+                setFilingCount(0);
+            }
+        };
+
+        const timer = setTimeout(fetchFilings, 100); // Small delay to let batch enrichment work first
+        return () => clearTimeout(timer);
+    }, [job.company, job.lca_filings]);
 
     const formatDate = (d) => {
         if (!d) return 'Recently';
@@ -104,7 +224,7 @@ const JobRow = ({ job, isSaved, onSave }) => {
                         </div>
 
                         {/* Filings Card */}
-                        {job.lca_filings > 0 && (
+                        {filingCount > 0 && (
                             <div style={{
                                 background: '#1a2b4b',
                                 borderRadius: '12px',
@@ -116,7 +236,9 @@ const JobRow = ({ job, isSaved, onSave }) => {
                                 boxShadow: '0 4px 12px rgba(26, 43, 75, 0.1)'
                             }}>
                                 <Globe size={8} color="#718096" strokeWidth={3} style={{ marginBottom: '4px' }} />
-                                <span style={{ fontSize: '15px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1 }}>{job.lca_filings.toLocaleString()}</span>
+                                <span style={{ fontSize: '15px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1 }}>
+                                    {filingCount.toLocaleString()}
+                                </span>
                                 <span style={{ fontSize: '7px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.4px' }}>FILINGS</span>
                             </div>
                         )}
@@ -173,13 +295,18 @@ const JobRow = ({ job, isSaved, onSave }) => {
                         onMouseLeave={e => e.currentTarget.style.color = '#111'}
                         onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); }}
                     >
-                        {job.title || job.role || job.job_role_name || 'Job Opening'}
+                        {job.title}
                     </a>
                 </h3>
 
                 {/* Row 3: Company Name as Subtext */}
-                <div style={{ fontSize: '13px', fontWeight: 500, color: '#718096', marginBottom: '8px' }}>
+                <div style={{ fontSize: '13px', fontWeight: 500, color: '#718096', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     {job.company}
+                    {job.lca_filings > 0 && (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#24385E', fontSize: '11px', fontWeight: 700, background: '#f1f5f9', borderRadius: '4px', padding: '1px 6px' }}>
+                            <Globe size={11} strokeWidth={2.5} /> {job.lca_filings.toLocaleString()}
+                        </span>
+                    )}
                 </div>
 
 
@@ -221,7 +348,7 @@ const JobRow = ({ job, isSaved, onSave }) => {
                         {/* Wage Level Card */}
                         <div style={{
                             background: '#1a2b4b',
-                            borderRadius: '14px',
+                            borderRadius: '12px',
                             padding: '10px 14px',
                             display: 'flex',
                             flexDirection: 'column',
@@ -243,7 +370,7 @@ const JobRow = ({ job, isSaved, onSave }) => {
                         </div>
 
                         {/* Filings Card */}
-                        {job.lca_filings > 0 && (
+                        {filingCount > 0 && (
                             <div style={{
                                 background: '#1a2b4b',
                                 borderRadius: '14px',
@@ -256,7 +383,7 @@ const JobRow = ({ job, isSaved, onSave }) => {
                             }}>
                                 <Globe size={11} color="#718096" strokeWidth={2.5} style={{ marginBottom: '5px' }} />
                                 <span style={{ fontSize: '22px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1, letterSpacing: '0.4px' }}>
-                                    {job.lca_filings.toLocaleString()}
+                                    {filingCount.toLocaleString()}
                                 </span>
                                 <span style={{ fontSize: '7.5px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.8px', marginTop: '3px' }}>LCA FILINGS</span>
                             </div>
@@ -474,18 +601,14 @@ const AllJobsTab = () => {
         return s;
     };
 
-    // Canonical name mapping to group aliases (e.g., Amazon and AWS)
-    const getCanonicalCompany = (name) => {
-        if (!name) return 'Unknown';
-        const n = String(name).toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
-        // Strict mapping for Amazon and its subsidiaries
-        if (n.match(/\bamazon\b|\baws\b|\bamazon\.com\b/i)) return 'Amazon';
-        if (n.match(/\bgoogle\b|\balphabet\b/i)) return 'Google';
-        if (n.match(/\bmeta\b|\bfacebook\b/i)) return 'Meta';
-        if (n.match(/\bmicrosoft\b/i)) return 'Microsoft';
-        if (n.match(/\bapple\b/i)) return 'Apple';
-        return name;
-    };
+
+    // ── Verified seal SVG ──────────────────────────────────────────────────────
+    const VerifiedSeal = ({ size = 16 }) => (
+        <svg width={size} height={size} viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+            <path d="M50 4 L57 16 L70 10 L70 24 L84 24 L78 37 L91 44 L81 55 L88 68 L74 69 L70 83 L57 78 L50 90 L43 78 L30 83 L26 69 L12 68 L19 55 L9 44 L22 37 L16 24 L30 24 L30 10 L43 16 Z" fill="#22c55e" />
+            <polyline points="33,52 44,63 68,38" fill="none" stroke="white" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+    );
 
     /**
      * Strictly interleaves jobs to ensure:
@@ -618,32 +741,30 @@ const AllJobsTab = () => {
             if (search && search.trim()) {
                 const sLow = search.trim().toLowerCase();
                 const words = sLow.split(/\s+/).filter(w => w.length >= 1);
-                
+
                 // Identify if it's a role search (contains role keywords)
                 const roleKeywords = ['analyst', 'developer', 'engineer', 'scientist', 'designer', 'manager', 'lead', 'senior', 'junior', 'architect', 'data', 'software', 'ai', 'ml', 'researcher'];
                 const isRoleS = words.some(w => roleKeywords.includes(w));
 
                 const tC = `and(${words.map(w => `title.ilike.%${w}%`).join(',')})`;
-                const rC = `and(${words.map(w => `job_role_name.ilike.%${w}%`).join(',')})`;
                 const cC = `and(${words.map(w => `company.ilike.%${w}%`).join(',')})`;
-                
+
                 // If it's a role search, don't match on company name alone in DB query
                 if (isRoleS && words.length >= 2) {
-                    quickQ = quickQ.or(`${tC},${rC}`);
-                    quickRankedQ = quickRankedQ.or(`${tC},${rC}`);
+                    quickQ = quickQ.or(`${tC}`);
+                    quickRankedQ = quickRankedQ.or(`${tC}`);
                 } else {
-                    quickQ = quickQ.or(`${tC},${rC},${cC}`);
-                    quickRankedQ = quickRankedQ.or(`${tC},${rC},${cC}`);
+                    quickQ = quickQ.or(`${tC},${cC}`);
+                    quickRankedQ = quickRankedQ.or(`${tC},${cC}`);
                 }
 
-                const rvC = `and(${words.map(w => `role.ilike.%${w}%`).join(',')})`;
-                const dvC = `and(${words.map(w => `domain.ilike.%${w}%`).join(',')})`;
                 const cvC = `and(${words.map(w => `company.ilike.%${w}%`).join(',')})`;
-                
+
                 if (isRoleS && words.length >= 2) {
-                    qvBackup = qvBackup.or(`${rvC},${dvC}`);
+                    // Strictly NO role/domain search even in backup if we want 'ONLY title'
+                    qvBackup = qvBackup.filter('domain', 'ilike', '%NON_EXISTENT_NONE%'); 
                 } else {
-                    qvBackup = qvBackup.or(`${rvC},${dvC},${cvC}`);
+                    qvBackup = qvBackup.or(`${cvC}`);
                 }
             }
             if (level && level.length > 0) {
@@ -659,18 +780,14 @@ const AllJobsTab = () => {
             ]);
             if (qStdRes?.error) throw qStdRes.error;
 
-            const _normRq = s => String(s || '').toLowerCase().replace(/[-–—]/g, ' ').replace(/\s+/g, ' ').trim();
-            const _lvlKeyQ = lv => { let m = String(lv || '').match(/\d/); return m ? m[0] : ''; };
-            const _jobKeyQ = j => `${getCanonicalCompany(j.company).toLowerCase()}||${_normRq(j.title || j.role || j.job_role_name || '')}||${_normRq(j.location || 'us')}`;
-
             const quickVSet = verifiedSet || await getVerifiedSet();
-            const qVerified = [
+            const vVerified = [
                 ...(qBackupRes.data || [])
             ].map(r => {
                 const lvlNum = parseWageLevel(r.salary);
                 return {
                     ...r,
-                    title: r.role || r.domain || null,
+                    title: null, // Strictly from sponsored table only
                     role: r.role,
                     url: r.job_link,
                     date_posted: r.audit_date,
@@ -681,14 +798,63 @@ const AllJobsTab = () => {
                     wage_level: lvlNum ? `Lv ${lvlNum}` : null
                 };
             });
-            const qSponsored = [...(qRankedRes.data || []), ...(qStdRes.data || [])].map(j => ({ ...j, job_id: j.id, isVerified: j.isVerified || quickVSet.has(j.company) || false, isTeaser: paymentStatus === 'pending' }));
+
+            const vIdsQ = [...new Set(vVerified.map(v => v.job_id))].filter(Boolean);
+            const vUrlsQ = [...new Set(vVerified.map(v => v.url))].filter(Boolean);
+            const vCosQ = [...new Set(vVerified.map(v => v.company))].filter(Boolean);
+            
+            let qDeepSpon = [];
+            if (vIdsQ.length > 0 || vUrlsQ.length > 0 || vCosQ.length > 0) {
+                const idNumList = vIdsQ.map(id => parseInt(id)).filter(n => !isNaN(n));
+                const liIds = vUrlsQ.map(u => { const m = u.match(/\d{9,}/); return m ? m[0] : null; }).filter(Boolean);
+                const queries = [
+                    idNumList.length > 0 ? supabase.from('job_jobrole_sponsored_sync').select('*').in('id', idNumList) : null,
+                    vIdsQ.length > 0 ? supabase.from('job_jobrole_sponsored_sync').select('*').in('jobId', vIdsQ) : null,
+                    vUrlsQ.length > 0 ? supabase.from('job_jobrole_sponsored_sync').select('*').in('url', vUrlsQ) : null,
+                    // Also fetch by company if we have missing pieces
+                    vCosQ.length > 0 ? supabase.from('job_jobrole_sponsored_sync').select('*').in('company', vCosQ).limit(1000) : null
+                ].filter(Boolean);
+                if (liIds.length > 0) queries.push(supabase.from('job_jobrole_sponsored_sync').select('*').or(liIds.map(id => `url.ilike.%${id}%`).join(',')));
+                const results = await Promise.all(queries);
+                results.forEach(r => { if (r.data) qDeepSpon.push(...r.data); });
+            }
+
+            const qSponsored = [...(qRankedRes.data || []), ...(qStdRes.data || []), ...qDeepSpon]
+                .map(j => ({ ...j, job_id: j.id, isVerified: j.isVerified || quickVSet.has(j.company) || false, isTeaser: paymentStatus === 'pending' }));
+
+            const qMetaStore = new Map();
+            qSponsored.forEach(s => {
+                const uk = _urlKey(s.url);
+                if (uk) qMetaStore.set('u:' + uk, s);
+                if (s.id) qMetaStore.set('i:' + s.id, s);
+                if (s.jobId) qMetaStore.set('j:' + s.jobId, s);
+            });
+
+            vVerified.forEach(v => {
+                const vk = _urlKey(v.url);
+                const meta = qMetaStore.get('u:' + vk) || qMetaStore.get('i:' + v.job_id) || qMetaStore.get('j:' + v.job_id);
+                if (meta) {
+                    v.title = meta.title; v.job_id = meta.id; v.wage_level = meta.wage_level || v.wage_level;
+                    v.location = meta.location || v.location; v.salary = meta.salary || v.salary;
+                } else {
+                    // Fallback matching by company + normalized role/domain if direct ID/URL match fails
+                    const companyJobs = qDeepSpon.filter(j => j.company === v.company);
+                    const vRole = _normR(v.role || v.domain || '');
+                    const bestMatch = companyJobs.find(j => _normR(j.title).includes(vRole) || _normR(j.job_role_name).includes(vRole));
+                    if (bestMatch) {
+                        v.title = bestMatch.title;
+                        v.job_id = bestMatch.id;
+                    }
+                }
+                if (!v.location) v.location = 'united states';
+            });
 
             const qMap = new Map();
-            qSponsored.forEach(j => qMap.set(_jobKeyQ(j), j));
-            qVerified.forEach(v => {
-                const jk = _jobKeyQ(v);
+            qSponsored.forEach(j => { if (!j.location) j.location = 'united states'; qMap.set(_jobKey(j), j); });
+            vVerified.forEach(v => {
+                const jk = _jobKey(v);
                 const ex = qMap.get(jk);
-                qMap.set(jk, ex ? { ...ex, ...v, isVerified: true, title: ex.title, wage_level: ex.wage_level || v.wage_level, salary: ex.salary || v.salary, location: ex.location || v.location, job_id: ex.job_id || v.job_id } : v);
+                qMap.set(jk, ex ? { ...ex, ...v, isVerified: true, title: ex.title || v.title, wage_level: ex.wage_level || v.wage_level, salary: ex.salary || v.salary, location: ex.location || v.location, job_id: ex.job_id || v.job_id } : v);
             });
 
             let qList = Array.from(qMap.values());
@@ -697,7 +863,7 @@ const AllJobsTab = () => {
             if (search && search.trim()) {
                 const sLower = search.trim().toLowerCase();
                 const sWords = sLower.split(/\s+/).filter(w => w.length >= 2);
-                
+
                 if (sWords.length > 0) {
                     const roleKeywords = ['analyst', 'developer', 'engineer', 'scientist', 'designer', 'manager', 'lead', 'senior', 'junior', 'architect', 'data', 'software', 'ai', 'ml', 'researcher'];
                     const isRoleSearch = sWords.some(w => roleKeywords.includes(w));
@@ -709,7 +875,7 @@ const AllJobsTab = () => {
                             .replace(/\s+/g, ' ');
                         const nS = n(search);
                         // LOCKDOWN: Only match the primary title field being displayed
-                        const primaryTitle = j.title || j.role || j.job_role_name || '';
+                        const primaryTitle = j.title || '';
                         return n(primaryTitle) === nS;
                     });
                 }
@@ -726,8 +892,8 @@ const AllJobsTab = () => {
 
             qList = interleaveJobs(qList);
 
-            const qTotal = (search && search.trim()) 
-                ? qList.length 
+            const qTotal = (search && search.trim())
+                ? qList.length
                 : (filter === 'verified'
                     ? (level && level.length > 0 ? qList.length : (qBackupRes.count || 0))
                     : (qStdRes.count || qList.length));
@@ -752,15 +918,25 @@ const AllJobsTab = () => {
                     let vBackup = supabase.from('audit_reviews_backup').select('*', { count: 'exact' }).eq('tl_confirmation', 'yes');
 
                     if (search && search.trim()) {
-                        const w = search.trim().split(/\s+/).filter(x => x.length >= 1);
-                        const tC = `and(${w.map(x => `title.ilike.%${x}%`).join(',')})`;
-                        const rC = `and(${w.map(x => `job_role_name.ilike.%${x}%`).join(',')})`;
-                        const cC = `and(${w.map(x => `company.ilike.%${x}%`).join(',')})`;
-                        rankedQuery = rankedQuery.or(`${tC},${rC},${cC}`);
-                        standardQuery = standardQuery.or(`${tC},${rC},${cC}`);
+                        const sLow = search.trim().toLowerCase();
+                        const words = sLow.split(/\s+/).filter(x => x.length >= 1);
+                        const roleKeywords = ['analyst', 'developer', 'engineer', 'scientist', 'designer', 'manager', 'lead', 'senior', 'junior', 'architect', 'data', 'software', 'ai', 'ml', 'researcher'];
+                        const isRoleS = words.some(x => roleKeywords.includes(x));
+                        
+                        const tC = `and(${words.map(x => `title.ilike.%${x}%`).join(',')})`;
+                        const cC = `and(${words.map(x => `company.ilike.%${x}%`).join(',')})`;
+                        
+                        // Phase 2 background: use the same search logic as Phase 1
+                        if (isRoleS && words.length >= 2) {
+                            rankedQuery = rankedQuery.or(`${tC}`);
+                            standardQuery = standardQuery.or(`${tC}`);
+                        } else {
+                            rankedQuery = rankedQuery.or(`${tC},${cC}`);
+                            standardQuery = standardQuery.or(`${tC},${cC}`);
+                        }
 
-                        const rvC = `and(${w.map(x => `role.ilike.%${x}%`).join(',')})`;
-                        vBackup = vBackup.or(rvC);
+                        // For verified backup, only match by company if title-strict (backup table has no title column)
+                        vBackup = vBackup.filter('domain', 'ilike', '%NON_EXISTENT_NONE%'); 
                     }
                     if (level && level.length > 0) {
                         const exp = level.flatMap(l => { const n = l.match(/\d/)?.[0]; if (!n) return [l]; const rom = { '1': 'I', '2': 'II', '3': 'III', '4': 'IV' }[n]; return [l, `Level ${n}`, `Level ${rom}`, n, `Lv ${n}`, `Lv${n}`]; });
@@ -785,45 +961,88 @@ const AllJobsTab = () => {
                     }
                     if (standardRes?.error) return;
 
-                    const mapV = r => {
+                    const qvVerified = [...(backupRes.data || [])].map(r => {
                         const lvlNum = parseWageLevel(r.salary);
                         return {
-                            ...r,
-                            title: r.role || r.domain || null,
-                            role: r.role,
-                            url: r.job_link,
-                            date_posted: r.audit_date,
-                            job_role_name: r.domain,
-                            isVerified: true,
-                            isTeaser: paymentStatus === 'pending',
-                            job_id: r.job_id,
+                            ...r, title: null, role: r.role, url: r.job_link, date_posted: r.audit_date,
+                            job_role_name: r.domain, isVerified: true, job_id: r.job_id,
                             wage_level: lvlNum ? `Lv ${lvlNum}` : null
                         };
-                    };
-                    const verifiedJobs = [...(backupRes.data || [])].map(mapV);
+                    });
+
                     const vSet = verifiedSet || await getVerifiedSet();
-                    const _normR = s => String(s || '').toLowerCase().replace(/[-–—]/g, ' ').replace(/\s+/g, ' ').trim();
-                    const _urlKey = u => { if (!u) return ''; let s = String(u).toLowerCase().trim(); try { const o = new URL(s.startsWith('http') ? s : `https://${s}`); return (o.hostname + o.pathname).replace(/^www\./, '').replace(/\/$/, ''); } catch { return s.split('?')[0].split('#')[0].replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, ''); } };
-                    const _jobKey = j => `${getCanonicalCompany(j.company).toLowerCase()}||${_normR(j.title || j.role || j.job_role_name || '')}||${_normR(j.location || 'us')}`;
-
-                    const vUrls = [...new Set(verifiedJobs.map(v => v.url))].filter(Boolean);
+                    const vIdsB = [...new Set(qvVerified.map(v => v.job_id))].filter(Boolean);
+                    const vUrlsB = [...new Set(qvVerified.map(v => v.url))].filter(Boolean);
+                    const vCosB = [...new Set(qvVerified.map(v => v.company))].filter(Boolean);
                     let deepSponsored = [];
-                    if (vUrls.length > 0) {
-                        const chunks = [];
-                        for (let i = 0; i < vUrls.length; i += 100) chunks.push(vUrls.slice(i, i + 100));
-                        const dr = await Promise.all(chunks.map(c => supabase.from('job_jobrole_sponsored_sync').select('*').in('url', c)));
-                        dr.forEach(r => { if (r.data) deepSponsored.push(...r.data); });
-                    }
-                    const deepMeta = new Map();
-                    deepSponsored.forEach(s => { const uk = _urlKey(s.url); if (uk && !deepMeta.has(uk)) deepMeta.set(uk, s); });
-                    verifiedJobs.forEach(v => { const m = deepMeta.get(_urlKey(v.url)); if (m) { v.title = m.title; v.job_id = m.id; v.wage_level = m.wage_level || v.wage_level; v.salary = m.salary || v.salary; v.location = m.location || v.location; } });
+                    
+                        if (vIdsB.length > 0 || vUrlsB.length > 0 || vCosB.length > 0) {
+                            const chunks = [];
+                            const idNumList = vIdsB.map(id => parseInt(id)).filter(n => !isNaN(n));
+                            const liIds = vUrlsB.map(u => { const m = u.match(/\d{9,}/); return m ? m[0] : null; }).filter(Boolean);
+                            
+                            if (idNumList.length > 0) {
+                                for (let i = 0; i < idNumList.length; i += 200) 
+                                    chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').in('id', idNumList.slice(i, i + 200)));
+                            }
+                            if (vIdsB.length > 0) {
+                                for (let i = 0; i < vIdsB.length; i += 200) 
+                                    chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').in('jobId', vIdsB.slice(i, i + 200)));
+                            }
+                            if (liIds.length > 0) {
+                                for (let i = 0; i < liIds.length; i += 50) 
+                                    chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').or(liIds.slice(i, i + 50).map(id => `url.ilike.%${id}%`).join(',')));
+                            }
+                            if (vUrlsB.length > 0) {
+                                for (let i = 0; i < vUrlsB.length; i += 100) 
+                                    chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').in('url', vUrlsB.slice(i, i + 100)));
+                            }
+                            if (vCosB.length > 0) {
+                                for (let i = 0; i < vCosB.length; i += 100)
+                                    chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').in('company', vCosB.slice(i, i + 100)));
+                            }
+                            const results = await Promise.all(chunks);
+                            results.forEach(r => { if (r.data) deepSponsored.push(...r.data); });
+                        }
 
-                    const sponsoredJobs = [...(rankedRes.data || []), ...(standardRes.data || []), ...deepSponsored]
-                        .map(j => ({ ...j, job_id: j.id, isVerified: j.isVerified || vSet.has(j.company) || false, isTeaser: paymentStatus === 'pending' }));
+                        const sponsoredJobs = [...(rankedRes.data || []), ...(standardRes.data || []), ...deepSponsored]
+                            .map(j => ({ ...j, job_id: j.id, isVerified: j.isVerified || vSet.has(j.company) || false, isTeaser: paymentStatus === 'pending' }));
 
-                    const uMap = new Map();
-                    sponsoredJobs.forEach(j => uMap.set(_jobKey(j), j));
-                    verifiedJobs.forEach(v => { const jk = _jobKey(v); const ex = uMap.get(jk); uMap.set(jk, ex ? { ...ex, ...v, isVerified: true, wage_level: ex.wage_level || v.wage_level, salary: ex.salary || v.salary, title: ex.title, job_id: ex.job_id || v.job_id, url: ex.url || v.url || v.job_link } : v); });
+                        const fullMetaMap = new Map();
+                        sponsoredJobs.forEach(s => {
+                            const uk = _urlKey(s.url);
+                            if (uk) fullMetaMap.set('u:' + uk, s);
+                            if (s.id) fullMetaMap.set('i:' + s.id, s);
+                            if (s.jobId) fullMetaMap.set('j:' + s.jobId, s);
+                        });
+
+                        qvVerified.forEach(v => {
+                            const vk = _urlKey(v.url);
+                            const meta = fullMetaMap.get('u:' + vk) || fullMetaMap.get('i:' + v.job_id) || fullMetaMap.get('j:' + v.job_id);
+                            if (meta) {
+                                v.title = meta.title; v.job_id = meta.id; v.wage_level = meta.wage_level || v.wage_level;
+                                v.location = meta.location || v.location; v.salary = meta.salary || v.salary;
+                            } else {
+                                // Fallback matching by company + normalized role/domain if direct ID/URL match fails
+                                const companyJobs = deepSponsored.filter(j => j.company === v.company);
+                                const vRole = _normR(v.role || v.domain || '');
+                                const bestMatch = companyJobs.find(j => _normR(j.title).includes(vRole) || _normR(j.job_role_name).includes(vRole));
+                                if (bestMatch) {
+                                    v.title = bestMatch.title;
+                                    v.job_id = bestMatch.id;
+                                    v.wage_level = bestMatch.wage_level || v.wage_level;
+                                }
+                            }
+                            if (!v.location) v.location = 'united states';
+                        });
+
+                        const uMap = new Map();
+                        sponsoredJobs.forEach(j => { if (!j.location) j.location = 'united states'; uMap.set(_jobKey(j), j); });
+                        qvVerified.forEach(v => {
+                            const jk = _jobKey(v);
+                            const ex = uMap.get(jk);
+                            uMap.set(jk, ex ? { ...ex, ...v, isVerified: true, title: ex.title || v.title, wage_level: ex.wage_level || v.wage_level, salary: ex.salary || v.salary, location: ex.location || v.location, job_id: ex.job_id || v.job_id } : v);
+                        });
 
                     let fullList = Array.from(uMap.values());
 
@@ -840,7 +1059,7 @@ const AllJobsTab = () => {
                                     .trim()
                                     .replace(/\s+/g, ' ');
                                 const nS = n(search);
-                                const primaryTitle = j.title || j.role || j.job_role_name || '';
+                                const primaryTitle = j.title || '';
                                 return n(primaryTitle) === nS;
                             });
                         }
@@ -855,7 +1074,7 @@ const AllJobsTab = () => {
                         });
                     }
 
-                    interleaved = interleaveJobs(fullList);
+                    const interleaved = interleaveJobs(fullList);
 
                     const fullTotal = (search && search.trim())
                         ? interleaved.length
@@ -866,289 +1085,11 @@ const AllJobsTab = () => {
                     // Upgrade both caches with full data (pages 11+ now available)
                     processedListCache.current.set(listCacheKey, { list: interleaved, total: fullTotal });
                     try {
-                    localStorage.setItem(`ajt_v11_${listCacheKey}`, JSON.stringify({ ts: Date.now(), total: fullTotal, list: interleaved.slice(0, 500) }));
+                        localStorage.setItem(`ajt_v11_${listCacheKey}`, JSON.stringify({ ts: Date.now(), total: fullTotal, list: interleaved.slice(0, 500) }));
                         localStorage.removeItem(QUICK_LS_KEY); // quick cache superseded by full
                     } catch (_) { }
                 } catch (_) { /* silent — Phase 1 data already shown */ }
             })();
-            return;
-
-            const mapVerified = (r) => ({
-                ...r,
-                title: null, // Verified tables don't have a 'title' column; avoid using 'role' as title
-                role: r.role,
-                url: r.job_link,
-                date_posted: r.audit_date,
-                job_role_name: r.domain,
-                isVerified: true,
-                isTeaser: paymentStatus === 'pending',
-                job_id: r.job_id // Removed || r.id fallback to allow proper deduplication
-            });
-
-            const verifiedJobs = [...(backupRes.data || [])].map(mapVerified);
-            const vSet = verifiedSet || await getVerifiedSet();
-
-            // ── Normalization Helpers ────────────────────────────────────────────────
-            const _normR = (s) => String(s || '').toLowerCase()
-                .replace(/[-–—]/g, ' ').replace(/\s+/g, ' ').trim();
-
-            const _urlKey = (u) => {
-                if (!u) return '';
-                // Aggressively normalize URLs to catch duplicates even with slightly different formats
-                let s = String(u).toLowerCase().trim();
-                try {
-                    const urlObj = new URL(s.startsWith('http') ? s : `https://${s}`);
-                    return (urlObj.hostname + urlObj.pathname).replace(/^www\./, '').replace(/\/$/, '');
-                } catch {
-                    return s.split('?')[0].split('#')[0].replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
-                }
-            };
-
-            // Job key for deduplication: STRICT Logical Identity (Company + Title + Location)
-            const _jobKey = (j) => {
-                const co = String(j.company || '').toLowerCase().trim();
-                const ti = _normR(j.title || j.role || j.job_role_name || '');
-                const lo = _normR(j.location || 'us');
-                return `${co}||${ti}||${lo}`;
-            };
-
-            const _roleKey = (j) => {
-                const co = String(j.company || '').toLowerCase().trim();
-                const ro = _normR(j.job_role_name || j.role || '');
-                return `${co}||${ro}`;
-            };
-
-            // ── Phase 4: DEEP FETCH sponsored metadata for ALL verified links ────────
-            // Run ALL URL batches in PARALLEL (Promise.all) instead of sequentially.
-            // If there are 300 verified URLs (3 batches), they all fire at once — 3x faster.
-            const vUrls = [...new Set(verifiedJobs.map(v => v.url))].filter(Boolean);
-            let deepSponsored = [];
-            if (vUrls.length > 0) {
-                const chunks = [];
-                for (let i = 0; i < vUrls.length; i += 100) {
-                    chunks.push(vUrls.slice(i, i + 100));
-                }
-                const deepResults = await Promise.all(
-                    chunks.map(chunk =>
-                        supabase.from('job_jobrole_sponsored_sync').select('*').in('url', chunk)
-                    )
-                );
-                deepResults.forEach(r => { if (r.data) deepSponsored.push(...r.data); });
-            }
-
-            const sponsoredJobs = [
-                ...(rankedRes.data || []),
-                ...(standardRes.data || []),
-                ...deepSponsored
-            ].map(j => ({
-                ...j,
-                title: j.title,
-                job_id: j.id,
-                isVerified: j.isVerified || vSet.has(j.company) || false
-            }));
-
-            // ── Phase 5: Map deep-fetched titles BACK to verified records ────────────
-            const deepMetadata = new Map();
-            deepSponsored.forEach(s => {
-                const uk = _urlKey(s.url);
-                if (uk && !deepMetadata.has(uk)) deepMetadata.set(uk, s);
-            });
-
-            verifiedJobs.forEach(v => {
-                const uk = _urlKey(v.url);
-                const meta = deepMetadata.get(uk);
-                if (meta) {
-                    v.title = meta.title;
-                    v.job_id = meta.id;
-                }
-            });
-
-            // Combine and merge deduplicated jobs using Logical Identity (Company + Title + Location)
-            const uniqueMap = new Map();
-
-            // 1. Process sponsored jobs (they have level/salary data)
-            sponsoredJobs.forEach(j => {
-                const jk = _jobKey(j);
-                uniqueMap.set(jk, j);
-            });
-
-            // 2. Merge verified jobs (they have human-verified status)
-            verifiedJobs.forEach(v => {
-                const jk = _jobKey(v);
-                const existing = uniqueMap.get(jk);
-                if (existing) {
-                    uniqueMap.set(jk, {
-                        ...existing,
-                        ...v,
-                        isVerified: true,
-                        // Preserve richer sponsored data
-                        wage_level: existing.wage_level || v.wage_level,
-                        salary: existing.salary || v.salary,
-                        title: existing.title, // STRICT: Must come from 'title' column
-                        job_id: existing.job_id || v.job_id,
-                        url: existing.url || v.url || v.job_link
-                    });
-                } else {
-                    uniqueMap.set(jk, v);
-                }
-            });
-
-            let unique = Array.from(uniqueMap.values());
-
-            // --- STRICT LEVEL FILTER (Post-merge) ---
-            if (level && level.length > 0) {
-                const allowedDigits = new Set(level.map(l => l.match(/\d/)?.[0]).filter(Boolean));
-                unique = unique.filter(j => {
-                    const jobLvlMatch = String(j.wage_level || '').match(/\d/);
-                    let jobLvl = jobLvlMatch ? jobLvlMatch[0] : null;
-                    if (!jobLvl) {
-                        const s = String(j.wage_level || '').toUpperCase();
-                        if (s.match(/\bIV\b/) || s.includes('LEVEL 4')) jobLvl = '4';
-                        else if (s.match(/\bIII\b/) || s.includes('LEVEL 3')) jobLvl = '3';
-                        else if (s.match(/\bII\b/) || s.includes('LEVEL 2')) jobLvl = '2';
-                        else if (s.match(/\bI\b/) || s.includes('LEVEL 1')) jobLvl = '1';
-                    }
-                    return jobLvl && allowedDigits.has(jobLvl);
-                });
-            }
-
-            // Filter for Human Verified tab
-            if (filter === 'verified') {
-                unique = unique.filter(j => j.isVerified);
-            }
-
-            // ── Priority Interleaved Sorting (Page-Aligned Cycle) ──────────────────
-            // 1. Group by Company
-            const groups = new Map();
-            unique.forEach(j => {
-                const co = j.company || 'Unknown';
-                if (!groups.has(co)) groups.set(co, []);
-                groups.get(co).push(j);
-            });
-
-            // 2. Sort within each company pool (Recency/Salary Priority)
-            groups.forEach(list => {
-                list.sort((a, b) => {
-                    const hasSal = (s) => s && s.includes('$');
-                    if (hasSal(a.salary) && !hasSal(b.salary)) return -1;
-                    if (!hasSal(a.salary) && hasSal(b.salary)) return 1;
-                    return new Date(b.date_posted || 0) - new Date(a.date_posted || 0);
-                });
-            });
-
-            // 3. Build Global Interleaved List for the fetched window
-            const sortedCos = Array.from(groups.keys()).sort((a, b) => {
-                const rA = getCompanyRank(a);
-                const rB = getCompanyRank(b);
-                if (rA !== rB) return rA - rB;
-                return a.localeCompare(b);
-            });
-
-            let interleavedList = [];
-            // Build the interleaved list for the whole window (500 items)
-            for (let c = 0; c < 100; c++) {
-                let addedInCycle = 0;
-                for (const co of sortedCos) {
-                    const list = groups.get(co);
-                    // Use slice(c, c + 1) to keep the 1-per-company pattern consistent
-                    const chunk = list.slice(c, c + 1);
-                    if (chunk.length > 0) {
-                        interleavedList.push(...chunk);
-                        addedInCycle++;
-                    }
-                }
-                if (addedInCycle === 0) break;
-            }
-
-            unique = interleavedList;
-
-            // Accurate total for pagination metadata (based on DATABASE counts)
-            let actualTotal = unique.length;
-            if (filter === 'all' && standardRes?.count) {
-                actualTotal = standardRes.count;
-            } else if (filter === 'verified') {
-                actualTotal = actualVerifiedCount || 4971; // Use DB count or specified verified count
-            }
-
-            // ── Store in Map cache (fast tab switching) ──────────────────
-            processedListCache.current.set(listCacheKey, { list: unique, total: actualTotal });
-
-            // ── Persist to localStorage in background (zero latency impact) ─────
-            // Capped at 500 items (~300-500KB). On next page load/refresh this is
-            // read synchronously in <5ms, making the tab open in ~50ms total.
-            setTimeout(() => {
-                try {
-                    localStorage.setItem(`ajt_v11_${listCacheKey}`, JSON.stringify({
-                        ts: Date.now(),
-                        total: actualTotal,
-                        list: unique.slice(0, 500)  // cap to keep payload ~300KB
-                    }));
-                } catch (_) { /* quota exceeded or private mode — silently skip */ }
-            }, 0);
-
-            // Pagination slice: since we fetched a window tailored to 'from', 
-            // the first items in our unique interleaved list are the ones for this page.
-            const pagedResults = unique.slice(from, from + JOBS_PER_PAGE);
-
-            setJobs(pagedResults);
-            setTotalJobs(actualTotal);
-            setLoading(false); // Release main loader immediately
-
-            // ── Background Enrichment Part 1: LCA Filings ──────────────────
-            const companyNames = [...new Set(pagedResults.map(j => j.company))].filter(Boolean);
-            if (companyNames.length > 0) {
-                const { data: filingsData } = await supabase
-                    .from('h1b_sponsor_finder')
-                    .select('Company, "LCA Filings"')
-                    .or(companyNames.map(n => `Company.ilike.%${n}%`).join(','));
-
-                if (filingsData) {
-                    const normalize = (name) => name?.toLowerCase().replace(/[\.,]/g, ' ').replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies)\b/g, ' ').replace(/\s+/g, ' ').trim() || '';
-                    const filingMap = {};
-                    filingsData.forEach(f => {
-                        const norm = normalize(f.Company);
-                        filingMap[f.Company.toLowerCase()] = f["LCA Filings"];
-                        if (norm && !filingMap[norm]) filingMap[norm] = f["LCA Filings"];
-                    });
-
-                    pagedResults.forEach(j => {
-                        const jLower = j.company?.toLowerCase() || '';
-                        const jNorm = normalize(j.company);
-                        let count = filingMap[jLower] || filingMap[jNorm] || 0;
-
-                        const parseCount = (val) => {
-                            if (typeof val === 'number') return val;
-                            if (!val) return 0;
-                            return parseInt(String(val).replace(/,/g, '')) || 0;
-                        };
-                        j.lca_filings = parseCount(count);
-                    });
-                    setJobs([...pagedResults]); // Update UI with filings
-                }
-            }
-
-            // ── Background Enrichment Part 2: Wage Levels ──────────────────
-            const jobsNeedingWage = pagedResults.filter(j => !j.wage_level);
-            if (jobsNeedingWage.length > 0) {
-                await Promise.all(jobsNeedingWage.map(async (j) => {
-                    try {
-                        const occupation = j.title || j.role || j.job_role_name || '';
-                        const location = j.location || '';
-                        if (!occupation || occupation === 'null') return;
-
-                        const results = await getWageLevel(occupation, location, j.salary);
-                        if (results && results.length > 0) {
-                            j.wage_level = results[0]['Wage Level'] || 'Lv 2';
-                            j.wage_num = parseInt(j.wage_level.match(/\d/)?.[0] || '2');
-                        }
-                    } catch (err) {
-                        // Silent fail
-                    }
-                }));
-                setJobs([...pagedResults]); // Update UI with wage levels
-            }
-
-            setCurrentPage(page);
         } catch (err) {
             console.error('AllJobsTab fetchJobs error:', err);
             setError(err.message || 'Failed to load jobs');
@@ -1156,6 +1097,7 @@ const AllJobsTab = () => {
             setLoading(false);
         }
     };
+
 
     // Trigger fetch when search or filter changes
     useEffect(() => {
@@ -1213,87 +1155,86 @@ const AllJobsTab = () => {
 
                     if (standardRes?.error) return;
 
-                    const vSet = verifiedSet || (await getVerifiedSet());
-                    const _normR = (s) => String(s || '').toLowerCase().replace(/[-–—]/g, ' ').replace(/\s+/g, ' ').trim();
-                    const _urlKey = (u) => {
-                        if (!u) return '';
-                        let s = String(u).toLowerCase().trim();
-                        try { const o = new URL(s.startsWith('http') ? s : `https://${s}`); return (o.hostname + o.pathname).replace(/^www\./, '').replace(/\/$/, ''); }
-                        catch { return s.split('?')[0].split('#')[0].replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, ''); }
-                    };
-                    const _lvlKey = (lv) => {
-                        const n = parseWageLevel(lv);
-                        return n ? String(n) : '';
-                    };
-                    const _jobKey = (j) => `${getCanonicalCompany(j.company).toLowerCase()}||${_normR(j.title || j.role || j.job_role_name || '')}||${_normR(j.location || 'us')}`;
-
-                    const verifiedJobs = [...(backupRes.data || [])].map(r => {
+                    const svVerified = [...(backupRes.data || [])].map(r => {
                         const lvlNum = parseWageLevel(r.salary);
                         return {
-                            ...r, title: r.role || r.domain || null, role: r.role, url: r.job_link, date_posted: r.audit_date,
+                            ...r, title: null, role: r.role, url: r.job_link, date_posted: r.audit_date,
                             job_role_name: r.domain, isVerified: true, job_id: r.job_id,
                             wage_level: lvlNum ? `Lv ${lvlNum}` : null
                         };
                     });
 
-                    const vUrls = [...new Set(verifiedJobs.map(v => v.url))].filter(Boolean);
+                    const vSet = verifiedSet || (await getVerifiedSet());
+                    const vIdsS = [...new Set(svVerified.map(v => v.job_id))].filter(Boolean);
+                    const vUrlsS = [...new Set(svVerified.map(v => v.url))].filter(Boolean);
+                    const vCosS = [...new Set(svVerified.map(v => v.company))].filter(Boolean);
                     let deepSponsored = [];
-                    if (vUrls.length > 0) {
+                    
+                    if (vIdsS.length > 0 || vUrlsS.length > 0 || vCosS.length > 0) {
                         const chunks = [];
-                        for (let i = 0; i < vUrls.length; i += 100) chunks.push(vUrls.slice(i, i + 100));
-                        const res = await Promise.all(chunks.map(c => supabase.from('job_jobrole_sponsored_sync').select('*').in('url', c)));
-                        res.forEach(r => { if (r.data) deepSponsored.push(...r.data); });
+                        const idNumList = vIdsS.map(id => parseInt(id)).filter(n => !isNaN(n));
+                        const liIds = vUrlsS.map(u => { const m = u.match(/\d{9,}/); return m ? m[0] : null; }).filter(Boolean);
+                        
+                        if (idNumList.length > 0) {
+                            for (let i = 0; i < idNumList.length; i += 200) 
+                                chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').in('id', idNumList.slice(i, i + 200)));
+                        }
+                        if (vIdsS.length > 0) {
+                            for (let i = 0; i < vIdsS.length; i += 200) 
+                                chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').in('jobId', vIdsS.slice(i, i + 200)));
+                        }
+                        if (liIds.length > 0) {
+                            for (let i = 0; i < liIds.length; i += 50) 
+                                chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').or(liIds.slice(i, i + 50).map(id => `url.ilike.%${id}%`).join(',')));
+                        }
+                        if (vUrlsS.length > 0) {
+                            for (let i = 0; i < vUrlsS.length; i += 100) 
+                                chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').in('url', vUrlsS.slice(i, i + 100)));
+                        }
+                        if (vCosS.length > 0) {
+                            for (let i = 0; i < vCosS.length; i += 100)
+                                chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').in('company', vCosS.slice(i, i + 100)));
+                        }
+                        const results = await Promise.all(chunks);
+                        results.forEach(r => { if (r.data) deepSponsored.push(...r.data); });
                     }
 
                     const sponsoredJobs = [...(rankedRes.data || []), ...(standardRes.data || []), ...deepSponsored]
-                        .map(j => ({ ...j, job_id: j.id, isVerified: j.isVerified || vSet.has(j.company) || false }));
+                        .map(j => ({ ...j, job_id: j.id, isVerified: j.isVerified || vSet.has(j.company) || false, isTeaser: paymentStatus === 'pending' }));
 
-                    const urlMetadata = new Map();
+                    const fullMetaMap = new Map();
                     sponsoredJobs.forEach(s => {
                         const uk = _urlKey(s.url);
-                        if (uk && !urlMetadata.has(uk)) urlMetadata.set(uk, s);
+                        if (uk) fullMetaMap.set('u:' + uk, s);
+                        if (s.id) fullMetaMap.set('i:' + s.id, s);
+                        if (s.jobId) fullMetaMap.set('j:' + s.jobId, s);
                     });
 
-                    verifiedJobs.forEach(v => {
-                        const meta = urlMetadata.get(_urlKey(v.url));
+                    svVerified.forEach(v => {
+                        const vk = _urlKey(v.url);
+                        const meta = fullMetaMap.get('u:' + vk) || fullMetaMap.get('i:' + v.job_id) || fullMetaMap.get('j:' + v.job_id);
                         if (meta) {
-                            v.title = meta.title;
-                            v.job_id = meta.id;
-                            v.wage_level = meta.wage_level || v.wage_level;
-                            v.location = meta.location || v.location;
+                            v.title = meta.title; v.job_id = meta.id; v.wage_level = meta.wage_level || v.wage_level;
+                            v.location = meta.location || v.location; v.salary = meta.salary || v.salary;
+                        } else {
+                            // Fallback matching
+                            const companyJobs = deepSponsored.filter(j => j.company === v.company);
+                            const vRole = _normR(v.role || v.domain || '');
+                            const bestMatch = companyJobs.find(j => _normR(j.title).includes(vRole) || _normR(j.job_role_name).includes(vRole));
+                            if (bestMatch) {
+                                v.title = bestMatch.title;
+                                v.job_id = bestMatch.id;
+                            }
                         }
+                        if (!v.location) v.location = 'united states';
                     });
 
                     const uniqueMap = new Map();
-                    sponsoredJobs.forEach(j => {
-                        const jk = _jobKey(j);
-                        const ex = uniqueMap.get(jk);
-                        const curLvl = parseInt(_lvlKey(j.wage_level) || '1');
-                        const exLvl = ex ? parseInt(_lvlKey(ex.wage_level) || '0') : 0;
-                        if (!ex || curLvl > exLvl || (!ex.salary && j.salary)) {
-                            uniqueMap.set(jk, j);
-                        }
-                    });
-
-                    verifiedJobs.forEach(v => {
+                    sponsoredJobs.forEach(j => { if (!j.location) j.location = 'united states'; uniqueMap.set(_jobKey(j), j); });
+                    svVerified.forEach(v => {
                         const jk = _jobKey(v);
                         const ex = uniqueMap.get(jk);
-                        if (ex) {
-                            const curLvl = parseInt(_lvlKey(v.wage_level) || '1');
-                            const exLvl = parseInt(_lvlKey(ex.wage_level) || '1');
-                            uniqueMap.set(jk, {
-                                ...ex,
-                                ...v,
-                                isVerified: true,
-                                wage_level: exLvl >= curLvl ? ex.wage_level : v.wage_level,
-                                salary: ex.salary || v.salary,
-                                title: ex.title,
-                                job_id: ex.job_id || v.job_id,
-                                url: ex.url || v.url || v.job_link
-                            });
-                        } else {
-                            uniqueMap.set(jk, v);
-                        }
+                        uniqueMap.set(jk, ex ? { ...ex, ...v, isVerified: true, title: ex.title || v.title, wage_level: ex.wage_level || v.wage_level, salary: ex.salary || v.salary, location: ex.location || v.location, job_id: ex.job_id || v.job_id } : v);
                     });
 
                     let unique = Array.from(uniqueMap.values());

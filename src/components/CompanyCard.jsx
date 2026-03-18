@@ -43,10 +43,16 @@ const CompanyCard = ({ company, jobCount, wageLevel, industries, isSelected, onC
                     <LogoBox name={company} size={isMobile ? 36 : 44} fontSize={isMobile ? 12 : 14} className={isSelected ? 'bg-navy-select' : ''} />
 
                     <div style={{ minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px', flexWrap: 'wrap' }}>
                             <p style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: 700, color: '#111', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {company}
                             </p>
+                            {lca_filings !== undefined && lca_filings !== null && lca_filings > 0 && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: '#24385E', background: '#f1f5f9', padding: '2px 6px', borderRadius: '6px' }}>
+                                    <Globe size={11} strokeWidth={2.5} />
+                                    {lca_filings.toLocaleString()} Filings
+                                </span>
+                            )}
                             {isVerified && (
                                 <svg width="14" height="14" viewBox="0 0 100 100" style={{ flexShrink: 0 }}>
                                     <path d="M50 4 L57 16 L70 10 L70 24 L84 24 L78 37 L91 44 L81 55 L88 68 L74 69 L70 83 L57 78 L50 90 L43 78 L30 83 L26 69 L12 68 L19 55 L9 44 L22 37 L16 24 L30 24 L30 10 L43 16 Z" fill="#22c55e" />
@@ -54,25 +60,6 @@ const CompanyCard = ({ company, jobCount, wageLevel, industries, isSelected, onC
                                 </svg>
                             )}
                         </div>
-
-                        {lca_filings > 0 && (
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '5px',
-                                background: '#f1f5f9',
-                                padding: '3px 10px',
-                                borderRadius: '8px',
-                                fontSize: '11.5px',
-                                fontWeight: 800,
-                                color: '#24385E',
-                                width: 'fit-content',
-                                marginBottom: '4px'
-                            }}>
-                                <Globe size={13} strokeWidth={2.5} />
-                                {lca_filings.toLocaleString()} Filings
-                            </div>
-                        )}
 
                         {!isMobile && (
                             <p style={{ fontSize: '12px', color: '#aaa', margin: 0 }}>
@@ -84,7 +71,7 @@ const CompanyCard = ({ company, jobCount, wageLevel, industries, isSelected, onC
             </div>
 
             {/* Row 4: Wage badges */}
-            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '4px' }}>
                 {['Lv 1', 'Lv 2', 'Lv 3', 'Lv 4'].map((lbl, i) => (
                     <span key={lbl} style={{
                         fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px',

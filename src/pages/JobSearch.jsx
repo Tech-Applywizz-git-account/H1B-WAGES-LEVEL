@@ -59,8 +59,7 @@ const JobSearch = () => {
                 const words = debouncedSearch.trim().split(/\s+/).filter(w => w.length >= 1);
                 if (words.length > 0) {
                     const titleCond = `and(${words.map(w => `title.ilike.%${w}%`).join(',')})`;
-                    const roleCond = `and(${words.map(w => `job_role_name.ilike.%${w}%`).join(',')})`;
-                    q = q.or(`${titleCond},${roleCond}`);
+                    q = q.or(`${titleCond}`);
                 }
             }
 
@@ -81,6 +80,7 @@ const JobSearch = () => {
             if (error) throw error;
 
             let jobData = data || [];
+            setTotalJobs(count || 0);
 
             // ── PASS 2: STRICT EXACT NORMALIZED MATCHING (v10) ──
             if (debouncedSearch.trim()) {
@@ -90,7 +90,7 @@ const JobSearch = () => {
                     .replace(/\s+/g, ' ');
                 const nS = n(debouncedSearch);
                 jobData = jobData.filter(j => {
-                    return n(j.title) === nS || n(j.job_role_name) === nS;
+                    return n(j.title) === nS;
                 });
             }
 
@@ -328,7 +328,7 @@ const JobSearch = () => {
                                                                 style={{ textDecoration: 'none' }}
                                                                 onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); e.stopPropagation(); }}
                                                             >
-                                                                {job.title || 'Job Opening'}
+                                                                {job.title}
                                                             </a>
                                                         </h3>
 

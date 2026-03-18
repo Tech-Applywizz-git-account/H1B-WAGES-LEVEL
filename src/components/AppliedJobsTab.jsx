@@ -178,12 +178,28 @@ const AppliedJobsTab = () => {
                     .or(companyNames.map(n => `Company.ilike.%${n}%`).join(','));
 
                 if (filingsData) {
-                    const normalize = (name) => name?.toLowerCase().replace(/[\.,]/g, ' ').replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies)\b/g, ' ').replace(/\s+/g, ' ').trim() || '';
+                    const normalize = (name) => {
+                        if (!name) return '';
+                        let n = name.toLowerCase()
+                            .replace(/[\.,]/g, ' ')
+                            .replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies|group|holdings|usa|us|intl|international|solutions|aws|related|web|tech|software|management|financial|insurance|banking|health|healthcare|travel|company)\b/g, ' ')
+                            .replace(/\s+/g, ' ')
+                            .trim();
+                        // Support broad matching for major entities to ensure filings are found
+                        if (n.includes('amazon')) return 'amazon';
+                        if (n.includes('google') || n.includes('alphabet')) return 'google';
+                        if (n.includes('meta') || n.includes('facebook')) return 'meta';
+                        if (n.includes('microsoft')) return 'microsoft';
+                        if (n.includes('apple')) return 'apple';
+                        return n;
+                    };
                     const filingMap = {};
                     filingsData.forEach(f => {
                         const norm = normalize(f.Company);
-                        filingMap[f.Company.toLowerCase()] = f["LCA Filings"];
-                        if (norm && !filingMap[norm]) filingMap[norm] = f["LCA Filings"];
+                        filingMap[f.Company.toLowerCase()] = parseCount(f["LCA Filings"]);
+                        if (norm && (!filingMap[norm] || filingMap[norm] < parseCount(f["LCA Filings"]))) {
+                            filingMap[norm] = parseCount(f["LCA Filings"]);
+                        }
                     });
                     const filingKeys = Object.keys(filingMap);
 

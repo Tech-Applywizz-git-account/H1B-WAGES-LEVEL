@@ -250,7 +250,7 @@ const MigrateHero = () => {
                 
                 if (!isCompanySearch) {
                     data = data.filter(j => {
-                        const primary = j.title || j.job_role_name || '';
+                        const primary = j.title || '';
                         return n(primary) === nS;
                     });
                 }

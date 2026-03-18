@@ -6,6 +6,7 @@ import useAuth from '../hooks/useAuth';
 
 const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, isMobile }) => {
     const { user } = useAuth();
+    const [filingCount, setFilingCount] = useState(job.lca_filings || 0);
     const formatTimeAgo = (dateStr) => {
         if (!dateStr) return 'Recently';
         try {
@@ -21,6 +22,57 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
     const level = job.wage_level ? parseInt(job.wage_level.match(/\d/)?.[0]) : null;
     const timeAgo = formatTimeAgo(job.date_posted || job.time);
     const isNew = timeAgo.includes('m ago') || timeAgo === 'Just now';
+
+    // Fetch missing fillings if needed
+    React.useEffect(() => {
+        if (job.lca_filings === undefined && job.company) {
+            const fetchFilings = async () => {
+                const normalize = (name) => {
+                    if (!name) return '';
+                    let n = name.toLowerCase()
+                        .replace(/[\.,]/g, ' ')
+                        .replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies|group|holdings|usa|us|intl|international|solutions|aws|related|web|tech|software|management|financial|insurance|banking|health|healthcare|travel|company)\b/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                    if (n.includes('amazon')) return 'amazon';
+                    if (n.includes('google') || n.includes('alphabet')) return 'google';
+                    if (n.includes('meta') || n.includes('facebook')) return 'meta';
+                    if (n.includes('microsoft')) return 'microsoft';
+                    if (n.includes('apple')) return 'apple';
+                    return n;
+                };
+
+                const norm = normalize(job.company);
+                const words = norm.split(' ').filter(Boolean);
+                const coreTerm = words.length > 0 ? words[0] : norm;
+
+                try {
+                    const { data } = await supabase
+                        .from('h1b_sponsor_finder')
+                        .select('Company, "LCA Filings"')
+                        .ilike('Company', `%${coreTerm}%`)
+                        .limit(10);
+
+                    if (data && data.length > 0) {
+                        const parseCount = (v) => typeof v === 'number' ? v : parseInt(String(v).replace(/,/g, '')) || 0;
+                        const sorted = [...data].sort((a,b) => parseCount(b["LCA Filings"]) - parseCount(a["LCA Filings"]));
+                        let best = 0;
+                        const nNorm = normalize(job.company);
+
+                        for (const m of sorted) {
+                            const mNorm = normalize(m.Company);
+                            if (mNorm === nNorm || mNorm.includes(nNorm) || nNorm.includes(mNorm)) {
+                                best = parseCount(m["LCA Filings"]);
+                                break;
+                            }
+                        }
+                        if (best > 0) setFilingCount(best);
+                    }
+                } catch (e) { /* ignore */ }
+            };
+            fetchFilings();
+        }
+    }, [job.company, job.lca_filings]);
 
     const renderCTA = () => {
         const baseStyle = {
@@ -137,12 +189,12 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                             onMouseLeave={e => e.currentTarget.style.color = '#111'}
                             onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); }}
                         >
-                            {job.title || 'Data Science Role'}
+                            {job.title}
                         </a>
                     </h3>
 
                     {/* Row 3: Company Name as Subtext */}
-                    <div style={{ fontSize: '13px', fontWeight: 500, color: '#718096', marginBottom: '8px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 500, color: '#718096', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {job.company}
                     </div>
 
@@ -169,35 +221,38 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                 alignItems: isMobile ? 'center' : 'center',
                 gap: '10px',
                 flexShrink: 0,
-                width: isMobile ? '100%' : '120px',
+                width: isMobile ? '100%' : '200px',
                 justifyContent: 'space-between',
                 paddingTop: isMobile ? '8px' : '0',
                 borderTop: isMobile ? '1px solid #f1f5f9' : 'none'
             }}>
-                <div style={{
-                    background: '#24385E',
-                    borderRadius: '10px',
-                    padding: isMobile ? '8px 10px' : '12px 10px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '2px',
-                    flexShrink: 0,
-                    minWidth: isMobile ? '80px' : '100%'
-                }}>
-                    <div style={{ display: 'flex', gap: '2px', marginBottom: '1px' }}>
-                        {[1, 2, 3, 4].map(i => (
-                            <Star key={i} size={isMobile ? 8 : 10}
-                                fill={i <= level ? '#FDB913' : 'none'}
-                                color={i <= level ? '#FDB913' : '#4a5e7a'}
-                                strokeWidth={1.5}
-                            />
-                        ))}
+                <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                    {/* Wage Level Card */}
+                    <div style={{
+                        background: '#24385E',
+                        borderRadius: '12px',
+                        padding: isMobile ? '10px 10px' : '11px 10px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: '2px',
+                        flex: 1,
+                        minWidth: 0
+                    }}>
+                        <div style={{ display: 'flex', gap: '2px', marginBottom: '1px' }}>
+                            {[1, 2, 3, 4].map(i => (
+                                <Star key={i} size={isMobile ? 8 : 10}
+                                    fill={i <= level ? '#FDB913' : 'none'}
+                                    color={i <= level ? '#FDB913' : '#4a5e7a'}
+                                    strokeWidth={1.5}
+                                />
+                            ))}
+                        </div>
+                        <span style={{ fontSize: isMobile ? '16px' : '20px', fontWeight: 900, color: '#ffffff', lineHeight: 1, fontStyle: 'italic' }}>
+                            {level ? `Lv ${level}` : 'Lv 1'}
+                        </span>
+                        <span style={{ fontSize: '7px', fontWeight: 700, color: '#7a9bbf', textTransform: 'uppercase', marginTop: '1px', letterSpacing: '1px' }}>WAGE LEVEL</span>
                     </div>
-                    <span style={{ fontSize: isMobile ? '16px' : '22px', fontWeight: 900, color: '#ffffff', lineHeight: 1, fontStyle: 'italic' }}>
-                        {level ? `Lv ${level}` : 'Lv 1'}
-                    </span>
-                    <span style={{ fontSize: '7px', fontWeight: 700, color: '#7a9bbf', textTransform: 'uppercase', marginTop: '1px', letterSpacing: '1px' }}>WAGE LEVEL</span>
                 </div>
 
                 <div style={{ flex: 1 }}>

@@ -30,6 +30,24 @@ import { fetchJobRoles, filterRoles } from '../utils/rolesSuggestions';
 import { isFamous } from '../utils/famousCompanies';
 import { getWageLevel } from '../dataSyncService';
 
+// Global name normalizer for consistent lookups
+const normalizeName = (name) => {
+  if (!name) return '';
+  let n = name.toLowerCase()
+    .replace(/\([^)]*\)/g, ' ') // Remove content in parentheses (e.g. (AWS))
+    .replace(/[.,\-\/#!$%\^&\*;:{}=\-_`~()]/g, ' ') // Remove punctuation
+    .replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies|group|holdings|usa|us|intl|international|asia|europe|solutions|aws|related)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  // Enhanced mapping for major tech entities
+  if (n.includes('amazon')) return 'amazon';
+  if (n.includes('google') || n.includes('alphabet')) return 'google';
+  if (n.includes('meta') || n.includes('facebook')) return 'meta';
+  if (n.includes('microsoft')) return 'microsoft';
+  if (n === 'apple' || n.startsWith('apple ')) return 'apple';
+  return n;
+};
+
 // Roles fetched dynamically from Supabase via rolesSuggestions utility
 
 
@@ -43,6 +61,7 @@ const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
   const [teaserLoading, setTeaserLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileActiveCol, setMobileActiveCol] = useState('left'); // 'left' or 'right'
+  const [filingCounts, setFilingCounts] = useState({});
 
   const TARGET_NAMES = ['Google', 'Microsoft', 'Meta', 'Amazon', 'Apple'];
 
@@ -152,6 +171,56 @@ const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
       }
     })();
   }, []);
+
+  // Fetch filing counts for featured companies
+  useEffect(() => {
+    if (teaserCompanies.length === 0) return;
+    const fetchFilings = async () => {
+      try {
+        const names = teaserCompanies.map(c => c.company);
+        const searchNames = [...new Set(names.map(n => normalizeName(n)))];
+        const { data } = await supabase
+          .from('h1b_sponsor_finder')
+          .select('Company, "LCA Filings"')
+          .or(searchNames.map(n => `Company.ilike.%${n}%`).join(','));
+        
+        if (data) {
+          const map = {};
+          // Sort descending so highest match wins
+          const sorted = [...data].sort((a,b) => {
+              const valA = typeof a["LCA Filings"] === 'number' ? a["LCA Filings"] : parseInt(String(a["LCA Filings"]).replace(/,/g, '')) || 0;
+              const valB = typeof b["LCA Filings"] === 'number' ? b["LCA Filings"] : parseInt(String(b["LCA Filings"]).replace(/,/g, '')) || 0;
+              return valB - valA;
+          });
+
+          sorted.forEach(f => {
+            const norm = normalizeName(f.Company);
+            const count = typeof f["LCA Filings"] === 'number' ? f["LCA Filings"] : parseInt(String(f["LCA Filings"]).replace(/,/g, '')) || 0;
+            
+            map[f.Company.toLowerCase()] = count;
+            if (norm) {
+                if (!map[norm] || map[norm] < count) map[norm] = count;
+                const words = norm.split(' ').filter(Boolean);
+                if (words.length >= 1) {
+                    const firstWord = words[0];
+                    if (firstWord.length > 3 && (!map[firstWord] || map[firstWord] < count)) {
+                        map[firstWord] = count;
+                    }
+                }
+                if (words.length >= 2) {
+                    const firstTwo = words[0] + ' ' + words[1];
+                    if (firstTwo.length > 5 && (!map[firstTwo] || map[firstTwo] < count)) {
+                        map[firstTwo] = count;
+                    }
+                }
+            }
+          });
+          setFilingCounts(map);
+        }
+      } catch (err) { console.error("Teaser filings error:", err); }
+    };
+    fetchFilings();
+  }, [teaserCompanies]);
 
   const handleSelect = (c) => {
     setSelectedTeaserCompany(c);
@@ -264,6 +333,7 @@ const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
                   isMobile={isMobile}
                   isVerified={true}
                   wageLevel={c.wageLevel}
+                  lca_filings={filingCounts[c.company.toLowerCase()] || filingCounts[normalizeName(c.company)] || (() => { const w = normalizeName(c.company).split(' ').filter(Boolean); return (w.length >= 2 ? filingCounts[w[0] + ' ' + w[1]] : null) || (w.length >= 1 ? filingCounts[w[0]] : null) || 0; })()}
                   isSelected={selectedTeaserCompany?.company === c.company}
                   onClick={() => handleSelect(c)}
                 />
@@ -296,9 +366,17 @@ const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
                     <LogoBox name={selectedTeaserCompany.company} size={isMobile ? 50 : 64} fontSize={isMobile ? 16 : 18} />
-                    <div>
-                      <h2 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, color: '#24385E', margin: 0 }}>{selectedTeaserCompany.company}</h2>
-                      <p style={{ color: '#64748b', margin: '4px 0 0', fontSize: isMobile ? 13 : 14 }}>{selectedTeaserCompany.jobCount}+ Visa Opportunities Found</p>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                        <h2 style={{ fontSize: isMobile ? 20 : 26, fontWeight: 800, color: '#24385E', margin: 0 }}>{selectedTeaserCompany.company}</h2>
+                        {(() => { const name = selectedTeaserCompany.company; const cnt = filingCounts[name.toLowerCase()] || filingCounts[normalizeName(name)] || (() => { const w = normalizeName(name).split(' ').filter(Boolean); return (w.length >= 2 ? filingCounts[w[0] + ' ' + w[1]] : null) || (w.length >= 1 ? filingCounts[w[0]] : null) || 0; })(); return cnt > 0 ? (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 700, color: '#24385E', background: '#f1f5f9', padding: '3px 8px', borderRadius: '6px' }}>
+                            <Globe size={12} strokeWidth={2.5} />
+                            {cnt.toLocaleString()} Filings
+                          </span>
+                        ) : null; })()}
+                      </div>
+                      <p style={{ color: '#64748b', margin: 0, fontSize: isMobile ? 12 : 13 }}>{selectedTeaserCompany.jobCount}+ Visa Opportunities Found</p>
                     </div>
                   </div>
 
@@ -407,38 +485,79 @@ const Homepage = () => {
     activeCompanyRef.current = selectedCompany;
   }, [selectedCompany]);
 
-  // Global name normalizer for consistent lookups (matches line 1465 usage)
-  const normalizeName = (name) => {
-    if (!name) return '';
-    return name.toLowerCase()
-      .replace(/[\.,]/g, ' ')
-      .replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies)\b/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  };
+  // Moved normalizeName to top level
 
   // Fetch filing counts for the current page of companies
   useEffect(() => {
-    const names = companies.map(c => c.company).filter(Boolean);
-    if (names.length === 0) return;
+    const rawNames = companies.map(c => c.company).filter(Boolean);
+    if (rawNames.length === 0) return;
 
     const fetchFilings = async () => {
       try {
-        const { data } = await supabase
+        // Generate search terms: core name + first two words + first word
+        const searchTerms = new Set();
+        rawNames.forEach(n => {
+            const norm = normalizeName(n);
+            if (norm.length > 2) searchTerms.add(norm);
+            const words = norm.split(' ').filter(Boolean);
+            if (words.length >= 2) searchTerms.add(words.slice(0, 2).join(' '));
+            if (words.length >= 1) searchTerms.add(words[0]);
+        });
+
+        const searchNames = Array.from(searchTerms).filter(n => n.length > 2);
+        if (searchNames.length === 0) return;
+
+        // PostgREST .or() filter string uses '*' as the wildcard for ilike
+        const orFilter = searchNames.map(n => `Company.ilike.*${n.replace(/,/g, '\\,')}*`).join(',');
+
+        const { data, error } = await supabase
           .from('h1b_sponsor_finder')
           .select('Company, "LCA Filings"')
-          .or(names.map(n => `Company.ilike.%${n}%`).join(','));
+          .or(orFilter);
+
+        if (error) {
+          console.warn("Filing count fetch error:", error);
+          return;
+        }
 
         if (data) {
           const map = {};
-          data.forEach(f => {
+          // Sort descending so highest match wins for generic terms
+          const sorted = [...data].sort((a,b) => {
+              const valA = typeof a["LCA Filings"] === 'number' ? a["LCA Filings"] : parseInt(String(a["LCA Filings"]).replace(/,/g, '')) || 0;
+              const valB = typeof b["LCA Filings"] === 'number' ? b["LCA Filings"] : parseInt(String(b["LCA Filings"]).replace(/,/g, '')) || 0;
+              return valB - valA;
+          });
+
+          sorted.forEach(f => {
             const norm = normalizeName(f.Company);
-            map[f.Company.toLowerCase()] = f["LCA Filings"];
-            if (norm && !map[norm]) map[norm] = f["LCA Filings"];
+            const count = typeof f["LCA Filings"] === 'number' ? f["LCA Filings"] : parseInt(String(f["LCA Filings"]).replace(/,/g, '')) || 0;
+            
+            map[f.Company.toLowerCase()] = count;
+            if (norm) {
+                // If the filing record normalized name starts with our normalized company name (e.g. "merck sharp dohme" starts with "merck")
+                // we should store it under the core name if it's the best count found so far.
+                if (!map[norm] || map[norm] < count) map[norm] = count;
+                
+                const words = norm.split(' ').filter(Boolean);
+                // Also map to the very first word if it's long enough, for extremely aggressive matching (e.g. Merck)
+                if (words.length >= 1) {
+                    const firstWord = words[0];
+                    if (firstWord.length > 3 && (!map[firstWord] || map[firstWord] < count)) {
+                        map[firstWord] = count;
+                    }
+                }
+                if (words.length >= 2) {
+                    const firstTwo = words[0] + ' ' + words[1];
+                    if (firstTwo.length > 5 && (!map[firstTwo] || map[firstTwo] < count)) {
+                        map[firstTwo] = count;
+                    }
+                }
+            }
           });
           setFilingCounts(prev => ({ ...prev, ...map }));
         }
-      } catch (err) { console.error("Error fetching filing counts:", err); }
+      } catch (err) { console.error("Error in fetchFilings effect:", err); }
     };
     fetchFilings();
   }, [companies]);
@@ -843,8 +962,7 @@ const Homepage = () => {
         const words = search.trim().split(/\s+/).filter(w => w.length >= 1);
         if (words.length > 0) {
           const titleCond = `and(${words.map(w => `title.ilike.%${w}%`).join(',')})`;
-          const roleCond = `and(${words.map(w => `job_role_name.ilike.%${w}%`).join(',')})`;
-          q1 = q1.or(`${titleCond},${roleCond}`);
+          q1 = q1.or(`${titleCond}`);
         }
       }
       if (level && level.length > 0) {
@@ -864,9 +982,8 @@ const Homepage = () => {
       if (search && search.trim()) {
         const words = search.trim().split(/\s+/).filter(w => w.length >= 1);
         if (words.length > 0) {
-          const roleCond = `and(${words.map(w => `role.ilike.%${w}%`).join(',')})`;
-          const domainCond = `and(${words.map(w => `domain.ilike.%${w}%`).join(',')})`;
-          q3 = q3.or(`${roleCond},${domainCond}`);
+          // backup has no title, but we allow company match. Role search disabled as per 'strictly title' requirement.
+          q3 = q3.filter('domain', 'ilike', '%NON_EXISTENT_NONE%');
         }
       }
 
@@ -881,11 +998,14 @@ const Homepage = () => {
 
       const _urlKey = (u) => {
         if (!u) return '';
-        // Aggressively normalize URLs to catch duplicates even with slightly different formats
         let s = String(u).toLowerCase().trim();
         try {
           const urlObj = new URL(s.startsWith('http') ? s : `https://${s}`);
-          return (urlObj.hostname + urlObj.pathname).replace(/^www\./, '').replace(/\/$/, '');
+          let p = (urlObj.hostname + urlObj.pathname).replace(/^www\./, '').replace(/\/$/, '');
+          // Extract job ID (9+ digits) to handle LinkedIn title slugs
+          const m = p.match(/\d{9,}/); 
+          if (m) return urlObj.hostname.replace(/^www\./, '') + '||' + m[0];
+          return p;
         } catch {
           return s.split('?')[0].split('#')[0].replace(/^https?:\/\//, '').replace(/^www\./, '').replace(/\/$/, '');
         }
@@ -901,7 +1021,7 @@ const Homepage = () => {
 
       const _jobKey = (j) => {
         const co = String(j.company || selectedCompany || '').toLowerCase().trim();
-        const ti = _normR(j.title || j.role || j.job_role_name || '');
+        const ti = _normR(j.title || '');
         const lo = _normR(j.location || 'us');
         return `${co}||${ti}||${lo}`;
       };
@@ -918,7 +1038,7 @@ const Homepage = () => {
         ...(resBackup.data || [])
       ].map(r => ({
         ...r,
-        title:        null, // Verified tables don't have a 'title' column, so we start with null
+        title:        null, // Strictly from sponsored table only
         url:          r.job_link,
         date_posted:  r.audit_date,
         job_role_name: r.domain,
@@ -949,18 +1069,18 @@ const Homepage = () => {
 
       // ── Pass 1.5: DEEP FETCH sponsored metadata for ALL verified links ────────
       // This ensures we have the 'title' column for 100% of verified data
-      const deepUrls = [...new Set(verifiedJobs.map(v => v.url))].filter(Boolean);
+      const deepUrls = [...new Set(allVerifiedRaw.map(v => v.url))].filter(Boolean);
+      const deepIds = [...new Set(allVerifiedRaw.map(v => v.job_id))].filter(Boolean);
       let deepSponsored = [];
-      if (deepUrls.length > 0) {
-        // Fetch in chunks of 100 to avoid URL length limits if any
-        for (let i = 0; i < deepUrls.length; i += 100) {
-          const chunk = deepUrls.slice(i, i + 100);
-          const { data: dData } = await supabase
-            .from('job_jobrole_sponsored_sync')
-            .select('*')
-            .in('url', chunk);
-          if (dData) deepSponsored.push(...dData);
-        }
+      if (deepUrls.length > 0 || deepIds.length > 0) {
+        const idNumList = deepIds.map(id => parseInt(id)).filter(n => !isNaN(n));
+        const queries = [
+          deepUrls.length > 0 ? supabase.from('job_jobrole_sponsored_sync').select('*').in('url', deepUrls) : null,
+          idNumList.length > 0 ? supabase.from('job_jobrole_sponsored_sync').select('*').in('id', idNumList) : null,
+          deepIds.length > 0 ? supabase.from('job_jobrole_sponsored_sync').select('*').in('jobId', deepIds) : null
+        ].filter(Boolean);
+        const results = await Promise.all(queries);
+        results.forEach(r => { if (r.data) deepSponsored.push(...r.data); });
       }
 
       const sponsoredJobs = [
@@ -976,23 +1096,35 @@ const Homepage = () => {
 
       // ── Pass 2: Map deep-fetched titles BACK to verified records ────────────
       // This is the critical step: verified jobs must "know" their title and level before deduplication
-      const urlMetadata = new Map();
-      // Include BOTH regular results and deep-fetched ones to ensure full coverage
+      const metaMap = new Map();
       sponsoredJobs.forEach(s => {
         const uk = _urlKey(s.url);
-        if (uk && !urlMetadata.has(uk)) urlMetadata.set(uk, s);
+        if (uk) metaMap.set('u:' + uk, s);
+        if (s.id) metaMap.set('i:' + s.id, s);
+        if (s.jobId) metaMap.set('j:' + s.jobId, s);
       });
 
       verifiedJobs.forEach(v => {
         const uk = _urlKey(v.url);
-        const meta = urlMetadata.get(uk);
+        const meta = metaMap.get('u:' + uk) || metaMap.get('i:' + v.job_id) || metaMap.get('j:' + v.job_id);
         if (meta) {
           v.title = meta.title;
-          v.id = meta.id; // Link to the real record id
-          // Sync levels and location so they produce the same _jobKey and merge correctly
+          v.id = meta.id; 
           v.wage_level = meta.wage_level || v.wage_level;
           v.location = meta.location || v.location;
+          v.salary = meta.salary || v.salary;
+        } else {
+          // Fallback matching by company + normalized role/domain
+          const companyJobs = deepSponsored.filter(j => j.company === v.company || j.company === selectedCompany);
+          const vRole = _normR(v.role || v.domain || '');
+          const bestMatch = companyJobs.find(j => _normR(j.title).includes(vRole) || _normR(j.job_role_name).includes(vRole));
+            if (bestMatch) {
+              v.title = bestMatch.title;
+              v.id = bestMatch.id;
+              v.wage_level = bestMatch.wage_level || v.wage_level;
+            }
         }
+        if (!v.location) v.location = 'united states';
       });
 
       // ── Pass 3: Combine jobs into unique map ────────────────────────────────
@@ -1002,6 +1134,7 @@ const Homepage = () => {
 
       // 1. Process sponsored jobs
       sponsoredJobs.forEach(j => {
+        if (!j.location) j.location = 'united states';
         const jk = _jobKey(j);
         const existing = finalMap.get(jk);
         
@@ -1035,8 +1168,8 @@ const Homepage = () => {
             salary:     existing.salary     || v.salary,
             wage_level: exLvl >= curLvl ? existing.wage_level : v.wage_level,
             url:        existing.url        || v.url,
-            // Strictly prefer the sponsored title, then role from audit, then domain
-            title:      existing.title, 
+            // Strictly prefer the sponsored title
+            title:      existing.title      || v.title, 
             job_id:     existing.job_id     || v.job_id,
           });
         }
@@ -1053,7 +1186,7 @@ const Homepage = () => {
         const nS = n(search);
         unique = unique.filter(j => {
           // Field Lockdown: Match only the primary displayed title
-          const primaryTitle = j.title || j.role || j.job_role_name || '';
+          const primaryTitle = j.title || '';
           return n(primaryTitle) === nS;
         });
       }
@@ -1122,7 +1255,7 @@ const Homepage = () => {
       if (jobsNeedingWage.length > 0) {
           await Promise.all(jobsNeedingWage.map(async (j) => {
               try {
-                  const occupation = j.title || j.role || j.job_role_name || '';
+                  const occupation = j.title || '';
                   const location = j.location || '';
                   if (!occupation || occupation === 'null') return;
                   const results = await getWageLevel(occupation, location, j.salary);
@@ -1265,10 +1398,10 @@ const Homepage = () => {
   const S = {
     page: { display: 'flex', height: '100vh', overflow: 'hidden', background: '#f5f5f7', fontFamily: "'Inter', sans-serif" },
     sidebar: {
-      width: isMobile ? (mobileMenuOpen ? '280px' : '0') : '260px',
-      minWidth: isMobile ? (mobileMenuOpen ? '280px' : '0') : '260px',
+      width: (activeView === 'h1b_finder' && !isMobile) ? '0' : (isMobile ? (mobileMenuOpen ? '280px' : '0') : '260px'),
+      minWidth: (activeView === 'h1b_finder' && !isMobile) ? '0' : (isMobile ? (mobileMenuOpen ? '280px' : '0') : '260px'),
       background: '#ffffff',
-      borderRight: '1px solid #e8e8e8',
+      borderRight: (activeView === 'h1b_finder' && !isMobile) ? 'none' : '1px solid #e8e8e8',
       display: 'flex',
       flexDirection: 'column',
       flexShrink: 0,
@@ -1454,7 +1587,8 @@ const Homepage = () => {
       {/* ═══════════════ MAIN ═══════════════ */}
       <div style={S.main}>
 
-        {/* Top bar */}
+        {/* Top bar — hidden for h1b_finder on desktop */}
+        {!(activeView === 'h1b_finder' && !isMobile) && (
         <div style={S.topBar}>
           {isMobile && (
             <button onClick={() => setMobileMenuOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', marginLeft: '-8px' }}>
@@ -1480,6 +1614,7 @@ const Homepage = () => {
           )}
           {isMobile && <div style={{ width: '32px' }} />}
         </div>
+        )}
 
         <div style={S.content}>
 
@@ -1490,9 +1625,34 @@ const Homepage = () => {
             </div>
           )}
 
-          {/* ━━━━━━ H-1B FINDER VIEW ━━━━━━ */}
+          {/* ━━━━━━ H-1B FINDER VIEW (full-width, no sidebar) ━━━━━━ */}
           {activeView === 'h1b_finder' && (
             <div style={{ flex: 1, height: '100%', overflowY: 'auto', background: '#fff', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+              {/* Compact nav bar for H1B Finder */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '10px 24px', borderBottom: '1px solid #e8e8e8',
+                background: '#fff', flexShrink: 0
+              }}>
+                <button
+                  onClick={() => setActiveView('all_companies')}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    background: 'none', border: '1.5px solid #e0e0e0', borderRadius: '10px',
+                    padding: '7px 14px', cursor: 'pointer', fontSize: '13px', fontWeight: 600,
+                    color: '#24385E', transition: 'all 150ms'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.borderColor = '#24385E'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.borderColor = '#e0e0e0'; }}
+                >
+                  <ChevronLeft size={16} />
+                  Back
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Globe size={18} color="#24385E" />
+                  <span style={{ fontSize: '15px', fontWeight: 800, color: '#1a1a1a' }}>H-1B Visa Sponsor Finder</span>
+                </div>
+              </div>
               <H1BSponsorFinder isMobile={isMobile} />
             </div>
           )}
@@ -1668,7 +1828,7 @@ const Homepage = () => {
                     <CompanyCard key={c.company + i} company={c.company} jobCount={c.jobCount}
                       isMobile={isMobile}
                       isVerified={true}
-                      lca_filings={filingCounts[c.company.toLowerCase()] || filingCounts[normalizeName(c.company)] || 0}
+                      lca_filings={filingCounts[c.company.toLowerCase()] || filingCounts[normalizeName(c.company)] || (() => { const w = normalizeName(c.company).split(' ').filter(Boolean); return (w.length >= 2 ? filingCounts[w[0] + ' ' + w[1]] : null) || (w.length >= 1 ? filingCounts[w[0]] : null) || 0; })()}
                       wageLevel={c.wageLevel} industries={c.industries}
                       isSelected={selectedCompany === c.company} onClick={() => handleCompanySelect(c)} />
                   )) : (
@@ -1719,17 +1879,14 @@ const Homepage = () => {
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           <LogoBox name={selectedCompany} size={isMobile ? 48 : 56} fontSize={isMobile ? 16 : 18} />
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
                               <h2 style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 800, color: '#111', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedCompany}</h2>
-                              {(filingCounts[selectedCompany.toLowerCase()] || filingCounts[normalizeName(selectedCompany)]) > 0 && (
-                                <div style={{
-                                  display: 'flex', alignItems: 'center', gap: '4px', background: '#f1f5f9', padding: '3px 10px',
-                                  borderRadius: '8px', fontSize: '11px', fontWeight: 800, color: '#24385E', flexShrink: 0
-                                }}>
-                                  <Globe size={11.5} strokeWidth={2.5} />
-                                  {(filingCounts[selectedCompany.toLowerCase()] || filingCounts[normalizeName(selectedCompany)]).toLocaleString()} Filings
-                                </div>
-                              )}
+                              {(() => { const name = selectedCompany; const cnt = filingCounts[name.toLowerCase()] || filingCounts[normalizeName(name)] || (() => { const w = normalizeName(name).split(' ').filter(Boolean); return (w.length >= 2 ? filingCounts[w[0] + ' ' + w[1]] : null) || (w.length >= 1 ? filingCounts[w[0]] : null) || 0; })(); return cnt > 0 ? (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: '#24385E', background: '#f1f5f9', padding: '2px 6px', borderRadius: '6px' }}>
+                                  <Globe size={11} strokeWidth={2.5} />
+                                  {cnt.toLocaleString()} Filings
+                                </span>
+                              ) : null; })()}
                             </div>
                             <p style={{ fontSize: '12px', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <ExternalLink size={12} color="#999" />
@@ -1933,7 +2090,9 @@ const Homepage = () => {
                               job={{ ...job, isVerified: true }}
                               isMobile={isMobile}
                               isSaved={savedJobIds.has(String(job.id || job.job_id || job.audit_id))}
-                              onSave={handleSaveJob} />
+                              onSave={handleSaveJob}
+                              lca_filings={filingCounts[selectedCompany.toLowerCase()] || filingCounts[normalizeName(selectedCompany)] || 0}
+                            />
                           ))}
 
                           {/* ── JOB PAGINATION ── */}
