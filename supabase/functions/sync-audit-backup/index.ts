@@ -46,37 +46,38 @@ Deno.serve(async (req) => {
         const source = createClient(SOURCE_URL, SOURCE_KEY, { auth: { persistSession: false } });
         const target = createClient(TARGET_URL, TARGET_KEY, { auth: { persistSession: false } });
 
-        // ── Step 1: Read all job_ids already in the TARGET ─────────────────────
-        // Paginates so we handle large tables (>1000 rows)
-        let existingJobIds: Set<string> = new Set();
+        // ── Step 1: Read all IDs already in the TARGET ────────────────────────
+        // Using id (record ID) for deduplication to allow multiple audits for same job_id
+        let existingIds: Set<string> = new Set();
         let targetPage = 0;
         const PAGE_SIZE = 1000;
 
         while (true) {
             const { data: existing, error: existErr } = await target
                 .from('audit_reviews_backup')
-                .select('job_id')
+                .select('id')
                 .range(targetPage * PAGE_SIZE, (targetPage + 1) * PAGE_SIZE - 1);
 
             if (existErr) throw new Error(`Target read failed: ${existErr.message}`);
             if (!existing || existing.length === 0) break;
 
-            existing.forEach(r => existingJobIds.add(r.job_id));
+            existing.forEach(r => existingIds.add(r.id));
             if (existing.length < PAGE_SIZE) break;
             targetPage++;
         }
 
-        console.log(`[sync] Target has ${existingJobIds.size} existing records`);
+        console.log(`[sync] Target has ${existingIds.size} existing records`);
 
         // ── Step 2: Read all records from SOURCE ───────────────────────────────
+        // Fixed: source table name should be 'audit_reviews' not 'audit_reviews_backup'
         let sourceRecords: any[] = [];
         let sourcePage = 0;
 
         while (true) {
             const { data, error } = await source
-                .from('audit_reviews_backup')
+                .from('audit_reviews')
                 .select('id, job_id, company, role, domain, job_link, decision, remarks, observant_name, audit_date, created_at, tl_confirmation, tl_name, admin_confirmation, admin_name, audit_link_review, salary')
-                .order('created_at', { ascending: false })
+                .order('created_at', { ascending: true }) // Ascending so we don't skip records during pagination
                 .range(sourcePage * PAGE_SIZE, (sourcePage + 1) * PAGE_SIZE - 1);
 
             if (error) throw new Error(`Source read failed: ${error.message}`);
@@ -90,7 +91,7 @@ Deno.serve(async (req) => {
         console.log(`[sync] Source has ${sourceRecords.length} total records`);
 
         // ── Step 3: Filter to ONLY new records (not in target) ─────────────────
-        const newRecords = sourceRecords.filter(r => !existingJobIds.has(r.job_id));
+        const newRecords = sourceRecords.filter(r => !existingIds.has(r.id));
 
         if (newRecords.length === 0) {
             return new Response(JSON.stringify({ success: true, inserted: 0, message: 'Already up to date' }), {
@@ -100,7 +101,7 @@ Deno.serve(async (req) => {
 
         console.log(`[sync] Inserting ${newRecords.length} new records`);
 
-        // ── Step 4: INSERT new records in batches — NEVER delete existing ───────
+        // ── Step 4: INSERT new records in batches ──────────────────────────────
         const BATCH = 100;
         let totalInserted = 0;
         const errors: string[] = [];
@@ -128,7 +129,7 @@ Deno.serve(async (req) => {
 
             const { error: insertErr } = await target
                 .from('audit_reviews_backup')
-                .insert(batch); // INSERT only — never upsert/delete/update existing
+                .insert(batch);
 
             if (insertErr) {
                 errors.push(`batch ${Math.floor(i / BATCH) + 1}: ${insertErr.message}`);
@@ -142,7 +143,7 @@ Deno.serve(async (req) => {
             success: errors.length === 0,
             inserted: totalInserted,
             sourceCount: sourceRecords.length,
-            targetExistingCount: existingJobIds.size,
+            targetExistingCount: existingIds.size,
             errors: errors.length > 0 ? errors : undefined,
         };
 
