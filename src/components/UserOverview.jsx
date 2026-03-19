@@ -83,30 +83,33 @@ const PaymentModal = ({ job, onClose }) => {
 };
 
 // ─── Teaser job card ───────────────────────────────────────────────────────────
-const TeaserJobCard = ({ job, onLock }) => (
-    <div
-        onClick={() => onLock(job)}
-        className="flex items-center gap-4 p-4 bg-[#fafafa] rounded-2xl border border-[#f0f0f0] hover:border-[#FDB913]/40 hover:bg-[#fffdf0] cursor-pointer transition-all group"
-    >
-        {/* Company avatar */}
-        <div className="w-10 h-10 bg-gradient-to-br from-[#24385E] to-[#3a5a9c] rounded-xl flex items-center justify-center font-black text-white text-sm shrink-0">
-            {job.company.charAt(0)}
-        </div>
+const TeaserJobCard = ({ job }) => {
+    const navigate = useNavigate();
+    return (
+        <div
+            onClick={() => navigate('/pricing')}
+            className="flex items-center gap-4 p-4 bg-[#fafafa] rounded-2xl border border-[#f0f0f0] hover:border-[#FDB913]/40 hover:bg-[#fffdf0] cursor-pointer transition-all group"
+        >
+            {/* Company avatar */}
+            <div className="w-10 h-10 bg-gradient-to-br from-[#24385E] to-[#3a5a9c] rounded-xl flex items-center justify-center font-black text-white text-sm shrink-0">
+                {job.company.charAt(0)}
+            </div>
 
-        <div className="flex-1 min-w-0">
-            <p className="text-sm font-bold text-[#24385E] truncate">{job.title}</p>
-            <p className="text-[12px] text-gray-400 font-medium truncate">{job.company} • {job.location}</p>
-            <div className="flex items-center gap-2 mt-1">
-                <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{job.visa}</span>
-                <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{job.salary}</span>
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-[#24385E] truncate">{job.title}</p>
+                <p className="text-[12px] text-gray-400 font-medium truncate">{job.company} • {job.location}</p>
+                <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">{job.visa}</span>
+                    <span className="text-[11px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">{job.salary}</span>
+                </div>
+            </div>
+
+            <div className="shrink-0 flex items-center gap-1 text-[#24385E]/40 group-hover:text-[#FDB913] transition-colors">
+                <Lock size={14} />
             </div>
         </div>
-
-        <div className="shrink-0 flex items-center gap-1 text-[#24385E]/40 group-hover:text-[#FDB913] transition-colors">
-            <Lock size={14} />
-        </div>
-    </div>
-);
+    );
+};
 
 // ─── Main UserOverview ─────────────────────────────────────────────────────────
 const UserOverview = () => {

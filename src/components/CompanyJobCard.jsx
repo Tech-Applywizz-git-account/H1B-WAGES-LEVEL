@@ -176,21 +176,36 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
 
                     {/* Row 2: Job Title as Main Link */}
                     <h3 style={{ fontSize: isMobile ? '16px' : '17px', fontWeight: 800, margin: '0 0 2px', lineHeight: 1.3 }}>
-                        <a
-                            href={job.url || job.apply_url || '#'}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                                color: '#111',
-                                textDecoration: 'none',
-                                transition: 'color 150ms ease'
-                            }}
-                            onMouseEnter={e => e.currentTarget.style.color = '#EAB308'}
-                            onMouseLeave={e => e.currentTarget.style.color = '#111'}
-                            onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); }}
-                        >
-                            {job.title}
-                        </a>
+                        {job.isTeaser ? (
+                            <Link
+                                to="/pricing"
+                                style={{
+                                    color: '#111',
+                                    textDecoration: 'none',
+                                    transition: 'color 150ms ease'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#EAB308'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#111'}
+                            >
+                                {job.title}
+                            </Link>
+                        ) : (
+                            <a
+                                href={job.url || job.apply_url || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                    color: '#111',
+                                    textDecoration: 'none',
+                                    transition: 'color 150ms ease'
+                                }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#EAB308'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#111'}
+                                onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); }}
+                            >
+                                {job.title}
+                            </a>
+                        )}
                     </h3>
 
                     {/* Row 3: Company Name as Subtext */}

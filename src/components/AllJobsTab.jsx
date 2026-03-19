@@ -278,26 +278,37 @@ const JobRow = ({ job, isSaved, onSave }) => {
                     </div>
                 </div>
 
-                {/* Row 2: Job Title as Main Link */}
-                <h3 style={{
-                    fontSize: isMobile ? '16px' : '17px',
-                    fontWeight: 800,
-                    margin: '0 0 2px',
-                    lineHeight: 1.25,
-                    letterSpacing: '-0.2px'
-                }}>
-                    <a
-                        href={job.url || job.apply_url || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: '#111', textDecoration: 'none', transition: 'color 150ms ease' }}
-                        onMouseEnter={e => e.currentTarget.style.color = '#FDB913'}
-                        onMouseLeave={e => e.currentTarget.style.color = '#111'}
-                        onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); }}
-                    >
-                        {job.title}
-                    </a>
-                </h3>
+                    {/* Row 2: Job Title as Main Link */}
+                    <h3 style={{
+                        fontSize: isMobile ? '16px' : '17px',
+                        fontWeight: 800,
+                        margin: '0 0 2px',
+                        lineHeight: 1.25,
+                        letterSpacing: '-0.2px'
+                    }}>
+                        {job.isTeaser ? (
+                            <Link
+                                to="/pricing"
+                                style={{ color: '#111', textDecoration: 'none', transition: 'color 150ms ease' }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#FDB913'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#111'}
+                            >
+                                {job.title}
+                            </Link>
+                        ) : (
+                            <a
+                                href={job.url || job.apply_url || '#'}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ color: '#111', textDecoration: 'none', transition: 'color 150ms ease' }}
+                                onMouseEnter={e => e.currentTarget.style.color = '#FDB913'}
+                                onMouseLeave={e => e.currentTarget.style.color = '#111'}
+                                onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); }}
+                            >
+                                {job.title}
+                            </a>
+                        )}
+                    </h3>
 
                 {/* Row 3: Company Name as Subtext */}
                 <div style={{ fontSize: '13px', fontWeight: 500, color: '#718096', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -660,13 +671,13 @@ const AllJobsTab = () => {
         try {
             const from = (page - 1) * JOBS_PER_PAGE;
 
-            // ── FASTEST PATH: serve from localStorage (survives page refresh) ───
+            // ── FAST PATH: serve from localStorage (survives page refresh) ───
             // localStorage reads are synchronous and take <5ms for 500 records.
             // This makes the FIRST load after a refresh instant — no Supabase call.
             const levelStr = Array.isArray(level) && level.length > 0
                 ? level.slice().sort().join(',') : 'all';
             const listCacheKey = `${filter}|${(search || '').trim().toLowerCase() || 'none'}|${levelStr}`;
-            const LS_KEY = `ajt_v11_${listCacheKey}`;
+            const LS_KEY = `ajt_v12_${listCacheKey}`;
             const LS_TTL_MS = 10 * 60 * 1000; // 10 minutes
             try {
                 const raw = localStorage.getItem(LS_KEY);
@@ -678,11 +689,14 @@ const AllJobsTab = () => {
                             processedListCache.current.set(listCacheKey, { list: parsed.list, total: parsed.total });
                         }
                         const pagedResults = parsed.list.slice(from, from + JOBS_PER_PAGE);
-                        setJobs(pagedResults);
-                        setTotalJobs(parsed.total);
-                        setCurrentPage(page);
-                        setLoading(false);
-                        return; // ⚡ Done — served from localStorage in <50ms
+                        // If the page is beyond what's cached, fall through to DB fetch
+                        if (pagedResults.length > 0) {
+                            setJobs(pagedResults);
+                            setTotalJobs(parsed.total);
+                            setCurrentPage(page);
+                            setLoading(false);
+                            return; // ⚡ Done — served from localStorage in <50ms
+                        }
                     }
                 }
             } catch (_) { /* localStorage unavailable or corrupt — fall through to DB */ }
@@ -691,11 +705,14 @@ const AllJobsTab = () => {
             if (processedListCache.current.has(listCacheKey)) {
                 const cached = processedListCache.current.get(listCacheKey);
                 const pagedResults = cached.list.slice(from, from + JOBS_PER_PAGE);
-                setJobs(pagedResults);
-                setTotalJobs(cached.total);
-                setCurrentPage(page);
-                setLoading(false);
-                return; // Done — no DB hit
+                // If the page is beyond what's cached, fall through to DB fetch
+                if (pagedResults.length > 0) {
+                    setJobs(pagedResults);
+                    setTotalJobs(cached.total);
+                    setCurrentPage(page);
+                    setLoading(false);
+                    return; // Done — no DB hit
+                }
             }
 
             // ══════════════════════════════════════════════════════════════════════
@@ -712,7 +729,7 @@ const AllJobsTab = () => {
             //   so pages 11+ are available this session AND next open is 50ms.
             // ══════════════════════════════════════════════════════════════════════
 
-            const QUICK_LS_KEY = `ajt_quick_v11_${listCacheKey}`;
+            const QUICK_LS_KEY = `ajt_quick_v12_${listCacheKey}`;
             const QUICK_TTL_MS = 30 * 60 * 1000; // 30 min
 
             // ── Quick-cache hit? ────────────────────────────────────────────────
@@ -731,6 +748,77 @@ const AllJobsTab = () => {
                     }
                 }
             } catch (_) { }
+
+            // ── DEEP PAGE DIRECT FETCH (Page > 10) ──────────────────────────
+            // If the user is on a deep page, skip the complex merging phase and
+            // fetch the raw DB range directly to avoid hitting Supabase limits
+            // with ilike/deep-fetch logic which is only optimized for recent rows.
+            if (from >= 150) {
+                try {
+                    let directQ = supabase.from('job_jobrole_sponsored_sync')
+                        .select('*', { count: 'exact' });
+
+                    if (search && search.trim()) {
+                        const words = search.trim().toLowerCase().split(/\s+/).filter(w => w.length >= 1);
+                        const tC = `and(${words.map(w => `title.ilike.%${w}%`).join(',')})`;
+                        const cC = `and(${words.map(w => `company.ilike.%${w}%`).join(',')})`;
+                        directQ = directQ.or(`${tC},${cC}`);
+                    }
+                    if (level && level.length > 0) {
+                        const exp = level.flatMap(l => { const n = l.match(/\d/)?.[0]; if (!n) return [l]; const rom = { '1': 'I', '2': 'II', '3': 'III', '4': 'IV' }[n]; return [l, `Level ${n}`, `Level ${rom}`, n, `Lv ${n}`, `Lv${n}`]; });
+                        directQ = directQ.in('wage_level', exp);
+                    }
+                    if (filter === 'verified') {
+                        const vSet = verifiedSet || await getVerifiedSet();
+                        const vCos = Array.from(vSet);
+                        // Increase limit slightly and use the most recent confirmed companies
+                        if (vCos.length > 0) directQ = directQ.in('company', vCos.slice(0, 1000));
+                    }
+
+                    const { data: dData, count: dCount, error: dError } = await directQ
+                        .order('date_posted', { ascending: false, nullsFirst: false })
+                        .range(from, from + JOBS_PER_PAGE - 1);
+                        
+                    console.log(`[DEBUG] Deep Fetch: from=${from}, dCount=${dCount}, dataLength=${dData?.length}`);
+                        
+                    if (dError) throw dError;
+
+                    let finalData = dData || [];
+                    let finalCount = dCount !== null ? dCount : 0;
+
+                    // FALLBACK: If requested page is empty but total matches exist, show the absolute last page
+                    if (finalData.length === 0 && finalCount > 0) {
+                        const lastPageFrom = Math.max(0, Math.floor((finalCount - 1) / JOBS_PER_PAGE) * JOBS_PER_PAGE);
+                        const { data: fData } = await directQ
+                            .order('date_posted', { ascending: false, nullsFirst: false })
+                            .range(lastPageFrom, finalCount - 1);
+                        if (fData && fData.length > 0) {
+                            finalData = fData;
+                        }
+                    }
+
+                    const vSetLocal = verifiedSet || await getVerifiedSet();
+                    const directJobs = finalData.map(j => ({
+                        ...j, job_id: j.id, role: j.job_role_name,
+                        isVerified: vSetLocal.has(j.company) || false,
+                        isTeaser: paymentStatus === 'pending'
+                    }));
+
+                    if (directJobs.length > 0) {
+                        setJobs(directJobs);
+                        setTotalJobs(finalCount);
+                        setCurrentPage(page);
+                        setLoading(false);
+                        if (!processedListCache.current.has(listCacheKey)) {
+                            processedListCache.current.set(listCacheKey, { list: directJobs, total: finalCount });
+                        }
+                        return;
+                    } 
+                    // If truly no jobs, continue to Phase 1 to let it handle empty state
+                } catch (err) {
+                    console.error('ajt deep-direct-fetch failure:', err);
+                }
+            }
 
             // ── Phase 1: Quick DB fetch — LIMIT 150 per table ──────────────────
             const qTopTier = RANKED_COMPANIES.slice(0, 100);
@@ -809,20 +897,19 @@ const AllJobsTab = () => {
             const vCosQ = [...new Set(vVerified.map(v => v.company))].filter(Boolean);
             
             let qDeepSpon = [];
-            if (vIdsQ.length > 0 || vUrlsQ.length > 0 || vCosQ.length > 0) {
-                const idNumList = vIdsQ.map(id => parseInt(id)).filter(n => !isNaN(n));
-                const liIds = vUrlsQ.map(u => { const m = u.match(/\d{9,}/); return m ? m[0] : null; }).filter(Boolean);
-                const queries = [
-                    idNumList.length > 0 ? supabase.from('job_jobrole_sponsored_sync').select('*').in('id', idNumList) : null,
-                    vIdsQ.length > 0 ? supabase.from('job_jobrole_sponsored_sync').select('*').in('jobId', vIdsQ) : null,
-                    vUrlsQ.length > 0 ? supabase.from('job_jobrole_sponsored_sync').select('*').in('url', vUrlsQ) : null,
-                    // Also fetch by company if we have missing pieces
-                    vCosQ.length > 0 ? supabase.from('job_jobrole_sponsored_sync').select('*').in('company', vCosQ).limit(1000) : null
-                ].filter(Boolean);
-                if (liIds.length > 0) queries.push(supabase.from('job_jobrole_sponsored_sync').select('*').or(liIds.map(id => `url.ilike.%${id}%`).join(',')));
-                const results = await Promise.all(queries);
-                results.forEach(r => { if (r.data) qDeepSpon.push(...r.data); });
-            }
+            try {
+                if (vIdsQ.length > 0 || vUrlsQ.length > 0 || vCosQ.length > 0) {
+                    const idNumList = vIdsQ.map(id => parseInt(id)).filter(n => !isNaN(n));
+                    const queries = [
+                        idNumList.length > 0 ? supabase.from('job_jobrole_sponsored_sync').select('*').in('id', idNumList) : null,
+                        vIdsQ.length > 0 ? supabase.from('job_jobrole_sponsored_sync').select('*').in('jobId', vIdsQ) : null,
+                        vUrlsQ.length > 0 ? supabase.from('job_jobrole_sponsored_sync').select('*').in('url', vUrlsQ) : null,
+                        vCosQ.length > 0 ? supabase.from('job_jobrole_sponsored_sync').select('*').in('company', vCosQ).limit(500) : null
+                    ].filter(Boolean);
+                    const results = await Promise.all(queries);
+                    results.forEach(r => { if (r.data) qDeepSpon.push(...r.data); });
+                }
+            } catch (_deepErr) { /* non-fatal */ }
 
             const qSponsored = [...(qRankedRes.data || []), ...(qStdRes.data || []), ...qDeepSpon]
                 .map(j => ({ ...j, job_id: j.id, isVerified: j.isVerified || quickVSet.has(j.company) || false, isTeaser: paymentStatus === 'pending' }));
@@ -910,7 +997,7 @@ const AllJobsTab = () => {
             const qTotal = (search && search.trim())
                 ? qList.length
                 : (filter === 'verified'
-                    ? (level && level.length > 0 ? qList.length : (qBackupRes.count || 0))
+                    ? (level && level.length > 0 ? qList.length : Math.max(qList.length, (qBackupRes.count || 0)))
                     : (qStdRes.count || qList.length));
 
             // Store quick result → Map + localStorage
@@ -918,10 +1005,72 @@ const AllJobsTab = () => {
             try { localStorage.setItem(QUICK_LS_KEY, JSON.stringify({ ts: Date.now(), total: qTotal, list: qList.slice(0, 150) })); } catch (_) { }
 
             // ⚡ Show pages 1-10 immediately
-            setJobs(qList.slice(from, from + JOBS_PER_PAGE));
-            setTotalJobs(qTotal);
-            setCurrentPage(page);
-            setLoading(false);
+            const pagedSlice = qList.slice(from, from + JOBS_PER_PAGE);
+            if (pagedSlice.length > 0) {
+                setJobs(pagedSlice);
+                setTotalJobs(qTotal);
+                setCurrentPage(page);
+                console.log(`[DEBUG] Phase 1 Quick: pagedSlice.length=${pagedSlice.length}, qTotal=${qTotal}`);
+                setLoading(false);
+            } else if (from >= qList.length && qTotal > qList.length) {
+                // Page is beyond locally-fetched data: fetch directly from DB with server-side range
+                try {
+                    let directQ = supabase.from('job_jobrole_sponsored_sync')
+                        .select('*', { count: 'exact' })
+                        .order('date_posted', { ascending: false })
+                        .range(from, from + JOBS_PER_PAGE - 1);
+                    if (search && search.trim()) {
+                        const words = search.trim().toLowerCase().split(/\s+/).filter(w => w.length >= 1);
+                        const tC = `and(${words.map(w => `title.ilike.%${w}%`).join(',')})`;
+                        const cC = `and(${words.map(w => `company.ilike.%${w}%`).join(',')})`;
+                        directQ = directQ.or(`${tC},${cC}`);
+                    }
+                    if (level && level.length > 0) {
+                        const exp = level.flatMap(l => { const n = l.match(/\d/)?.[0]; if (!n) return [l]; const rom = { '1': 'I', '2': 'II', '3': 'III', '4': 'IV' }[n]; return [l, `Level ${n}`, `Level ${rom}`, n, `Lv ${n}`, `Lv${n}`]; });
+                        directQ = directQ.in('wage_level', exp);
+                    }
+                        const { data: directData, count: directCount } = await directQ;
+                        let finalDirectData = directData || [];
+                        let finalDirectCount = directCount !== null ? directCount : qTotal;
+
+                        // FALLBACK: If requested page is empty but total matches exist, show the absolute last page
+                        if (finalDirectData.length === 0 && finalDirectCount > 0) {
+                            const lastPageFrom = Math.max(0, Math.floor((finalDirectCount - 1) / JOBS_PER_PAGE) * JOBS_PER_PAGE);
+                            const { data: fData } = await directQ
+                                .order('date_posted', { ascending: false })
+                                .range(lastPageFrom, finalDirectCount - 1);
+                            if (fData && fData.length > 0) {
+                                finalDirectData = fData;
+                            }
+                        }
+
+                        if (finalDirectData.length > 0) {
+                            const vSet = verifiedSet || await getVerifiedSet();
+                            const directJobs = finalDirectData.map(j => ({
+                                ...j, job_id: j.id, role: j.job_role_name,
+                                isVerified: vSet.has(j.company) || false,
+                                isTeaser: paymentStatus === 'pending'
+                            }));
+                            setJobs(directJobs);
+                            setTotalJobs(finalDirectCount);
+                            setCurrentPage(page);
+                        } else {
+                            setJobs([]);
+                            setTotalJobs(qTotal);
+                            setCurrentPage(page);
+                        }
+                    } catch (_) {
+                        setJobs([]);
+                        setTotalJobs(qTotal);
+                        setCurrentPage(page);
+                    }
+                    setLoading(false);
+                } else {
+                    setJobs(pagedSlice);
+                    setTotalJobs(qTotal);
+                    setCurrentPage(page);
+                    setLoading(false);
+                }
 
             // ── Phase 2: Full background fetch (pages 11+, enriched) ──────────
             // Fires after quick data is on screen. No await — purely background.
@@ -990,11 +1139,10 @@ const AllJobsTab = () => {
                     const vUrlsB = [...new Set(qvVerified.map(v => v.url))].filter(Boolean);
                     const vCosB = [...new Set(qvVerified.map(v => v.company))].filter(Boolean);
                     let deepSponsored = [];
-                    
+                    try {
                         if (vIdsB.length > 0 || vUrlsB.length > 0 || vCosB.length > 0) {
                             const chunks = [];
                             const idNumList = vIdsB.map(id => parseInt(id)).filter(n => !isNaN(n));
-                            const liIds = vUrlsB.map(u => { const m = u.match(/\d{9,}/); return m ? m[0] : null; }).filter(Boolean);
                             
                             if (idNumList.length > 0) {
                                 for (let i = 0; i < idNumList.length; i += 200) 
@@ -1003,10 +1151,6 @@ const AllJobsTab = () => {
                             if (vIdsB.length > 0) {
                                 for (let i = 0; i < vIdsB.length; i += 200) 
                                     chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').in('jobId', vIdsB.slice(i, i + 200)));
-                            }
-                            if (liIds.length > 0) {
-                                for (let i = 0; i < liIds.length; i += 50) 
-                                    chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').or(liIds.slice(i, i + 50).map(id => `url.ilike.%${id}%`).join(',')));
                             }
                             if (vUrlsB.length > 0) {
                                 for (let i = 0; i < vUrlsB.length; i += 100) 
@@ -1019,6 +1163,7 @@ const AllJobsTab = () => {
                             const results = await Promise.all(chunks);
                             results.forEach(r => { if (r.data) deepSponsored.push(...r.data); });
                         }
+                    } catch (_deepErr) { /* non-fatal */ }
 
                         const sponsoredJobs = [...(rankedRes.data || []), ...(standardRes.data || [])]
                             .map(j => ({ ...j, job_id: j.id, isVerified: j.isVerified || vSet.has(j.company) || false, isTeaser: paymentStatus === 'pending' }));
@@ -1113,13 +1258,13 @@ const AllJobsTab = () => {
                     const fullTotal = (search && search.trim())
                         ? interleaved.length
                         : (filter === 'verified'
-                            ? (level && level.length > 0 ? interleaved.length : (backupRes.count || 0))
+                            ? (level && level.length > 0 ? interleaved.length : Math.max(interleaved.length, (backupRes.count || 0)))
                             : (standardRes?.count || interleaved.length));
 
                     // Upgrade both caches with full data (pages 11+ now available)
                     processedListCache.current.set(listCacheKey, { list: interleaved, total: fullTotal });
                     try {
-                        localStorage.setItem(`ajt_v11_${listCacheKey}`, JSON.stringify({ ts: Date.now(), total: fullTotal, list: interleaved.slice(0, 500) }));
+                        localStorage.setItem(`ajt_v12_${listCacheKey}`, JSON.stringify({ ts: Date.now(), total: fullTotal, list: interleaved.slice(0, 500) }));
                         localStorage.removeItem(QUICK_LS_KEY); // quick cache superseded by full
                     } catch (_) { }
                 } catch (_) { /* silent — Phase 1 data already shown */ }
@@ -1207,7 +1352,6 @@ const AllJobsTab = () => {
                     if (vIdsS.length > 0 || vUrlsS.length > 0 || vCosS.length > 0) {
                         const chunks = [];
                         const idNumList = vIdsS.map(id => parseInt(id)).filter(n => !isNaN(n));
-                        const liIds = vUrlsS.map(u => { const m = u.match(/\d{9,}/); return m ? m[0] : null; }).filter(Boolean);
                         
                         if (idNumList.length > 0) {
                             for (let i = 0; i < idNumList.length; i += 200) 
@@ -1216,10 +1360,6 @@ const AllJobsTab = () => {
                         if (vIdsS.length > 0) {
                             for (let i = 0; i < vIdsS.length; i += 200) 
                                 chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').in('jobId', vIdsS.slice(i, i + 200)));
-                        }
-                        if (liIds.length > 0) {
-                            for (let i = 0; i < liIds.length; i += 50) 
-                                chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').or(liIds.slice(i, i + 50).map(id => `url.ilike.%${id}%`).join(',')));
                         }
                         if (vUrlsS.length > 0) {
                             for (let i = 0; i < vUrlsS.length; i += 100) 
@@ -1284,8 +1424,8 @@ const AllJobsTab = () => {
                     if (isVerifiedTab) unique = unique.filter(j => j.isVerified);
 
                     let interleaved = interleaveJobs(unique);
-
-                    const actualTotal = isVerifiedTab ? (actualVerifiedCount || 4971) : (standardRes?.count || interleaved.length);
+                    
+                    const actualTotal = isVerifiedTab ? (actualVerifiedCount || interleaved.length) : (standardRes?.count || interleaved.length);
 
                     // Populate the Map cache — no UI updates
                     processedListCache.current.set(silentKey, { list: interleaved, total: actualTotal });
