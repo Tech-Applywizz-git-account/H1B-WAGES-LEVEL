@@ -1020,11 +1020,11 @@ const AllJobsTab = () => {
                             results.forEach(r => { if (r.data) deepSponsored.push(...r.data); });
                         }
 
-                        const sponsoredJobs = [...(rankedRes.data || []), ...(standardRes.data || []), ...deepSponsored]
+                        const sponsoredJobs = [...(rankedRes.data || []), ...(standardRes.data || [])]
                             .map(j => ({ ...j, job_id: j.id, isVerified: j.isVerified || vSet.has(j.company) || false, isTeaser: paymentStatus === 'pending' }));
 
                         const fullMetaMap = new Map();
-                        sponsoredJobs.forEach(s => {
+                        [...sponsoredJobs, ...deepSponsored].forEach(s => {
                             const uk = _urlKey(s.url);
                             if (uk) fullMetaMap.set('u:' + uk, s);
                             if (s.id) fullMetaMap.set('i:' + s.id, s);
@@ -1033,7 +1033,16 @@ const AllJobsTab = () => {
 
                         qvVerified.forEach(v => {
                             const vk = _urlKey(v.url);
-                            const meta = fullMetaMap.get('u:' + vk) || fullMetaMap.get('i:' + v.job_id) || fullMetaMap.get('j:' + v.job_id);
+                            let meta = fullMetaMap.get('u:' + vk) || fullMetaMap.get('i:' + v.job_id) || fullMetaMap.get('j:' + v.job_id);
+                            
+                            // STRICT SAFETY: Prevent cross-company data leakage!
+                            if (meta && meta.company && v.company && _normR(meta.company) !== _normR(v.company)) {
+                                const mWords = _normR(meta.company).split(' ').filter(Boolean);
+                                const vWords = _normR(v.company).split(' ').filter(Boolean);
+                                const looseMatch = mWords.length > 0 && vWords.length > 0 && (mWords[0] === vWords[0]);
+                                if (!looseMatch) meta = null;
+                            }
+
                             if (meta) {
                                 v.title = meta.title; v.job_id = meta.id; v.wage_level = meta.wage_level || v.wage_level;
                                 v.location = meta.location || v.location; v.salary = meta.salary || v.salary;
@@ -1224,11 +1233,11 @@ const AllJobsTab = () => {
                         results.forEach(r => { if (r.data) deepSponsored.push(...r.data); });
                     }
 
-                    const sponsoredJobs = [...(rankedRes.data || []), ...(standardRes.data || []), ...deepSponsored]
+                    const sponsoredJobs = [...(rankedRes.data || []), ...(standardRes.data || [])]
                         .map(j => ({ ...j, job_id: j.id, isVerified: j.isVerified || vSet.has(j.company) || false, isTeaser: paymentStatus === 'pending' }));
 
                     const fullMetaMap = new Map();
-                    sponsoredJobs.forEach(s => {
+                    [...sponsoredJobs, ...deepSponsored].forEach(s => {
                         const uk = _urlKey(s.url);
                         if (uk) fullMetaMap.set('u:' + uk, s);
                         if (s.id) fullMetaMap.set('i:' + s.id, s);
@@ -1237,7 +1246,16 @@ const AllJobsTab = () => {
 
                     svVerified.forEach(v => {
                         const vk = _urlKey(v.url);
-                        const meta = fullMetaMap.get('u:' + vk) || fullMetaMap.get('i:' + v.job_id) || fullMetaMap.get('j:' + v.job_id);
+                        let meta = fullMetaMap.get('u:' + vk) || fullMetaMap.get('i:' + v.job_id) || fullMetaMap.get('j:' + v.job_id);
+                        
+                        // STRICT SAFETY: Prevent cross-company data leakage!
+                        if (meta && meta.company && v.company && _normR(meta.company) !== _normR(v.company)) {
+                            const mWords = _normR(meta.company).split(' ').filter(Boolean);
+                            const vWords = _normR(v.company).split(' ').filter(Boolean);
+                            const looseMatch = mWords.length > 0 && vWords.length > 0 && (mWords[0] === vWords[0]);
+                            if (!looseMatch) meta = null;
+                        }
+
                         if (meta) {
                             v.title = meta.title; v.job_id = meta.id; v.wage_level = meta.wage_level || v.wage_level;
                             v.location = meta.location || v.location; v.salary = meta.salary || v.salary;

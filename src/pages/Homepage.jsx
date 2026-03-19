@@ -573,13 +573,19 @@ const Homepage = () => {
     if (val.trim().length > 0) {
       // Suggest companies from allProcessedCompanies instead of roles
       const words = val.toLowerCase().trim().split(/\s+/).filter(w => w.length >= 1);
-      const filtered = (allProcessedCompanies || [])
+      const filteredComps = (allProcessedCompanies || [])
         .filter(c => {
           const name = c.company.toLowerCase();
           return words.every(w => name.includes(w));
-        })
-        .slice(0, 8)
-        .map(c => c.company);
+        });
+
+      // Auto-update right pane synchronously
+      if (filteredComps.length > 0 && selectedCompany !== filteredComps[0].company) {
+          setSelectedCompany(filteredComps[0].company);
+          setSelectedCompanyData(filteredComps[0]);
+      }
+
+      const filtered = filteredComps.slice(0, 8).map(c => c.company);
 
       setFilteredSuggestions(filtered);
       setShowSuggestions(filtered.length > 0);
@@ -603,11 +609,19 @@ const Homepage = () => {
     }
   };
 
+  // Ensure robust clearing/setting on explicit suggestion click
   const handleSuggestionClick = (companyName) => {
     setCompanySearch(companyName);
-    setDebouncedCompanySearch(companyName); // Instant update on select
+    setDebouncedCompanySearch(companyName); 
     setShowSuggestions(false);
     setCompanyPage(1);
+    // Explicit override without async interference
+    setSelectedCompany(''); 
+    setTimeout(() => {
+        setSelectedCompany(companyName);
+        const found = allProcessedCompanies.find(c => c.company === companyName);
+        if (found) setSelectedCompanyData(found);
+    }, 10);
   };
 
   const handleJobSuggestionClick = (role) => {
@@ -665,7 +679,17 @@ const Homepage = () => {
       const from = (companyPage - 1) * COMPANIES_PER_PAGE;
       const paginated = arr.slice(from, from + COMPANIES_PER_PAGE);
       setCompanies(paginated);
-      if (!isMobile && !selectedCompany && paginated.length > 0) { setSelectedCompany(paginated[0].company); setSelectedCompanyData(paginated[0]); }
+      if (!isMobile && paginated.length > 0) {
+          if (debouncedCompanySearch && debouncedCompanySearch.trim().length > 0) {
+              if (selectedCompany !== paginated[0].company) {
+                  setSelectedCompany(paginated[0].company);
+                  setSelectedCompanyData(paginated[0]);
+              }
+          } else if (!selectedCompany || !arr.some(c => c.company === selectedCompany)) {
+              setSelectedCompany(paginated[0].company);
+              setSelectedCompanyData(paginated[0]);
+          }
+      }
       return;
     }
 
@@ -713,7 +737,17 @@ const Homepage = () => {
           setTotalCompanies(arr.length);
           const paginated = arr.slice(0, COMPANIES_PER_PAGE);
           setCompanies(paginated);
-          if (!isMobile && !selectedCompany && paginated.length > 0) { setSelectedCompany(paginated[0].company); setSelectedCompanyData(paginated[0]); }
+          if (!isMobile && paginated.length > 0) {
+              if (debouncedCompanySearch && debouncedCompanySearch.trim().length > 0) {
+                  if (selectedCompany !== paginated[0].company) {
+                      setSelectedCompany(paginated[0].company);
+                      setSelectedCompanyData(paginated[0]);
+                  }
+              } else if (!selectedCompany || !arr.some(c => c.company === selectedCompany)) {
+                  setSelectedCompany(paginated[0].company);
+                  setSelectedCompanyData(paginated[0]);
+              }
+          }
           return;
         }
       }
@@ -928,7 +962,17 @@ const Homepage = () => {
       const from = (companyPage - 1) * COMPANIES_PER_PAGE;
       const paginated = viewArr.slice(from, from + COMPANIES_PER_PAGE);
       setCompanies(paginated);
-      if (!isMobile && !selectedCompany && paginated.length > 0) { setSelectedCompany(paginated[0].company); setSelectedCompanyData(paginated[0]); }
+      if (!isMobile && paginated.length > 0) {
+          if (debouncedCompanySearch && debouncedCompanySearch.trim().length > 0) {
+              if (selectedCompany !== paginated[0].company) {
+                  setSelectedCompany(paginated[0].company);
+                  setSelectedCompanyData(paginated[0]);
+              }
+          } else if (!selectedCompany || !viewArr.some(c => c.company === selectedCompany)) {
+              setSelectedCompany(paginated[0].company);
+              setSelectedCompanyData(paginated[0]);
+          }
+      }
     }
   }, [user, subscriptionExpired, paymentStatus, paymentLoading, debouncedCompanySearch, sortBy, companyPage, isInitialLoadDone, allProcessedCompanies, selectedCompany, levelFilter]);
 
@@ -1084,8 +1128,7 @@ const Homepage = () => {
       }
 
       const sponsoredJobs = [
-        ...(resSponsored.data || []),
-        ...deepSponsored
+        ...(resSponsored.data || [])
       ].map(j => ({
         ...j,
         job_id: j.id,
@@ -1097,7 +1140,7 @@ const Homepage = () => {
       // ── Pass 2: Map deep-fetched titles BACK to verified records ────────────
       // This is the critical step: verified jobs must "know" their title and level before deduplication
       const metaMap = new Map();
-      sponsoredJobs.forEach(s => {
+      [...sponsoredJobs, ...deepSponsored].forEach(s => {
         const uk = _urlKey(s.url);
         if (uk) metaMap.set('u:' + uk, s);
         if (s.id) metaMap.set('i:' + s.id, s);
@@ -1106,7 +1149,20 @@ const Homepage = () => {
 
       verifiedJobs.forEach(v => {
         const uk = _urlKey(v.url);
-        const meta = metaMap.get('u:' + uk) || metaMap.get('i:' + v.job_id) || metaMap.get('j:' + v.job_id);
+        let meta = metaMap.get('u:' + uk) || metaMap.get('i:' + v.job_id) || metaMap.get('j:' + v.job_id);
+        
+        // STRICT SAFETY: Prevent cross-company data leakage!
+        // If an auditor pasted a link for Company B into Company A, reject the metadata to prevent UI contamination.
+        if (meta && meta.company && selectedCompany && _normR(meta.company) !== _normR(selectedCompany)) {
+            const mWords = _normR(meta.company).split(' ').filter(Boolean);
+            const sWords = _normR(selectedCompany).split(' ').filter(Boolean);
+            // Allow loose match (e.g. "Oracle" vs "Oracle America Inc")
+            const looseMatch = mWords.length > 0 && sWords.length > 0 && (mWords[0] === sWords[0]);
+            if (!looseMatch) {
+                meta = null; // Reject corrupted metadata match
+            }
+        }
+
         if (meta) {
           v.title = meta.title;
           v.id = meta.id; 
