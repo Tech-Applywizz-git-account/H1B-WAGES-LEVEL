@@ -127,7 +127,7 @@ const Pricing = () => {
                                             <p className="text-[#24385E] font-black text-sm uppercase tracking-widest">Complete Your Payment</p>
                                         </div>
                                         <div className="p-1">
-                                            <RazorpayButton amount={import.meta.env.VITE_PAYMENT_AMOUNT || '39.99'} />
+                                            <RazorpayButton amount={import.meta.env.VITE_RAZORPAY_PAYMENT_AMOUNT || import.meta.env.VITE_PAYMENT_AMOUNT || '39.99'} />
                                         </div>
                                         <p className="text-center text-[11px] text-gray-400 font-bold uppercase tracking-tighter">
                                             SECURE 256-BIT SSL ENCRYPTED PAYMENT
