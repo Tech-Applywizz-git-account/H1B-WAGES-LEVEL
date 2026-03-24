@@ -55,7 +55,7 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
 
                     if (data && data.length > 0) {
                         const parseCount = (v) => typeof v === 'number' ? v : parseInt(String(v).replace(/,/g, '')) || 0;
-                        const sorted = [...data].sort((a,b) => parseCount(b["LCA Filings"]) - parseCount(a["LCA Filings"]));
+                        const sorted = [...data].sort((a, b) => parseCount(b["LCA Filings"]) - parseCount(a["LCA Filings"]));
                         let best = 0;
                         const nNorm = normalize(job.company);
 
@@ -79,7 +79,7 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
             display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
             width: '100%', padding: isMobile ? '10px 8px' : '11px 8px',
             background: '#EAB308', color: '#1a1a1a',
-            borderRadius: '12px', fontSize: '13px', fontWeight: 800,
+            borderRadius: '12px', fontSize: '11px', fontWeight: 800,
             textDecoration: 'none', border: 'none', cursor: 'pointer',
             transition: 'all 180ms ease',
             boxShadow: '0 2px 8px rgba(234,179,8,0.35)',
@@ -233,10 +233,10 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
             <div style={{
                 display: 'flex',
                 flexDirection: isMobile ? 'row' : 'column',
-                alignItems: isMobile ? 'center' : 'center',
+                alignItems: isMobile ? 'center' : 'stretch',
                 gap: '10px',
                 flexShrink: 0,
-                width: isMobile ? '100%' : '200px',
+                width: isMobile ? '100%' : '140px',
                 justifyContent: 'space-between',
                 paddingTop: isMobile ? '8px' : '0',
                 borderTop: isMobile ? '1px solid #f1f5f9' : 'none'

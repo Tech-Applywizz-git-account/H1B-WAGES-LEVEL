@@ -1,8 +1,21 @@
 import { Globe } from 'lucide-react';
 import LogoBox from './LogoBox';
 
-const CompanyCard = ({ company, jobCount, wageLevel, industries, isSelected, onClick, isMobile, isVerified, lca_filings }) => {
-    const level = parseInt(wageLevel?.match(/\d/)?.[0] || '2');
+const CompanyCard = ({ company, jobCount, wageLevel, wageLevels, industries, isSelected, onClick, isMobile, isVerified, lca_filings }) => {
+    // Build a Set of actual levels this company has (e.g. {'Lv 1', 'Lv 3'})
+    const actualLevels = (() => {
+        if (wageLevels) {
+            // Handle both Set (from live processing) and Array (from JSON parse)
+            const arr = Array.isArray(wageLevels) ? wageLevels : (wageLevels instanceof Set ? Array.from(wageLevels) : []);
+            return new Set(arr.map(l => {
+                const m = String(l).match(/\d/);
+                return m ? parseInt(m[0]) : null;
+            }).filter(Boolean));
+        }
+        // Fallback: no wageLevels provided, just highlight the max level only
+        const lvl = parseInt(wageLevel?.match(/\d/)?.[0] || '0');
+        return lvl > 0 ? new Set([lvl]) : new Set();
+    })();
 
     const cardStyle = {
         display: 'block',
@@ -72,14 +85,17 @@ const CompanyCard = ({ company, jobCount, wageLevel, industries, isSelected, onC
 
             {/* Row 4: Wage badges */}
             <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '4px' }}>
-                {['Lv 1', 'Lv 2', 'Lv 3', 'Lv 4'].map((lbl, i) => (
+                {['Lv 1', 'Lv 2', 'Lv 3', 'Lv 4'].map((lbl, i) => {
+                    const hasLevel = actualLevels.has(i + 1);
+                    return (
                     <span key={lbl} style={{
                         fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px',
-                        background: i + 1 <= level ? '#24385E' : '#fff',
-                        color: i + 1 <= level ? '#fff' : '#ccc',
-                        border: i + 1 <= level ? '1px solid #24385E' : '1px solid #e0e0e0',
+                        background: hasLevel ? '#24385E' : '#fff',
+                        color: hasLevel ? '#fff' : '#ccc',
+                        border: hasLevel ? '1px solid #24385E' : '1px solid #e0e0e0',
                     }}>{lbl}</span>
-                ))}
+                    );
+                })}
             </div>
         </button>
     );

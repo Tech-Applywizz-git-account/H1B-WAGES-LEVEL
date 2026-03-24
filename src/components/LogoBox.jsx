@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getCompanyLogo } from '../utils/logoHelper';
+import { Globe } from 'lucide-react';
 
 /**
  * Super-Resilient LogoBox.
@@ -7,11 +8,11 @@ import { getCompanyLogo } from '../utils/logoHelper';
  * Uses getCompanyLogo as the single source of truth for the best possible URL.
  * Falls back to initials silently if the primary logo fails to load.
  */
-const LogoBox = ({ name, size = 40, fontSize = 12, className = "" }) => {
+const LogoBox = ({ name, officialUrl = null, size = 40, fontSize = 12, className = "" }) => {
     const [error, setError] = useState(false);
 
     // Get the best possible logo URL from our resolver
-    const logoUrl = getCompanyLogo(name);
+    const logoUrl = getCompanyLogo(name, officialUrl);
     const initials = name ? name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase() : '??';
 
     // Reset error state when company name changes
@@ -43,24 +44,24 @@ const LogoBox = ({ name, size = 40, fontSize = 12, className = "" }) => {
                     src={logoUrl}
                     alt={name || ""}
                     style={{
-                        width: '85%',
-                        height: '85%',
+                        maxWidth: '92%',
+                        maxHeight: '92%',
                         objectFit: 'contain',
-                        opacity: 1,
-                        filter: error ? 'blur(2px)' : 'none'
+                        opacity: 1
                     }}
                     onLoad={(e) => {
-                        // Detect silent 1x1 fallback pixel and show initials instead
-                        if (e.target.naturalWidth <= 1 && e.target.naturalHeight <= 1) {
+                        // Detect silent 1x1 fallback pixel and show initials instead.
+                        // We must ignore .svg files because they can legitimately report naturalWidth/Height of 0.
+                        if (e.target.naturalWidth <= 1 && e.target.naturalHeight <= 1 && !logoUrl.toLowerCase().includes('.svg')) {
                             setError(true);
                         }
                     }}
                     onError={() => setError(true)}
                 />
             ) : (
-                <span style={{ color: '#fff', fontWeight: 900, fontSize, letterSpacing: '-0.5px' }}>
-                    {initials}
-                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px' }}>
+                    <Globe size={size * 0.45} color="#cbd5e1" strokeWidth={1.5} />
+                </div>
             )}
         </div>
     );

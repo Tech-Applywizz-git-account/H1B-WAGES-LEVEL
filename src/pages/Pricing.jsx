@@ -1,9 +1,10 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import MigrateNavbar from '../components/MigrateNavbar';
 import { Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 import { PayPalScriptProvider } from "@paypal/react-paypal-js";
 import PaypalButton from '../components/PaypalButton';
+import RazorpayButton from '../components/RazorpayButton';
 import { Check, ChevronDown, ChevronUp, Sparkles, Shield, Zap, Star, Instagram, Twitter, Linkedin, Facebook } from 'lucide-react';
 
 const Pricing = () => {
@@ -128,17 +129,21 @@ const Pricing = () => {
                                             <p className="text-[#24385E] font-black text-sm uppercase tracking-widest">Complete Your Payment</p>
                                         </div>
                                         <div className="p-1">
-                                            <PayPalScriptProvider
-                                                options={{
-                                                    "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID,
-                                                    currency: "USD",
-                                                    intent: "capture",
-                                                    components: "buttons",
-                                                    environment: import.meta.env.VITE_PAYPAL_ENVIRONMENT === "live" ? "production" : "sandbox"
-                                                }}
-                                            >
-                                                <PaypalButton amount={import.meta.env.VITE_PAYMENT_AMOUNT || '30.00'} />
-                                            </PayPalScriptProvider>
+                                            {import.meta.env.VITE_PAYMENT_GATEWAY === 'razorpay' ? (
+                                                <RazorpayButton amount={import.meta.env.VITE_PAYMENT_AMOUNT || '39.99'} />
+                                            ) : (
+                                                <PayPalScriptProvider
+                                                    options={{
+                                                        "client-id": import.meta.env.VITE_PAYPAL_CLIENT_ID,
+                                                        currency: "USD",
+                                                        intent: "capture",
+                                                        components: "buttons",
+                                                        environment: import.meta.env.VITE_PAYPAL_ENVIRONMENT === "live" ? "production" : "sandbox"
+                                                    }}
+                                                >
+                                                    <PaypalButton amount={import.meta.env.VITE_PAYMENT_AMOUNT || '30.00'} />
+                                                </PayPalScriptProvider>
+                                            )}
                                         </div>
                                         <p className="text-center text-[11px] text-gray-400 font-bold uppercase tracking-tighter">
                                             SECURE 256-BIT SSL ENCRYPTED PAYMENT

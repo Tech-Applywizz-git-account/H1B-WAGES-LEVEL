@@ -15,7 +15,7 @@ import { getCompanyLogo } from '../utils/logoHelper';
 import CompanyCard from '../components/CompanyCard';
 import CompanyJobCard from '../components/CompanyJobCard';
 import Navbar from '../components/Navbar';
-import HeroSection from '../components/HeroSection';
+
 import Testimonials from '../components/Testimonials';
 import FAQ from '../components/FAQ';
 import Footer from '../components/Footer';
@@ -54,7 +54,7 @@ const normalizeName = (name) => {
 // ─── Teaser Dashboard (unpaid users) ─────────────────────────────────────────
 
 // ─── Teaser Dashboard (unpaid users) ─────────────────────────────────────────
-const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
+const TeaserDashboard = ({ user, signOut, navigate, isMobile, windowWidth, showSidebarDrawer }) => {
   const [teaserCompanies, setTeaserCompanies] = useState([]);
   const [selectedTeaserCompany, setSelectedTeaserCompany] = useState(null);
   const [teaserJobs, setTeaserJobs] = useState([]);
@@ -68,21 +68,21 @@ const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
   const S = {
     page: { display: 'flex', height: '100vh', overflow: 'hidden', background: '#f5f5f7', fontFamily: "'Inter', sans-serif" },
     sidebar: {
-      width: isMobile ? (mobileMenuOpen ? '280px' : '0') : '260px',
-      minWidth: isMobile ? (mobileMenuOpen ? '280px' : '0') : '260px',
+      width: showSidebarDrawer ? (mobileMenuOpen ? '280px' : '0') : '260px',
+      minWidth: showSidebarDrawer ? (mobileMenuOpen ? '280px' : '0') : '260px',
       background: '#ffffff',
       borderRight: '1px solid #e8e8e8',
       display: 'flex',
       flexDirection: 'column',
       flexShrink: 0,
-      position: isMobile ? 'fixed' : 'relative',
+      position: showSidebarDrawer ? 'fixed' : 'relative',
       zIndex: 9999,
       height: '100vh',
       left: 0,
       top: 0,
       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       overflow: 'hidden',
-      boxShadow: isMobile && mobileMenuOpen ? '0 0 40px rgba(0,0,0,0.1)' : 'none'
+      boxShadow: showSidebarDrawer && mobileMenuOpen ? '0 0 40px rgba(0,0,0,0.1)' : 'none'
     },
     sidebarLogo: { padding: '24px 24px 20px', minWidth: '260px' },
     sidebarNav: { flex: 1, padding: '0 12px', overflowY: 'auto', minWidth: '260px' },
@@ -101,23 +101,23 @@ const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
       borderBottom: '1px solid #e8e8e8',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: isMobile ? 'space-between' : 'center',
+      justifyContent: (isMobile || showSidebarDrawer) ? 'space-between' : 'center',
       gap: '12px',
-      padding: isMobile ? '0 16px' : '11px 24px',
-      height: isMobile ? '60px' : 'auto',
+      padding: (isMobile || (showSidebarDrawer && windowWidth < 1280)) ? '0 16px' : '11px 24px',
+      height: (isMobile || (showSidebarDrawer && windowWidth < 1280)) ? '60px' : 'auto',
       flexShrink: 0
     },
     content: { flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' },
     leftCol: {
-      width: isMobile ? '100%' : '460px',
-      minWidth: isMobile ? '0' : '460px',
+      width: isMobile ? '100%' : (windowWidth < 1280 ? '340px' : '460px'),
+      minWidth: isMobile ? '0' : (windowWidth < 1280 ? '340px' : '460px'),
       background: '#f5f5f7',
       display: (isMobile && mobileActiveCol === 'right') ? 'none' : 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
       flexShrink: 0
     },
-    searchWrap: { padding: isMobile ? '16px 12px' : '20px 20px 12px' },
+    searchWrap: { padding: isMobile ? '16px 12px' : (windowWidth < 1280 ? '16px 14px 10px' : '20px 20px 12px') },
     searchRow: { display: 'flex', alignItems: 'center', gap: '10px' },
     searchPill: { flex: 1, display: 'flex', alignItems: 'center', gap: '10px', background: '#fff', border: '1.5px solid #d8d8d8', borderRadius: '60px', padding: '0 16px', height: isMobile ? '46px' : '52px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)' },
     searchInput: { flex: 1, border: 'none', outline: 'none', fontSize: isMobile ? '14px' : '15px', color: '#333', background: 'transparent', minWidth: 0 },
@@ -183,36 +183,36 @@ const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
           .from('h1b_sponsor_finder')
           .select('Company, "LCA Filings"')
           .or(searchNames.map(n => `Company.ilike.%${n}%`).join(','));
-        
+
         if (data) {
           const map = {};
           // Sort descending so highest match wins
-          const sorted = [...data].sort((a,b) => {
-              const valA = typeof a["LCA Filings"] === 'number' ? a["LCA Filings"] : parseInt(String(a["LCA Filings"]).replace(/,/g, '')) || 0;
-              const valB = typeof b["LCA Filings"] === 'number' ? b["LCA Filings"] : parseInt(String(b["LCA Filings"]).replace(/,/g, '')) || 0;
-              return valB - valA;
+          const sorted = [...data].sort((a, b) => {
+            const valA = typeof a["LCA Filings"] === 'number' ? a["LCA Filings"] : parseInt(String(a["LCA Filings"]).replace(/,/g, '')) || 0;
+            const valB = typeof b["LCA Filings"] === 'number' ? b["LCA Filings"] : parseInt(String(b["LCA Filings"]).replace(/,/g, '')) || 0;
+            return valB - valA;
           });
 
           sorted.forEach(f => {
             const norm = normalizeName(f.Company);
             const count = typeof f["LCA Filings"] === 'number' ? f["LCA Filings"] : parseInt(String(f["LCA Filings"]).replace(/,/g, '')) || 0;
-            
+
             map[f.Company.toLowerCase()] = count;
             if (norm) {
-                if (!map[norm] || map[norm] < count) map[norm] = count;
-                const words = norm.split(' ').filter(Boolean);
-                if (words.length >= 1) {
-                    const firstWord = words[0];
-                    if (firstWord.length > 3 && (!map[firstWord] || map[firstWord] < count)) {
-                        map[firstWord] = count;
-                    }
+              if (!map[norm] || map[norm] < count) map[norm] = count;
+              const words = norm.split(' ').filter(Boolean);
+              if (words.length >= 1) {
+                const firstWord = words[0];
+                if (firstWord.length > 3 && (!map[firstWord] || map[firstWord] < count)) {
+                  map[firstWord] = count;
                 }
-                if (words.length >= 2) {
-                    const firstTwo = words[0] + ' ' + words[1];
-                    if (firstTwo.length > 5 && (!map[firstTwo] || map[firstTwo] < count)) {
-                        map[firstTwo] = count;
-                    }
+              }
+              if (words.length >= 2) {
+                const firstTwo = words[0] + ' ' + words[1];
+                if (firstTwo.length > 5 && (!map[firstTwo] || map[firstTwo] < count)) {
+                  map[firstTwo] = count;
                 }
+              }
             }
           });
           setFilingCounts(map);
@@ -289,7 +289,7 @@ const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
       {/* Main Content */}
       <div style={S.main}>
         <header style={S.topBar}>
-          {isMobile && (
+          {(isMobile || showSidebarDrawer) && (
             <button onClick={() => setMobileMenuOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', marginLeft: '-8px' }}>
               <Menu size={24} color="#24385E" />
             </button>
@@ -369,12 +369,14 @@ const TeaserDashboard = ({ user, signOut, navigate, isMobile }) => {
                     <div style={{ minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
                         <h2 style={{ fontSize: isMobile ? 20 : 26, fontWeight: 800, color: '#24385E', margin: 0 }}>{selectedTeaserCompany.company}</h2>
-                        {(() => { const name = selectedTeaserCompany.company; const cnt = filingCounts[name.toLowerCase()] || filingCounts[normalizeName(name)] || (() => { const w = normalizeName(name).split(' ').filter(Boolean); return (w.length >= 2 ? filingCounts[w[0] + ' ' + w[1]] : null) || (w.length >= 1 ? filingCounts[w[0]] : null) || 0; })(); return cnt > 0 ? (
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 700, color: '#24385E', background: '#f1f5f9', padding: '3px 8px', borderRadius: '6px' }}>
-                            <Globe size={12} strokeWidth={2.5} />
-                            {cnt.toLocaleString()} Filings
-                          </span>
-                        ) : null; })()}
+                        {(() => {
+                          const name = selectedTeaserCompany.company; const cnt = filingCounts[name.toLowerCase()] || filingCounts[normalizeName(name)] || (() => { const w = normalizeName(name).split(' ').filter(Boolean); return (w.length >= 2 ? filingCounts[w[0] + ' ' + w[1]] : null) || (w.length >= 1 ? filingCounts[w[0]] : null) || 0; })(); return cnt > 0 ? (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 700, color: '#24385E', background: '#f1f5f9', padding: '3px 8px', borderRadius: '6px' }}>
+                              <Globe size={12} strokeWidth={2.5} />
+                              {cnt.toLocaleString()} Filings
+                            </span>
+                          ) : null;
+                        })()}
                       </div>
                       <p style={{ color: '#64748b', margin: 0, fontSize: isMobile ? 12 : 13 }}>{selectedTeaserCompany.jobCount}+ Visa Opportunities Found</p>
                     </div>
@@ -429,15 +431,21 @@ const Homepage = () => {
   // Safety net: also check localStorage in case context hasn't hydrated yet
   const isAdmin = isAdminFromCtx || role === 'admin' || localStorage.getItem('userRole') === 'admin';
   const navigate = useNavigate();
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 960);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [showSidebarDrawer, setShowSidebarDrawer] = useState(window.innerWidth < 1280);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileActiveCol, setMobileActiveCol] = useState('left'); // 'left' or 'right'
 
   useEffect(() => {
     const handleResize = () => {
-      const mobile = window.innerWidth < 1024;
-      setIsMobile(mobile);
-      if (!mobile) setMobileMenuOpen(false);
+      const width = window.innerWidth;
+      setWindowWidth(width);
+      const isMob = width < 960;
+      setIsMobile(isMob);
+      const isDrawer = width < 1280;
+      setShowSidebarDrawer(isDrawer);
+      if (!isDrawer) setMobileMenuOpen(false);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
@@ -497,11 +505,11 @@ const Homepage = () => {
         // Generate search terms: core name + first two words + first word
         const searchTerms = new Set();
         rawNames.forEach(n => {
-            const norm = normalizeName(n);
-            if (norm.length > 2) searchTerms.add(norm);
-            const words = norm.split(' ').filter(Boolean);
-            if (words.length >= 2) searchTerms.add(words.slice(0, 2).join(' '));
-            if (words.length >= 1) searchTerms.add(words[0]);
+          const norm = normalizeName(n);
+          if (norm.length > 2) searchTerms.add(norm);
+          const words = norm.split(' ').filter(Boolean);
+          if (words.length >= 2) searchTerms.add(words.slice(0, 2).join(' '));
+          if (words.length >= 1) searchTerms.add(words[0]);
         });
 
         const searchNames = Array.from(searchTerms).filter(n => n.length > 2);
@@ -523,36 +531,36 @@ const Homepage = () => {
         if (data) {
           const map = {};
           // Sort descending so highest match wins for generic terms
-          const sorted = [...data].sort((a,b) => {
-              const valA = typeof a["LCA Filings"] === 'number' ? a["LCA Filings"] : parseInt(String(a["LCA Filings"]).replace(/,/g, '')) || 0;
-              const valB = typeof b["LCA Filings"] === 'number' ? b["LCA Filings"] : parseInt(String(b["LCA Filings"]).replace(/,/g, '')) || 0;
-              return valB - valA;
+          const sorted = [...data].sort((a, b) => {
+            const valA = typeof a["LCA Filings"] === 'number' ? a["LCA Filings"] : parseInt(String(a["LCA Filings"]).replace(/,/g, '')) || 0;
+            const valB = typeof b["LCA Filings"] === 'number' ? b["LCA Filings"] : parseInt(String(b["LCA Filings"]).replace(/,/g, '')) || 0;
+            return valB - valA;
           });
 
           sorted.forEach(f => {
             const norm = normalizeName(f.Company);
             const count = typeof f["LCA Filings"] === 'number' ? f["LCA Filings"] : parseInt(String(f["LCA Filings"]).replace(/,/g, '')) || 0;
-            
+
             map[f.Company.toLowerCase()] = count;
             if (norm) {
-                // If the filing record normalized name starts with our normalized company name (e.g. "merck sharp dohme" starts with "merck")
-                // we should store it under the core name if it's the best count found so far.
-                if (!map[norm] || map[norm] < count) map[norm] = count;
-                
-                const words = norm.split(' ').filter(Boolean);
-                // Also map to the very first word if it's long enough, for extremely aggressive matching (e.g. Merck)
-                if (words.length >= 1) {
-                    const firstWord = words[0];
-                    if (firstWord.length > 3 && (!map[firstWord] || map[firstWord] < count)) {
-                        map[firstWord] = count;
-                    }
+              // If the filing record normalized name starts with our normalized company name (e.g. "merck sharp dohme" starts with "merck")
+              // we should store it under the core name if it's the best count found so far.
+              if (!map[norm] || map[norm] < count) map[norm] = count;
+
+              const words = norm.split(' ').filter(Boolean);
+              // Also map to the very first word if it's long enough, for extremely aggressive matching (e.g. Merck)
+              if (words.length >= 1) {
+                const firstWord = words[0];
+                if (firstWord.length > 3 && (!map[firstWord] || map[firstWord] < count)) {
+                  map[firstWord] = count;
                 }
-                if (words.length >= 2) {
-                    const firstTwo = words[0] + ' ' + words[1];
-                    if (firstTwo.length > 5 && (!map[firstTwo] || map[firstTwo] < count)) {
-                        map[firstTwo] = count;
-                    }
+              }
+              if (words.length >= 2) {
+                const firstTwo = words[0] + ' ' + words[1];
+                if (firstTwo.length > 5 && (!map[firstTwo] || map[firstTwo] < count)) {
+                  map[firstTwo] = count;
                 }
+              }
             }
           });
           setFilingCounts(prev => ({ ...prev, ...map }));
@@ -581,8 +589,8 @@ const Homepage = () => {
 
       // Auto-update right pane synchronously
       if (filteredComps.length > 0 && selectedCompany !== filteredComps[0].company) {
-          setSelectedCompany(filteredComps[0].company);
-          setSelectedCompanyData(filteredComps[0]);
+        setSelectedCompany(filteredComps[0].company);
+        setSelectedCompanyData(filteredComps[0]);
       }
 
       const filtered = filteredComps.slice(0, 8).map(c => c.company);
@@ -612,15 +620,15 @@ const Homepage = () => {
   // Ensure robust clearing/setting on explicit suggestion click
   const handleSuggestionClick = (companyName) => {
     setCompanySearch(companyName);
-    setDebouncedCompanySearch(companyName); 
+    setDebouncedCompanySearch(companyName);
     setShowSuggestions(false);
     setCompanyPage(1);
     // Explicit override without async interference
-    setSelectedCompany(''); 
+    setSelectedCompany('');
     setTimeout(() => {
-        setSelectedCompany(companyName);
-        const found = allProcessedCompanies.find(c => c.company === companyName);
-        if (found) setSelectedCompanyData(found);
+      setSelectedCompany(companyName);
+      const found = allProcessedCompanies.find(c => c.company === companyName);
+      if (found) setSelectedCompanyData(found);
     }, 10);
   };
 
@@ -680,22 +688,22 @@ const Homepage = () => {
       const paginated = arr.slice(from, from + COMPANIES_PER_PAGE);
       setCompanies(paginated);
       if (!isMobile && paginated.length > 0) {
-          if (debouncedCompanySearch && debouncedCompanySearch.trim().length > 0) {
-              if (selectedCompany !== paginated[0].company) {
-                  setSelectedCompany(paginated[0].company);
-                  setSelectedCompanyData(paginated[0]);
-              }
-          } else if (!selectedCompany || !arr.some(c => c.company === selectedCompany)) {
-              setSelectedCompany(paginated[0].company);
-              setSelectedCompanyData(paginated[0]);
+        if (debouncedCompanySearch && debouncedCompanySearch.trim().length > 0) {
+          if (selectedCompany !== paginated[0].company) {
+            setSelectedCompany(paginated[0].company);
+            setSelectedCompanyData(paginated[0]);
           }
+        } else if (!selectedCompany || !arr.some(c => c.company === selectedCompany)) {
+          setSelectedCompany(paginated[0].company);
+          setSelectedCompanyData(paginated[0]);
+        }
       }
       return;
     }
 
     // ── 2. sessionStorage cache hit (survives navigation, avoids full re-fetch) ──
     try {
-      const cached = sessionStorage.getItem('_companiesCache_v8');
+      const cached = sessionStorage.getItem('_companiesCache_v10');
       if (cached) {
         const parsed = JSON.parse(cached);
         if (parsed && parsed.length > 0) {
@@ -738,15 +746,15 @@ const Homepage = () => {
           const paginated = arr.slice(0, COMPANIES_PER_PAGE);
           setCompanies(paginated);
           if (!isMobile && paginated.length > 0) {
-              if (debouncedCompanySearch && debouncedCompanySearch.trim().length > 0) {
-                  if (selectedCompany !== paginated[0].company) {
-                      setSelectedCompany(paginated[0].company);
-                      setSelectedCompanyData(paginated[0]);
-                  }
-              } else if (!selectedCompany || !arr.some(c => c.company === selectedCompany)) {
-                  setSelectedCompany(paginated[0].company);
-                  setSelectedCompanyData(paginated[0]);
+            if (debouncedCompanySearch && debouncedCompanySearch.trim().length > 0) {
+              if (selectedCompany !== paginated[0].company) {
+                setSelectedCompany(paginated[0].company);
+                setSelectedCompanyData(paginated[0]);
               }
+            } else if (!selectedCompany || !arr.some(c => c.company === selectedCompany)) {
+              setSelectedCompany(paginated[0].company);
+              setSelectedCompanyData(paginated[0]);
+            }
           }
           return;
         }
@@ -829,21 +837,8 @@ const Homepage = () => {
       });
 
       const getHeuristicLevel = (title, salary) => {
-        if (!title) return 0;
-        const rt = String(title).toLowerCase();
-        if (salary) {
-          const sNum = parseInt(String(salary).replace(/[$,]/g, ''));
-          if (sNum >= 160000) return 4;
-          if (sNum >= 130000) return 3;
-          if (sNum > 0 && sNum <= 80000) return 1;
-        }
-        if (rt.match(/\blead\b|\bstaff\b|\bprincipal\b|\bdirector\b|\bvp\b|\bhead\b|\bchief\b/)) return 4;
-        if (rt.match(/\bsenior\b|\bsr[\s.]\b/)) return 3;
-        if (rt.match(/\bjunior\b|\bjr[\s.]\b|\bentry\b|\bintern\b|\bgraduate\b/)) return 1;
-        if (rt.match(/\b(iv|4)\b/)) return 4;
-        if (rt.match(/\b(iii|3)\b/)) return 3;
-        if (rt.match(/\b(ii|2)\b/)) return 2;
-        return 2; 
+        // Disabled heuristic: DOL Wage Levels depend entirely on SOC codes and location prevailing wages, not absolute salary scale or internal job titles.
+        return 0;
       };
 
       const getStatsFor = (rawName) => {
@@ -868,8 +863,8 @@ const Homepage = () => {
           else if (rawLevel.match(/\bIII\b/) || rawLevel.match(/\bLEVEL 3\b/)) wageNum = 3;
           else if (rawLevel.match(/\bII\b/) || rawLevel.match(/\bLEVEL 2\b/)) wageNum = 2;
           else if (rawLevel.match(/\bI\b/) || rawLevel.match(/\bLEVEL 1\b/)) wageNum = 1;
-          if (wageNum > 0) s.wageLevels.add(`Lv ${wageNum}`);
-          if (wageNum === 0) wageNum = Math.max(getHeuristicLevel(v.role, v.salary), getHeuristicLevel(v.domain, v.salary));
+          if (wageNum === 0) wageNum = 2; // safely fallback to Lv 2
+          s.wageLevels.add(`Lv ${wageNum}`);
           if (wageNum > s.maxWageNum) {
             s.maxWageNum = wageNum;
             s.wageLevel = `Lv ${wageNum}`;
@@ -882,8 +877,7 @@ const Homepage = () => {
         if (s) {
           s.jobCount++;
           let currentWage = parseInt(j.wage_num || j.wage_level?.match(/\d/)?.[0] || '0');
-          if (currentWage === 0) currentWage = getHeuristicLevel(j.job_role_name, j.wage_num || j.wage_level);
-          if (currentWage === 0) currentWage = 2;
+          if (currentWage === 0) currentWage = 2; // safely fallback to Lv 2
           s.wageLevels.add(`Lv ${currentWage}`);
           if (currentWage > s.maxWageNum) {
             s.maxWageNum = currentWage;
@@ -935,10 +929,10 @@ const Homepage = () => {
       setAllProcessedCompanies(finalArr);
       if (!preliminary) {
         setIsInitialLoadDone(true);
-        try { 
+        try {
           // Sets don't stringify to JSON arrays automatically, so we map them
           const serializable = finalArr.map(c => ({ ...c, industries: Array.from(c.industries), wageLevels: Array.from(c.wageLevels) }));
-          sessionStorage.setItem('_companiesCache_v8', JSON.stringify(serializable)); 
+          sessionStorage.setItem('_companiesCache_v10', JSON.stringify(serializable));
         } catch (e) { }
       }
 
@@ -963,15 +957,15 @@ const Homepage = () => {
       const paginated = viewArr.slice(from, from + COMPANIES_PER_PAGE);
       setCompanies(paginated);
       if (!isMobile && paginated.length > 0) {
-          if (debouncedCompanySearch && debouncedCompanySearch.trim().length > 0) {
-              if (selectedCompany !== paginated[0].company) {
-                  setSelectedCompany(paginated[0].company);
-                  setSelectedCompanyData(paginated[0]);
-              }
-          } else if (!selectedCompany || !viewArr.some(c => c.company === selectedCompany)) {
-              setSelectedCompany(paginated[0].company);
-              setSelectedCompanyData(paginated[0]);
+        if (debouncedCompanySearch && debouncedCompanySearch.trim().length > 0) {
+          if (selectedCompany !== paginated[0].company) {
+            setSelectedCompany(paginated[0].company);
+            setSelectedCompanyData(paginated[0]);
           }
+        } else if (!selectedCompany || !viewArr.some(c => c.company === selectedCompany)) {
+          setSelectedCompany(paginated[0].company);
+          setSelectedCompanyData(paginated[0]);
+        }
       }
     }
   }, [user, subscriptionExpired, paymentStatus, paymentLoading, debouncedCompanySearch, sortBy, companyPage, isInitialLoadDone, allProcessedCompanies, selectedCompany, levelFilter]);
@@ -1047,7 +1041,7 @@ const Homepage = () => {
           const urlObj = new URL(s.startsWith('http') ? s : `https://${s}`);
           let p = (urlObj.hostname + urlObj.pathname).replace(/^www\./, '').replace(/\/$/, '');
           // Extract job ID (9+ digits) to handle LinkedIn title slugs
-          const m = p.match(/\d{9,}/); 
+          const m = p.match(/\d{9,}/);
           if (m) return urlObj.hostname.replace(/^www\./, '') + '||' + m[0];
           return p;
         } catch {
@@ -1082,13 +1076,13 @@ const Homepage = () => {
         ...(resBackup.data || [])
       ].map(r => ({
         ...r,
-        title:        null, // Strictly from sponsored table only
-        url:          r.job_link,
-        date_posted:  r.audit_date,
+        title: null, // Strictly from sponsored table only
+        url: r.job_link,
+        date_posted: r.audit_date,
         job_role_name: r.domain,
-        isVerified:   true,
-        isTeaser:     paymentStatus === 'pending',
-        job_id:       r.job_id || r.id,
+        isVerified: true,
+        isTeaser: paymentStatus === 'pending',
+        job_id: r.job_id || r.id,
       }));
 
       // Dedup verified jobs by role key — sync and backup share the same records
@@ -1102,9 +1096,9 @@ const Homepage = () => {
           // Merge: keep richest salary/wage data
           verifiedByRole.set(rk, {
             ...existing, ...v,
-            salary:     existing.salary     || v.salary,
+            salary: existing.salary || v.salary,
             wage_level: existing.wage_level || v.wage_level,
-            url:        existing.url        || v.url,
+            url: existing.url || v.url,
             isVerified: true,
           });
         }
@@ -1127,20 +1121,38 @@ const Homepage = () => {
         results.forEach(r => { if (r.data) deepSponsored.push(...r.data); });
       }
 
-      const sponsoredJobs = [
-        ...(resSponsored.data || [])
-      ].map(j => ({
+      // Build a set of verified URLs and job_ids from audit_reviews_backup
+      // so we can filter sponsored jobs to ONLY those that are confirmed
+      const verifiedUrls = new Set();
+      const verifiedJobIds = new Set();
+      allVerifiedRaw.forEach(v => {
+        if (v.url) verifiedUrls.add(_urlKey(v.url));
+        if (v.job_id) verifiedJobIds.add(String(v.job_id));
+      });
+
+      const allSponsoredRaw = (resSponsored.data || []).map(j => ({
         ...j,
         job_id: j.id,
-        title:  j.title, // Take the raw title column
-        role:   j.job_role_name,
+        title: j.title, // Take the raw title column
+        role: j.job_role_name,
         isTeaser: paymentStatus === 'pending',
       }));
+
+      // Filter: only keep sponsored jobs that have a matching verified record
+      const sponsoredJobs = allSponsoredRaw.filter(j => {
+        const uk = _urlKey(j.url);
+        const jid = String(j.job_id || j.id || '');
+        const jobIdField = String(j.jobId || '');
+        return (uk && verifiedUrls.has(uk)) ||
+               (jid && verifiedJobIds.has(jid)) ||
+               (jobIdField && verifiedJobIds.has(jobIdField)) ||
+               verifiedByRole.has(_roleKey(j));
+      });
 
       // ── Pass 2: Map deep-fetched titles BACK to verified records ────────────
       // This is the critical step: verified jobs must "know" their title and level before deduplication
       const metaMap = new Map();
-      [...sponsoredJobs, ...deepSponsored].forEach(s => {
+      [...allSponsoredRaw, ...deepSponsored].forEach(s => {
         const uk = _urlKey(s.url);
         if (uk) metaMap.set('u:' + uk, s);
         if (s.id) metaMap.set('i:' + s.id, s);
@@ -1150,22 +1162,22 @@ const Homepage = () => {
       verifiedJobs.forEach(v => {
         const uk = _urlKey(v.url);
         let meta = metaMap.get('u:' + uk) || metaMap.get('i:' + v.job_id) || metaMap.get('j:' + v.job_id);
-        
+
         // STRICT SAFETY: Prevent cross-company data leakage!
         // If an auditor pasted a link for Company B into Company A, reject the metadata to prevent UI contamination.
         if (meta && meta.company && selectedCompany && _normR(meta.company) !== _normR(selectedCompany)) {
-            const mWords = _normR(meta.company).split(' ').filter(Boolean);
-            const sWords = _normR(selectedCompany).split(' ').filter(Boolean);
-            // Allow loose match (e.g. "Oracle" vs "Oracle America Inc")
-            const looseMatch = mWords.length > 0 && sWords.length > 0 && (mWords[0] === sWords[0]);
-            if (!looseMatch) {
-                meta = null; // Reject corrupted metadata match
-            }
+          const mWords = _normR(meta.company).split(' ').filter(Boolean);
+          const sWords = _normR(selectedCompany).split(' ').filter(Boolean);
+          // Allow loose match (e.g. "Oracle" vs "Oracle America Inc")
+          const looseMatch = mWords.length > 0 && sWords.length > 0 && (mWords[0] === sWords[0]);
+          if (!looseMatch) {
+            meta = null; // Reject corrupted metadata match
+          }
         }
 
         if (meta) {
           v.title = meta.title;
-          v.id = meta.id; 
+          v.id = meta.id;
           v.wage_level = meta.wage_level || v.wage_level;
           v.location = meta.location || v.location;
           v.salary = meta.salary || v.salary;
@@ -1174,11 +1186,11 @@ const Homepage = () => {
           const companyJobs = deepSponsored.filter(j => j.company === v.company || j.company === selectedCompany);
           const vRole = _normR(v.role || v.domain || '');
           const bestMatch = companyJobs.find(j => _normR(j.title).includes(vRole) || _normR(j.job_role_name).includes(vRole));
-            if (bestMatch) {
-              v.title = bestMatch.title;
-              v.id = bestMatch.id;
-              v.wage_level = bestMatch.wage_level || v.wage_level;
-            }
+          if (bestMatch) {
+            v.title = bestMatch.title;
+            v.id = bestMatch.id;
+            v.wage_level = bestMatch.wage_level || v.wage_level;
+          }
         }
         if (!v.location) v.location = 'united states';
       });
@@ -1193,7 +1205,7 @@ const Homepage = () => {
         if (!j.location) j.location = 'united states';
         const jk = _jobKey(j);
         const existing = finalMap.get(jk);
-        
+
         const curLvl = parseInt(_lvlKey(j.wage_level || j.wage_num) || '1');
         const exLvl = existing ? parseInt(_lvlKey(existing.wage_level || existing.wage_num) || '0') : 0;
 
@@ -1221,12 +1233,12 @@ const Homepage = () => {
             ...existing,
             ...v,
             isVerified: true,
-            salary:     existing.salary     || v.salary,
+            salary: existing.salary || v.salary,
             wage_level: exLvl >= curLvl ? existing.wage_level : v.wage_level,
-            url:        existing.url        || v.url,
+            url: existing.url || v.url,
             // Strictly prefer the sponsored title
-            title:      existing.title      || v.title, 
-            job_id:     existing.job_id     || v.job_id,
+            title: existing.title || v.title,
+            job_id: existing.job_id || v.job_id,
           });
         }
       });
@@ -1270,13 +1282,13 @@ const Homepage = () => {
       unique.sort((a, b) => {
         // Explictly sort Lv 1 mathematically above Lv 2 when multiple levels selected
         if (level && level.length > 1) {
-            const getLv = (j) => {
-                const m = String(j.wage_level || j.wage_num || '').match(/\d/);
-                return m ? parseInt(m[0]) : 99;
-            };
-            const wA = getLv(a);
-            const wB = getLv(b);
-            if (wA !== wB) return wA - wB; 
+          const getLv = (j) => {
+            const m = String(j.wage_level || j.wage_num || '').match(/\d/);
+            return m ? parseInt(m[0]) : 99;
+          };
+          const wA = getLv(a);
+          const wB = getLv(b);
+          if (wA !== wB) return wA - wB;
         }
 
         const hasSal = (s) => s && s.includes('$');
@@ -1306,8 +1318,8 @@ const Homepage = () => {
         lcaCount = typeof val === 'number' ? val : parseInt(String(val || 0).replace(/,/g, '')) || 0;
       }
 
-      const jobsWithFilings = unique.map(j => ({ 
-        ...j, 
+      const jobsWithFilings = unique.map(j => ({
+        ...j,
         lca_filings: lcaCount,
         isTeaser: paymentStatus === 'pending'
       }));
@@ -1317,26 +1329,86 @@ const Homepage = () => {
       setCompanyJobs(pagedUnique);
       setJobsLoading(false);
 
+      // (B) Update wage level badges on both panels from the actual fetched jobs
+      // Extract all wage levels from the FULL job list (not just the paged subset)
+      const discoveredLevels = new Set();
+      jobsWithFilings.forEach(j => {
+        const m = String(j.wage_level || j.wage_num || '').match(/\d/);
+        if (m) discoveredLevels.add(`Lv ${m[0]}`);
+      });
+      if (discoveredLevels.size > 0) {
+        // Update right panel header badges
+        setSelectedCompanyData(prev => {
+          if (!prev) return prev;
+          const existing = prev.wageLevels
+            ? (Array.isArray(prev.wageLevels) ? new Set(prev.wageLevels) : (prev.wageLevels instanceof Set ? new Set(prev.wageLevels) : new Set()))
+            : new Set();
+          let changed = false;
+          discoveredLevels.forEach(l => { if (!existing.has(l)) { existing.add(l); changed = true; } });
+          if (!changed) return prev;
+          return { ...prev, wageLevels: existing };
+        });
+        // Update left panel CompanyCard badges for the current page
+        setCompanies(prev => prev.map(c => {
+          if (c.company !== selectedCompany) return c;
+          const existing = c.wageLevels
+            ? (Array.isArray(c.wageLevels) ? new Set(c.wageLevels) : (c.wageLevels instanceof Set ? new Set(c.wageLevels) : new Set()))
+            : new Set();
+          let changed = false;
+          discoveredLevels.forEach(l => { if (!existing.has(l)) { existing.add(l); changed = true; } });
+          if (!changed) return c;
+          return { ...c, wageLevels: existing };
+        }));
+      }
+
       // (A) Calculate wage_level for paged verified-only jobs
       const jobsNeedingWage = pagedUnique.filter(j => !j.wage_level);
       if (jobsNeedingWage.length > 0) {
-          await Promise.all(jobsNeedingWage.map(async (j) => {
-              try {
-                  const occupation = j.title || '';
-                  const location = j.location || '';
-                  if (!occupation || occupation === 'null') return;
-                  const results = await getWageLevel(occupation, location, j.salary);
-                  if (results && results.length > 0) {
-                      j.wage_level = results[0]['Wage Level'] || 'Lv 2';
-                      j.wage_num = parseInt(j.wage_level.match(/\d/)?.[0] || '2');
-                  }
-              } catch (err) {
-                  // Silently fail
-              }
+        await Promise.all(jobsNeedingWage.map(async (j) => {
+          try {
+            const occupation = j.title || '';
+            const location = j.location || '';
+            if (!occupation || occupation === 'null') return;
+            const results = await getWageLevel(occupation, location, j.salary);
+            if (results && results.length > 0) {
+              j.wage_level = results[0]['Wage Level'] || 'Lv 2';
+              j.wage_num = parseInt(j.wage_level.match(/\d/)?.[0] || '2');
+            }
+          } catch (err) {
+            // Silently fail
+          }
+        }));
+        setCompanyJobs([...pagedUnique]); // Update state once enriched
+        // Also update badges with any newly enriched wage levels
+        const enrichedLevels = new Set();
+        pagedUnique.forEach(j => {
+          const m = String(j.wage_level || j.wage_num || '').match(/\d/);
+          if (m) enrichedLevels.add(`Lv ${m[0]}`);
+        });
+        if (enrichedLevels.size > 0) {
+          setSelectedCompanyData(prev => {
+            if (!prev) return prev;
+            const existing = prev.wageLevels
+              ? (Array.isArray(prev.wageLevels) ? new Set(prev.wageLevels) : (prev.wageLevels instanceof Set ? new Set(prev.wageLevels) : new Set()))
+              : new Set();
+            let changed = false;
+            enrichedLevels.forEach(l => { if (!existing.has(l)) { existing.add(l); changed = true; } });
+            if (!changed) return prev;
+            return { ...prev, wageLevels: existing };
+          });
+          setCompanies(prev => prev.map(c => {
+            if (c.company !== selectedCompany) return c;
+            const existing = c.wageLevels
+              ? (Array.isArray(c.wageLevels) ? new Set(c.wageLevels) : (c.wageLevels instanceof Set ? new Set(c.wageLevels) : new Set()))
+              : new Set();
+            let changed = false;
+            enrichedLevels.forEach(l => { if (!existing.has(l)) { existing.add(l); changed = true; } });
+            if (!changed) return c;
+            return { ...c, wageLevels: existing };
           }));
-          setCompanyJobs([...pagedUnique]); // Update state once enriched
+        }
       }
-      
+
       // Update cache
       window._companyJobsCache.set(cacheKey, { jobs: pagedUnique, total });
       setTotalCompanyJobs(total);
@@ -1382,7 +1454,7 @@ const Homepage = () => {
             window._allProcessedCompanies = null;
             window._confirmedCompaniesCache = null;
             window._companyJobsCache = null; // Clear jobs cache as well
-            try { sessionStorage.removeItem('_companiesCache_v8'); } catch (_) { }
+            try { sessionStorage.removeItem('_companiesCache_v10'); } catch (_) { }
             setIsInitialLoadDone(false);
             setAllProcessedCompanies([]);
           }
@@ -1446,11 +1518,20 @@ const Homepage = () => {
   };
 
   if (authLoading || paymentLoading) return <div className="h-screen w-screen flex items-center justify-center bg-[#f5f5f7]"><Loader2 className="w-8 h-8 text-[#24385E] animate-spin" /></div>;
-  if (!user) return <div className="bg-white"><Navbar /><HeroSection /><Testimonials /><FAQ /><Footer /></div>;
+  if (!user) return <div className="h-screen w-screen flex items-center justify-center bg-[#f5f5f7]"><Loader2 className="w-8 h-8 text-[#24385E] animate-spin" /></div>;
 
   // ── Payment gate: show teaser if not paid (admins always bypass) ──
   const isPaid = paymentStatus === 'paid' || paymentStatus === 'active' || paymentStatus === 'completed' || isAdmin;
-  if (!isPaid) return <TeaserDashboard user={user} signOut={handleLogout} navigate={navigate} isMobile={isMobile} />;
+  if (!isPaid) return (
+    <TeaserDashboard
+      user={user}
+      signOut={handleLogout}
+      navigate={navigate}
+      isMobile={isMobile}
+      windowWidth={windowWidth}
+      showSidebarDrawer={showSidebarDrawer}
+    />
+  );
 
   const navItems = [
     { id: 'all_companies', label: 'All Companies\nthat Sponsor', icon: Building2 },
@@ -1465,21 +1546,21 @@ const Homepage = () => {
   const S = {
     page: { display: 'flex', height: '100vh', overflow: 'hidden', background: '#f5f5f7', fontFamily: "'Inter', sans-serif" },
     sidebar: {
-      width: (activeView === 'h1b_finder' && !isMobile) ? '0' : (isMobile ? (mobileMenuOpen ? '280px' : '0') : '260px'),
-      minWidth: (activeView === 'h1b_finder' && !isMobile) ? '0' : (isMobile ? (mobileMenuOpen ? '280px' : '0') : '260px'),
+      width: (activeView === 'h1b_finder' && !isMobile) ? '0' : (showSidebarDrawer ? (mobileMenuOpen ? '280px' : '0') : '260px'),
+      minWidth: (activeView === 'h1b_finder' && !isMobile) ? '0' : (showSidebarDrawer ? (mobileMenuOpen ? '280px' : '0') : '260px'),
       background: '#ffffff',
       borderRight: (activeView === 'h1b_finder' && !isMobile) ? 'none' : '1px solid #e8e8e8',
       display: 'flex',
       flexDirection: 'column',
       flexShrink: 0,
-      position: isMobile ? 'fixed' : 'relative',
+      position: showSidebarDrawer ? 'fixed' : 'relative',
       zIndex: 9999,  // Must be above search pill (2010) and suggestions (2000)
       height: '100vh',
       left: 0,
       top: 0,
       transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
       overflow: 'hidden',
-      boxShadow: isMobile && mobileMenuOpen ? '0 0 40px rgba(0,0,0,0.1)' : 'none'
+      boxShadow: showSidebarDrawer && mobileMenuOpen ? '0 0 40px rgba(0,0,0,0.1)' : 'none'
     },
     sidebarLogo: { padding: '24px 24px 20px', minWidth: '260px' },
     sidebarNav: { flex: 1, padding: '0 12px', overflowY: 'auto', minWidth: '260px' },
@@ -1498,23 +1579,23 @@ const Homepage = () => {
       borderBottom: '1px solid #e8e8e8',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: isMobile ? 'space-between' : 'center',
+      justifyContent: (isMobile || showSidebarDrawer) ? 'space-between' : 'center',
       gap: '12px',
-      padding: isMobile ? '0 16px' : '11px 24px',
-      height: isMobile ? '60px' : 'auto',
+      padding: (isMobile || (showSidebarDrawer && windowWidth < 1280)) ? '0 16px' : '11px 24px',
+      height: (isMobile || (showSidebarDrawer && windowWidth < 1280)) ? '60px' : 'auto',
       flexShrink: 0
     },
     content: { flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' },
     leftCol: {
-      width: isMobile ? '100%' : '460px',
-      minWidth: isMobile ? '0' : '460px',
+      width: isMobile ? '100%' : (windowWidth < 1280 ? '340px' : '460px'),
+      minWidth: isMobile ? '0' : (windowWidth < 1280 ? '340px' : '460px'),
       background: '#f5f5f7',
       display: (isMobile && mobileActiveCol === 'right') ? 'none' : 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
       flexShrink: 0
     },
-    searchWrap: { padding: isMobile ? '16px 12px' : '20px 20px 12px' },
+    searchWrap: { padding: isMobile ? '16px 12px' : (windowWidth < 1280 ? '16px 14px 10px' : '20px 20px 12px') },
     searchRow: { display: 'flex', alignItems: 'center', gap: '10px' },
     searchPill: { flex: 1, display: 'flex', alignItems: 'center', gap: '10px', background: '#fff', border: '1.5px solid #d8d8d8', borderRadius: '60px', padding: '0 16px', height: isMobile ? '46px' : '52px', boxShadow: '0 2px 8px rgba(0,0,0,0.07)' },
     searchInput: { flex: 1, border: 'none', outline: 'none', fontSize: isMobile ? '14px' : '15px', color: '#333', background: 'transparent', minWidth: 0 },
@@ -1656,31 +1737,31 @@ const Homepage = () => {
 
         {/* Top bar — hidden for h1b_finder on desktop */}
         {!(activeView === 'h1b_finder' && !isMobile) && (
-        <div style={S.topBar}>
-          {isMobile && (
-            <button onClick={() => setMobileMenuOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', marginLeft: '-8px' }}>
-              <Menu size={24} color="#24385E" />
-            </button>
-          )}
+          <div style={S.topBar}>
+            {(isMobile || showSidebarDrawer) && (
+              <button onClick={() => setMobileMenuOpen(true)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '8px', marginLeft: '-8px' }}>
+                <Menu size={24} color="#24385E" />
+              </button>
+            )}
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {activeView === 'all_companies' ? <Building2 size={20} color="#24385E" /> : <Briefcase size={20} color="#24385E" />}
-            <span style={{ fontSize: isMobile ? '13px' : '15px', fontWeight: 700, color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {activeView === 'all_companies' ? 'Search open roles by company' : 'Verified Sponsored Jobs'}
-            </span>
-          </div>
-
-          {!isMobile && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '12px' }}>
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#24385E' }} />
-              <div style={{ width: '36px', height: '3px', background: '#24385E', borderRadius: '3px' }} />
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#24385E' }} />
-              <div style={{ width: '36px', height: '3px', background: '#ddd', borderRadius: '3px' }} />
-              <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ddd' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {activeView === 'all_companies' ? <Building2 size={20} color="#24385E" /> : <Briefcase size={20} color="#24385E" />}
+              <span style={{ fontSize: isMobile ? '13px' : '15px', fontWeight: 700, color: '#1a1a1a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {activeView === 'all_companies' ? 'Search open roles by company' : 'Verified Sponsored Jobs'}
+              </span>
             </div>
-          )}
-          {isMobile && <div style={{ width: '32px' }} />}
-        </div>
+
+            {!isMobile && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '12px' }}>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#24385E' }} />
+                <div style={{ width: '36px', height: '3px', background: '#24385E', borderRadius: '3px' }} />
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#24385E' }} />
+                <div style={{ width: '36px', height: '3px', background: '#ddd', borderRadius: '3px' }} />
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ddd' }} />
+              </div>
+            )}
+            {isMobile && <div style={{ width: '32px' }} />}
+          </div>
         )}
 
         <div style={S.content}>
@@ -1896,7 +1977,7 @@ const Homepage = () => {
                       isMobile={isMobile}
                       isVerified={true}
                       lca_filings={filingCounts[c.company.toLowerCase()] || filingCounts[normalizeName(c.company)] || (() => { const w = normalizeName(c.company).split(' ').filter(Boolean); return (w.length >= 2 ? filingCounts[w[0] + ' ' + w[1]] : null) || (w.length >= 1 ? filingCounts[w[0]] : null) || 0; })()}
-                      wageLevel={c.wageLevel} industries={c.industries}
+                      wageLevel={c.wageLevel} wageLevels={c.wageLevels} industries={c.industries}
                       isSelected={selectedCompany === c.company} onClick={() => handleCompanySelect(c)} />
                   )) : (
                     <p style={{ textAlign: 'center', color: '#aaa', fontSize: '14px', paddingTop: '80px' }}>No companies found</p>
@@ -1948,12 +2029,14 @@ const Homepage = () => {
                           <div style={{ minWidth: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', flexWrap: 'wrap' }}>
                               <h2 style={{ fontSize: isMobile ? '18px' : '22px', fontWeight: 800, color: '#111', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{selectedCompany}</h2>
-                              {(() => { const name = selectedCompany; const cnt = filingCounts[name.toLowerCase()] || filingCounts[normalizeName(name)] || (() => { const w = normalizeName(name).split(' ').filter(Boolean); return (w.length >= 2 ? filingCounts[w[0] + ' ' + w[1]] : null) || (w.length >= 1 ? filingCounts[w[0]] : null) || 0; })(); return cnt > 0 ? (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: '#24385E', background: '#f1f5f9', padding: '2px 6px', borderRadius: '6px' }}>
-                                  <Globe size={11} strokeWidth={2.5} />
-                                  {cnt.toLocaleString()} Filings
-                                </span>
-                              ) : null; })()}
+                              {(() => {
+                                const name = selectedCompany; const cnt = filingCounts[name.toLowerCase()] || filingCounts[normalizeName(name)] || (() => { const w = normalizeName(name).split(' ').filter(Boolean); return (w.length >= 2 ? filingCounts[w[0] + ' ' + w[1]] : null) || (w.length >= 1 ? filingCounts[w[0]] : null) || 0; })(); return cnt > 0 ? (
+                                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 700, color: '#24385E', background: '#f1f5f9', padding: '2px 6px', borderRadius: '6px' }}>
+                                    <Globe size={11} strokeWidth={2.5} />
+                                    {cnt.toLocaleString()} Filings
+                                  </span>
+                                ) : null;
+                              })()}
                             </div>
                             <p style={{ fontSize: '12px', margin: 0, display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <ExternalLink size={12} color="#999" />
@@ -1987,17 +2070,29 @@ const Homepage = () => {
 
                       {/* ── Wage badges ── */}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '20px' }}>
-                        {['Lv 1', 'Lv 2', 'Lv 3', 'Lv 4'].map((lbl, i) => {
-                          const lvl = parseInt(selectedCompanyData?.wageLevel?.match(/\d/)?.[0] || '2');
-                          return (
-                            <span key={lbl} style={{
-                              fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '6px',
-                              background: i + 1 <= lvl ? '#24385E' : '#fff',
-                              color: i + 1 <= lvl ? '#fff' : '#bbb',
-                              border: i + 1 <= lvl ? '1px solid #24385E' : '1px solid #e0e0e0',
-                            }}>{lbl}</span>
-                          );
-                        })}
+                        {(() => {
+                          // Build set of actual levels from the company's wageLevels data
+                          const wl = selectedCompanyData?.wageLevels;
+                          let levelSet;
+                          if (wl) {
+                            const arr = Array.isArray(wl) ? wl : (wl instanceof Set ? Array.from(wl) : []);
+                            levelSet = new Set(arr.map(l => { const m = String(l).match(/\d/); return m ? parseInt(m[0]) : null; }).filter(Boolean));
+                          } else {
+                            const lvl = parseInt(selectedCompanyData?.wageLevel?.match(/\d/)?.[0] || '0');
+                            levelSet = lvl > 0 ? new Set([lvl]) : new Set();
+                          }
+                          return ['Lv 1', 'Lv 2', 'Lv 3', 'Lv 4'].map((lbl, i) => {
+                            const hasLevel = levelSet.has(i + 1);
+                            return (
+                              <span key={lbl} style={{
+                                fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '6px',
+                                background: hasLevel ? '#24385E' : '#fff',
+                                color: hasLevel ? '#fff' : '#bbb',
+                                border: hasLevel ? '1px solid #24385E' : '1px solid #e0e0e0',
+                              }}>{lbl}</span>
+                            );
+                          });
+                        })()}
                       </div>
 
                       {/* ── Level Filters Toggle moved inside Filter Option ── */}

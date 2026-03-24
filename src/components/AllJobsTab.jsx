@@ -60,11 +60,12 @@ function VerifiedSeal({ size = 16 }) {
 function getCanonicalCompany(name) {
     if (!name) return 'Unknown';
     const n = String(name).toLowerCase().replace(/[^a-z0-9]/g, ' ').trim();
-    if (n.match(/\bamazon\b|\baws\b|\bamazon\.com\b/i)) return 'Amazon';
-    if (n.match(/\bgoogle\b|\balphabet\b/i)) return 'Google';
-    if (n.match(/\bmeta\b|\bfacebook\b/i)) return 'Meta';
-    if (n.match(/\bmicrosoft\b/i)) return 'Microsoft';
-    if (n.match(/\bapple\b/i)) return 'Apple';
+    // Use exact matches for parent groupings to avoid hijacking sub-brands like "Google DeepMind"
+    if (n === 'amazon' || n === 'aws' || n === 'amazon com') return 'Amazon';
+    if (n === 'google' || n === 'alphabet' || n === 'google inc') return 'Google';
+    if (n === 'meta' || n === 'facebook' || n === 'meta platforms') return 'Meta';
+    if (n === 'microsoft' || n === 'microsoft corporation') return 'Microsoft';
+    if (n === 'apple' || n === 'apple inc') return 'Apple';
     return name;
 }
 
@@ -197,7 +198,7 @@ const JobRow = ({ job, isSaved, onSave }) => {
             {/* Header Area for Mobile: Logo + Stat Cards */}
             {isMobile && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                    <LogoBox name={job.company} size={48} fontSize={16} />
+                    <LogoBox name={job.company} officialUrl={job.url} size={48} fontSize={16} />
                     <div style={{ display: 'flex', gap: '8px' }}>
                         {/* Wage Card */}
                         <div style={{
@@ -249,7 +250,7 @@ const JobRow = ({ job, isSaved, onSave }) => {
             {/* Left side: Logo (Desktop Only) */}
             {!isMobile && (
                 <div style={{ flexShrink: 0 }}>
-                    <LogoBox name={job.company} size={60} fontSize={18} />
+                    <LogoBox name={job.company} officialUrl={job.url} size={60} fontSize={18} />
                 </div>
             )}
 
@@ -621,47 +622,139 @@ const AllJobsTab = () => {
         </svg>
     );
 
-    /**
-     * Strictly interleaves jobs to ensure:
-     * 1. ALL jobs with salaries appear before ANY job without salary.
-     * 2. Within each block, jobs are interleaved (1 per company) and ranked by brand.
-     */
     const interleaveJobs = (list) => {
-        const hasSal = s => s && typeof s === 'string' && s.includes('$');
-        const withSal = list.filter(j => hasSal(j.salary));
-        const withoutSal = list.filter(j => !hasSal(j.salary));
+        if (!list || list.length === 0) return [];
 
-        const processMap = (subList) => {
-            const groups = new Map();
-            subList.forEach(j => {
-                const co = getCanonicalCompany(j.company);
-                if (!groups.has(co)) groups.set(co, []);
-                groups.get(co).push(j);
-            });
-            // Sort within company: Wage Level (ascending) -> Recency (descending)
-            groups.forEach(g => g.sort((a, b) => {
-                const wA = parseWageLevel(a.wage_level) || 99;
-                const wB = parseWageLevel(b.wage_level) || 99;
-                if (wA !== wB) return wA - wB;
-                return new Date(b.date_posted || 0) - new Date(a.date_posted || 0);
-            }));
-            const cos = Array.from(groups.keys()).sort((a, b) => {
-                const rA = getCompanyRank(a), rB = getCompanyRank(b);
-                return rA !== rB ? rA - rB : a.localeCompare(b);
-            });
-            let result = [];
-            for (let c = 0; c < 100; c++) {
-                let added = 0;
-                for (const co of cos) {
-                    const item = groups.get(co)[c];
-                    if (item) { result.push(item); added++; }
-                }
-                if (added === 0) break;
-            }
-            return result;
+        // 1. Normalize URLs and remove duplicates (Rule 7)
+        const seenUrls = new Set();
+        const uniqueList = [];
+        list.forEach(j => {
+            const uk = _urlKey(j.url);
+            if (!uk || seenUrls.has(uk)) return;
+            seenUrls.add(uk);
+            uniqueList.push(j);
+        });
+
+        // 2. Pre-process metadata for sorting: Freshness (R1), Wage (R3), Filing (R4), Brand (R2)
+        const enriched = uniqueList.map(j => {
+            const hasSal = j.salary && String(j.salary).includes('$');
+            const hasLvl = parseWageLevel(j.wage_level) || parseWageLevel(j.wage_num) || parseWageLevel(j.salary);
+            const isEligible = !!(hasSal || hasLvl);
+            
+            const dateStr = j.upload_date || j.ingestedAt || j.date_posted || '1970-01-01';
+            const timestamp = new Date(dateStr).getTime() || 0;
+            const wageLvl = parseWageLevel(j.wage_level) || parseWageLevel(j.wage_num) || parseWageLevel(j.salary) || 0;
+            const filings = parseInt(j.lca_filings) || 0;
+            const brandRank = getCompanyRank(j.company);
+            const isFamous = brandRank !== Infinity;
+            
+            return {
+                ...j,
+                _isEligible: isEligible,
+                _timestamp: timestamp,
+                _wageLvl: wageLvl,
+                _filings: filings,
+                _brandRank: brandRank,
+                _isFamous: isFamous,
+                _uk: _urlKey(j.url)
+            };
+        });
+
+        // 3. Sorting logic for "Strongest Ranked" (Rules 1, 3, 4)
+        const jobSorter = (a, b) => {
+            if (b._timestamp !== a._timestamp) return b._timestamp - a._timestamp;
+            if (b._wageLvl !== a._wageLvl) return b._wageLvl - a._wageLvl;
+            return b._filings - a._filings;
         };
 
-        return [...processMap(withSal), ...processMap(withoutSal)];
+        // 4. Categorize into Pools
+        // Pool A: Primary (Famous OR Verified) AND Eligible
+        const primaryPool = enriched.filter(j => (j._isFamous || j.isVerified) && j._isEligible);
+        
+        // Pool B: Secondary (Unrelated BUT Eligible)
+        const secondaryPool = enriched.filter(j => !(j._isFamous || j.isVerified) && j._isEligible).sort(jobSorter);
+        
+        // Pool C: Tertiary (Not Eligible - No Salary/Wage)
+        const tertiaryPool = enriched.filter(j => !j._isEligible).sort((a,b) => b._timestamp - a._timestamp);
+
+        // 5. Build Interleaved Main Sequence from Primary Pool
+        const famousInPrimary = new Map();
+        primaryPool.filter(j => j._isFamous).forEach(j => {
+            const co = j.company;
+            if (!famousInPrimary.has(co)) famousInPrimary.set(co, []);
+            famousInPrimary.get(co).push(j);
+        });
+        famousInPrimary.forEach(jobs => jobs.sort(jobSorter));
+        
+        const verifiedInPrimary = primaryPool.filter(j => j.isVerified).sort(jobSorter);
+
+        const result = [];
+        const finalSeen = new Set();
+        let vIdx = 0;
+
+        const coMap = new Map();
+        famousInPrimary.forEach((jobs, coName) => coMap.set(coName.toLowerCase(), jobs));
+
+        // Interleaving rounds (famous + verified)
+        for (let round = 0; round < 50; round++) {
+            let foundInRound = 0;
+            for (const rankedCo of RANKED_COMPANIES) {
+                const searchKey = rankedCo.toLowerCase();
+                let group = coMap.get(searchKey);
+                if (!group) {
+                    for (const [key, jobs] of coMap.entries()) {
+                        if (key.includes(searchKey) || searchKey.includes(key)) { group = jobs; break; }
+                    }
+                }
+                
+                if (group && group[round]) {
+                    const job = group[round];
+                    if (!finalSeen.has(job._uk)) {
+                        result.push(job);
+                        finalSeen.add(job._uk);
+                        foundInRound++;
+
+                        // Sequence: 1 Famous -> 1 Verified
+                        while(vIdx < verifiedInPrimary.length) {
+                            const vJob = verifiedInPrimary[vIdx++];
+                            if (!finalSeen.has(vJob._uk)) {
+                                result.push(vJob);
+                                finalSeen.add(vJob._uk);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            if (foundInRound === 0) break;
+        }
+
+        // 6. Append remaining jobs to maintain "Appear Last" rule
+        // a. Remaining Primary jobs that didn't fit the interleave rounds
+        primaryPool.sort(jobSorter).forEach(j => {
+            if (!finalSeen.has(j._uk)) {
+                result.push(j);
+                finalSeen.add(j._uk);
+            }
+        });
+
+        // b. Secondary Pool (Unrelated but have Salary)
+        secondaryPool.forEach(j => {
+            if (!finalSeen.has(j._uk)) {
+                result.push(j);
+                finalSeen.add(j._uk);
+            }
+        });
+
+        // c. Tertiary Pool (No Salary Info)
+        tertiaryPool.forEach(j => {
+            if (!finalSeen.has(j._uk)) {
+                result.push(j);
+                finalSeen.add(j._uk);
+            }
+        });
+
+        return result;
     };
 
     // Main fetch function
@@ -677,7 +770,7 @@ const AllJobsTab = () => {
             const levelStr = Array.isArray(level) && level.length > 0
                 ? level.slice().sort().join(',') : 'all';
             const listCacheKey = `${filter}|${(search || '').trim().toLowerCase() || 'none'}|${levelStr}`;
-            const LS_KEY = `ajt_v12_${listCacheKey}`;
+            const LS_KEY = `ajt_v17_${listCacheKey}`;
             const LS_TTL_MS = 10 * 60 * 1000; // 10 minutes
             try {
                 const raw = localStorage.getItem(LS_KEY);
@@ -729,7 +822,7 @@ const AllJobsTab = () => {
             //   so pages 11+ are available this session AND next open is 50ms.
             // ══════════════════════════════════════════════════════════════════════
 
-            const QUICK_LS_KEY = `ajt_quick_v12_${listCacheKey}`;
+            const QUICK_LS_KEY = `ajt_quick_v18_${listCacheKey}`;
             const QUICK_TTL_MS = 30 * 60 * 1000; // 30 min
 
             // ── Quick-cache hit? ────────────────────────────────────────────────
@@ -805,12 +898,13 @@ const AllJobsTab = () => {
                     }));
 
                     if (directJobs.length > 0) {
-                        setJobs(directJobs);
+                        const finalInterleaved = interleaveJobs(directJobs);
+                        setJobs(finalInterleaved.length > 0 ? finalInterleaved : directJobs);
                         setTotalJobs(finalCount);
                         setCurrentPage(page);
                         setLoading(false);
                         if (!processedListCache.current.has(listCacheKey)) {
-                            processedListCache.current.set(listCacheKey, { list: directJobs, total: finalCount });
+                            processedListCache.current.set(listCacheKey, { list: finalInterleaved.length > 0 ? finalInterleaved : directJobs, total: finalCount });
                         }
                         return;
                     } 
@@ -820,16 +914,16 @@ const AllJobsTab = () => {
                 }
             }
 
-            // ── Phase 1: Quick DB fetch — LIMIT 150 per table ──────────────────
-            const qTopTier = RANKED_COMPANIES.slice(0, 100);
+            // ── Phase 1: Quick DB fetch — LIMIT 300 per table ──────────────────
+            const qTopTier = RANKED_COMPANIES.slice(0, 250); // Increased pool
             let quickRankedQ = supabase.from('job_jobrole_sponsored_sync').select('*').in('company', qTopTier).limit(1000);
 
             let quickQ = supabase.from('job_jobrole_sponsored_sync')
                 .select('*', { count: 'exact' })
                 .order('date_posted', { ascending: false })
-                .limit(150);
+                .limit(250);
 
-            let qvBackup = supabase.from('audit_reviews_backup').select('*', { count: 'exact' }).eq('tl_confirmation', 'yes').order('audit_date', { ascending: false }).limit(150);
+            let qvBackup = supabase.from('audit_reviews_backup').select('*', { count: 'exact' }).eq('tl_confirmation', 'yes').order('audit_date', { ascending: false }).limit(300);
 
             if (search && search.trim()) {
                 const sLow = search.trim().toLowerCase();
@@ -982,17 +1076,22 @@ const AllJobsTab = () => {
                 });
             }
 
-            qList = interleaveJobs(qList);
-
-            // Re-sort the final interleaved list by Wage Level so Lv 1 mathematically MUST appear before Lv 2
-            if (level && level.length > 1) {
-                qList.sort((a, b) => {
-                    const wA = parseWageLevel(a.wage_level) || 99;
-                    const wB = parseWageLevel(b.wage_level) || 99;
-                    if (wA !== wB) return wA - wB; // Lower wage levels first
-                    return 0; // Maintain interleaved order for matching wage levels
+            // ── BATCH LCA FILING ENRICHMENT (Rule 4) ──
+            const poolCos = [...new Set(qList.map(j => j.company))].filter(Boolean);
+            if (poolCos.length > 0) {
+              const { data: fData } = await supabase.from('h1b_sponsor_finder')
+                .select('Company, "LCA Filings"').in('Company', poolCos.slice(0, 100)); // Batch 100
+              if (fData) {
+                const fMap = new Map();
+                fData.forEach(d => fMap.set(d.Company.toLowerCase(), parseInt(String(d["LCA Filings"]).replace(/,/g, '')) || 0));
+                qList.forEach(j => {
+                  const co = String(j.company || '').toLowerCase();
+                  if (fMap.has(co)) j.lca_filings = fMap.get(co);
                 });
+              }
             }
+
+            qList = interleaveJobs(qList);
 
             const qTotal = (search && search.trim())
                 ? qList.length
@@ -1264,7 +1363,7 @@ const AllJobsTab = () => {
                     // Upgrade both caches with full data (pages 11+ now available)
                     processedListCache.current.set(listCacheKey, { list: interleaved, total: fullTotal });
                     try {
-                        localStorage.setItem(`ajt_v12_${listCacheKey}`, JSON.stringify({ ts: Date.now(), total: fullTotal, list: interleaved.slice(0, 500) }));
+                        localStorage.setItem(`ajt_v18_${listCacheKey}`, JSON.stringify({ ts: Date.now(), total: fullTotal, list: interleaved.slice(0, 500) }));
                         localStorage.removeItem(QUICK_LS_KEY); // quick cache superseded by full
                     } catch (_) { }
                 } catch (_) { /* silent — Phase 1 data already shown */ }
@@ -1422,6 +1521,21 @@ const AllJobsTab = () => {
 
                     let unique = Array.from(uniqueMap.values());
                     if (isVerifiedTab) unique = unique.filter(j => j.isVerified);
+                    // vSet is already declared above
+                    // ── BATCH LCA FILING ENRICHMENT (Rule 4) ──
+                    const uniqueCos = [...new Set(unique.map(j => j.company))].filter(Boolean);
+                    if (uniqueCos.length > 0) {
+                        const { data: fData } = await supabase.from('h1b_sponsor_finder')
+                            .select('Company, "LCA Filings"').in('Company', uniqueCos.slice(0, 150));
+                        if (fData) {
+                            const fMap = new Map();
+                            fData.forEach(d => fMap.set(d.Company.toLowerCase(), parseInt(String(d["LCA Filings"]).replace(/,/g, '')) || 0));
+                            unique.forEach(j => {
+                                const co = String(j.company || '').toLowerCase();
+                                if (fMap.has(co)) j.lca_filings = fMap.get(co);
+                            });
+                        }
+                    }
 
                     let interleaved = interleaveJobs(unique);
                     
@@ -1661,7 +1775,6 @@ const AllJobsTab = () => {
                             placeholder="Search for roles (e.g. Data Engineer)..."
                             style={{
                                 border: 'none',
-                                outline: 'none',
                                 fontSize: '14.5px',
                                 color: (showSuggestions && filteredSuggestions.length > 0) ? '#fff' : '#1e293b',
                                 background: 'transparent',

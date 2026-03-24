@@ -175,7 +175,7 @@ const JobCard = ({ job, isSaved = false, isApplied = false, onSaveToggle, onAppl
                 {/* 1. Brand & Info Section */}
                 <div className="flex gap-6 flex-1 min-w-0">
                     <div className="shrink-0 pt-1">
-                        <LogoBox name={job.company} size={64} fontSize={20} />
+                        <LogoBox name={job.company} officialUrl={job.url} size={64} fontSize={20} />
                     </div>
 
                     <div className="flex-1 min-w-0">
