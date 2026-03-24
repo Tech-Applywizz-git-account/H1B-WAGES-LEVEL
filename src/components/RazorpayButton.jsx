@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
 
-const RazorpayButton = ({ amount = import.meta.env.VITE_PAYMENT_AMOUNT || "39.99", onSuccess }) => {
+const RazorpayButton = ({ amount = import.meta.env.VITE_RAZORPAY_PAYMENT_AMOUNT || import.meta.env.VITE_PAYMENT_AMOUNT || "39.99", onSuccess }) => {
     const { user, firstName, lastName, refresh } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
