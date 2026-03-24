@@ -74,7 +74,7 @@ const Pricing = () => {
                                 <div className="flex justify-center mb-1">
                                     <div className="relative inline-block">
                                         <span className="text-5xl md:text-6xl font-black text-[#24385E] opacity-90 tracking-tight">
-                                            $2/6 months
+                                            $80/6 months
                                         </span>
                                         <div className="absolute top-1/2 left-0 w-full h-1.5 bg-[#24385E] -translate-y-1/2"></div>
                                     </div>
@@ -83,7 +83,7 @@ const Pricing = () => {
                                 {/* Actual Price */}
                                 <div className="flex justify-center mb-6">
                                     <span className="text-6xl md:text-7xl font-black text-[#24385E] tracking-tight">
-                                        $2/6 months
+                                        $39.99/6 months
                                     </span>
                                 </div>
 
@@ -127,7 +127,7 @@ const Pricing = () => {
                                             <p className="text-[#24385E] font-black text-sm uppercase tracking-widest">Complete Your Payment</p>
                                         </div>
                                         <div className="p-1">
-                                            <RazorpayButton amount={import.meta.env.VITE_RAZORPAY_PAYMENT_AMOUNT || import.meta.env.VITE_PAYMENT_AMOUNT || '39.99'} />
+                                            <RazorpayButton amount={import.meta.env.VITE_PAYMENT_AMOUNT || '39.99'} />
                                         </div>
                                         <p className="text-center text-[11px] text-gray-400 font-bold uppercase tracking-tighter">
                                             SECURE 256-BIT SSL ENCRYPTED PAYMENT

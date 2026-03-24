@@ -152,7 +152,7 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
         >
             {/* ── LEFT: Job info ── */}
             <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: '12px', alignItems: 'flex-start', width: '100%' }}>
-                <LogoBox name={job.company} size={isMobile ? 32 : 38} fontSize={11} />
+                <LogoBox name={job.company} officialUrl={job.url || job.apply_url} size={isMobile ? 32 : 38} fontSize={11} />
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                     {/* Row 1: Salary & Location First */}

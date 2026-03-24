@@ -1,7 +1,7 @@
 import { Globe } from 'lucide-react';
 import LogoBox from './LogoBox';
 
-const CompanyCard = ({ company, jobCount, wageLevel, wageLevels, industries, isSelected, onClick, isMobile, isVerified, lca_filings }) => {
+const CompanyCard = ({ company, jobCount, wageLevel, wageLevels, industries, isSelected, onClick, isMobile, isVerified, lca_filings, officialUrl }) => {
     // Build a Set of actual levels this company has (e.g. {'Lv 1', 'Lv 3'})
     const actualLevels = (() => {
         if (wageLevels) {
@@ -53,7 +53,7 @@ const CompanyCard = ({ company, jobCount, wageLevel, wageLevels, industries, isS
             {/* Row 1: Logo + Name + Content */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                    <LogoBox name={company} size={isMobile ? 36 : 44} fontSize={isMobile ? 12 : 14} className={isSelected ? 'bg-navy-select' : ''} />
+                    <LogoBox name={company} officialUrl={officialUrl} size={isMobile ? 36 : 44} fontSize={isMobile ? 12 : 14} className={isSelected ? 'bg-navy-select' : ''} />
 
                     <div style={{ minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px', flexWrap: 'wrap' }}>
@@ -83,20 +83,7 @@ const CompanyCard = ({ company, jobCount, wageLevel, wageLevels, industries, isS
                 </div>
             </div>
 
-            {/* Row 4: Wage badges */}
-            <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginTop: '4px' }}>
-                {['Lv 1', 'Lv 2', 'Lv 3', 'Lv 4'].map((lbl, i) => {
-                    const hasLevel = actualLevels.has(i + 1);
-                    return (
-                    <span key={lbl} style={{
-                        fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px',
-                        background: hasLevel ? '#24385E' : '#fff',
-                        color: hasLevel ? '#fff' : '#ccc',
-                        border: hasLevel ? '1px solid #24385E' : '1px solid #e0e0e0',
-                    }}>{lbl}</span>
-                    );
-                })}
-            </div>
+            {/* Row 4: Wage badges - Temporarily Removed */}
         </button>
     );
 };

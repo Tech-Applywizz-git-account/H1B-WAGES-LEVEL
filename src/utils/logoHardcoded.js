@@ -24,6 +24,7 @@ export const HARDCODED_LOGOS = {
     "Abbott": "abbott.com",
     "AbbVie": "abbvie.com",
     "Abridge": "abridge.com",
+    "Appleton Finn": "appletonfinn.com",
     "Access Healthcare": "accesshealthcare.com",
     "Accion Labs": "accionlabs.com",
     "ACCIONA": "acciona.com",
@@ -408,11 +409,32 @@ export const getHardcodedLogo = (name) => {
     // Improved matching: Alpha-numeric only comparison for highly reliable matching
     if (!logo) {
         const cleanName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const entry = Object.entries(HARDCODED_LOGOS).find(([k]) => {
+        // Sort keys by length descending so that the most specific match wins (e.g. "Amazon Web Services" beats "Amazon")
+        const sortedEntries = Object.entries(HARDCODED_LOGOS).sort((a, b) => b[0].length - a[0].length);
+        
+        const entry = sortedEntries.find(([k]) => {
             const cleanKey = k.toLowerCase().replace(/[^a-z0-9]/g, '');
-            return cleanName === cleanKey ||
-                cleanName.startsWith(cleanKey) ||
-                cleanName.includes(cleanKey);
+            if (cleanKey.length < 3) return false;
+            
+            // Priority 1: Exact Match (High Confidence)
+            if (cleanName === cleanKey) return true;
+            
+            // Priority 2: Full Word Match (Only if key is significant)
+            // This prevents "Appleton" matching "Apple" but allows "Microsoft Corp" to match "Microsoft"
+            if (cleanKey.length >= 4 && cleanName.startsWith(cleanKey)) {
+                // Check if the next character in the original name is a space or separator
+                // (This is a bit hard with cleanName, so let's stick to a safer length-based heuristic)
+                // If the key is 'apple' and name is 'appleton', length difference is small but it's a different word.
+                // If the key is 'microsoft' and name is 'microsoft corp', that's usually a match.
+                
+                // Let's use a stricter rule: if the key is a major brand (short), only exact match.
+                const majorBrands = ['apple', 'meta', 'google', 'amazon', 'adobe', 'intel', 'tesla', 'netflix', 'uber', 'lyft'];
+                if (majorBrands.includes(cleanKey)) return cleanName === cleanKey;
+                
+                return true; 
+            }
+            
+            return false;
         });
         if (entry) logo = entry[1];
     }

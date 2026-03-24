@@ -16,7 +16,8 @@ export const getCompanyLogo = (companyName, officialUrl = null) => {
     // If we have the direct job link, we can get the brand domain safely.
     if (officialUrl) {
         try {
-            const url = new URL(officialUrl);
+            const urlStr = String(officialUrl).toLowerCase().startsWith('http') ? officialUrl : `https://${officialUrl}`;
+            const url = new URL(urlStr);
             const domain = url.hostname.replace(/^www\./, '');
             const jobBoards = ['job', 'hire', 'lever', 'greenhouse', 'linkedin', 'myworkday', 'glassdoor', 'indeed', 'boards', 'ashbyhq', 'breezy', 'smartrecruiters', 'workable', 'icims', 'taleo'];
             const isJobBoard = jobBoards.some(board => domain.includes(board));
