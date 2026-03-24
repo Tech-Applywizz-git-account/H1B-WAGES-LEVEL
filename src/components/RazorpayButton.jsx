@@ -49,7 +49,7 @@ const RazorpayButton = ({ amount = import.meta.env.VITE_PAYMENT_AMOUNT || "39.99
 
             // 2. Open Razorpay Checkout Modal
             const options = {
-                key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_SCPRjZ63CrrTej', 
+                key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_live_SCjkNy569aq6F2', 
                 amount: orderData.amount, // Amount is in currency subunits
                 currency: orderData.currency,
                 name: "Wage Trail",

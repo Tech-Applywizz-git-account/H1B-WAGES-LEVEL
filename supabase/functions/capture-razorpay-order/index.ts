@@ -16,8 +16,8 @@ serve(async (req) => {
     try {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount, currency, email, firstName, lastName, mobileNumber, countryCode } = await req.json()
 
-        const key_id = Deno.env.get('RAZORPAY_KEY_ID') || 'rzp_test_SCPRjZ63CrrTej'
-        const key_secret = Deno.env.get('RAZORPAY_KEY_SECRET') || '8888Eq6wBMqoiZoOgrBPQ7gD'
+        const key_id = Deno.env.get('RAZORPAY_KEY_ID') || 'rzp_live_SCjkNy569aq6F2'
+        const key_secret = Deno.env.get('RAZORPAY_KEY_SECRET') || 'a4iIyEwCHMDuWTrn2KVAgWGS'
         const supabaseUrl = Deno.env.get('SUPABASE_URL') || Deno.env.get('DB_URL')
         const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || Deno.env.get('DB_SERVICE_ROLE_KEY')
 

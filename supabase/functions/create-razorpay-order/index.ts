@@ -15,8 +15,8 @@ serve(async (req) => {
     try {
         const { amount, currency } = await req.json()
 
-        const key_id = Deno.env.get('RAZORPAY_KEY_ID') || 'rzp_test_SCPRjZ63CrrTej'
-        const key_secret = Deno.env.get('RAZORPAY_KEY_SECRET') || '8888Eq6wBMqoiZoOgrBPQ7gD'
+        const key_id = Deno.env.get('RAZORPAY_KEY_ID') || 'rzp_live_SCjkNy569aq6F2'
+        const key_secret = Deno.env.get('RAZORPAY_KEY_SECRET') || 'a4iIyEwCHMDuWTrn2KVAgWGS'
 
         if (!key_id || !key_secret) {
             return new Response(JSON.stringify({
