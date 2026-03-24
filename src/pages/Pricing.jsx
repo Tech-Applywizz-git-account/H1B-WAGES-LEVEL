@@ -83,7 +83,7 @@ const Pricing = () => {
                                 {/* Actual Price */}
                                 <div className="flex justify-center mb-6">
                                     <span className="text-6xl md:text-7xl font-black text-[#24385E] tracking-tight">
-                                        $1/6 months
+                                        $2/6 months
                                     </span>
                                 </div>
 
