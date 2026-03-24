@@ -74,7 +74,7 @@ const Pricing = () => {
                                 <div className="flex justify-center mb-1">
                                     <div className="relative inline-block">
                                         <span className="text-5xl md:text-6xl font-black text-[#24385E] opacity-90 tracking-tight">
-                                            $80/6 months
+                                            $2/6 months
                                         </span>
                                         <div className="absolute top-1/2 left-0 w-full h-1.5 bg-[#24385E] -translate-y-1/2"></div>
                                     </div>
@@ -83,7 +83,7 @@ const Pricing = () => {
                                 {/* Actual Price */}
                                 <div className="flex justify-center mb-6">
                                     <span className="text-6xl md:text-7xl font-black text-[#24385E] tracking-tight">
-                                        $39.99/6 months
+                                        $1/6 months
                                     </span>
                                 </div>
 
