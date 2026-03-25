@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { externalSupabase } from '../externalSupabaseClient';
 import useAuth from '../hooks/useAuth';
@@ -8,7 +9,7 @@ import { getWageLevel } from '../dataSyncService';
 import {
     ChevronLeft, ChevronRight, Search, Loader2, AlertCircle,
     Briefcase, ExternalLink, MapPin, Clock, Star, Bookmark, BookmarkCheck,
-    SlidersHorizontal, X, Globe
+    SlidersHorizontal, X, Globe, TrendingUp, Building2, CheckCircle
 } from 'lucide-react';
 import { isFamous, getCompanyRank, RANKED_COMPANIES } from '../utils/famousCompanies';
 import { cacheGet, cacheSet, cacheInvalidatePrefix, TTL } from '../utils/queryCache';
@@ -39,7 +40,7 @@ function _urlKey(u) {
         const o = new URL(s.startsWith('http') ? s : `https://${s}`);
         let hostname = o.hostname.replace(/^www\./, '');
         if (hostname.includes('linkedin.com')) hostname = 'linkedin.com';
-        const m = o.pathname.match(/\d{9,}/); 
+        const m = o.pathname.match(/\d{9,}/);
         if (m) return hostname + '||' + m[0];
         return (hostname + o.pathname).replace(/\/$/, '');
     } catch {
@@ -74,12 +75,21 @@ function _jobKeyRaw(company, title, location) {
 }
 function _jobKey(j) { return _jobKeyRaw(j.company, j.title, j.location); }
 
+// ── Per-card in-memory cache to eliminate redundant Supabase calls ───────────
+const _cardCache = new Map(); // key -> { value, ts }
+const _CARD_TTL = 10 * 60 * 1000; // 10 minutes
+function _cGet(key) { const e = _cardCache.get(key); return (e && Date.now() - e.ts < _CARD_TTL) ? e.value : null; }
+function _cSet(key, value) { _cardCache.set(key, { value, ts: Date.now() }); }
+
 // ── Job Row ────────────────────────────────────────────────────────────────
 const JobRow = ({ job, isSaved, onSave }) => {
-    const level = parseWageLevel(job.wage_level);
     const [hovered, setHovered] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
     const [filingCount, setFilingCount] = useState(job.lca_filings || null);
+    const [wageInfo, setWageInfo] = useState({
+        level: job.wage_level || 'Level 2',
+        loading: !job.wage_level
+    });
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -87,395 +97,219 @@ const JobRow = ({ job, isSaved, onSave }) => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Self-enrichment for filings
+    // Self-enrichment for filings and wage level if missing (cached to avoid redundant DB hits)
     useEffect(() => {
-        if (job.lca_filings !== undefined) {
-            setFilingCount(job.lca_filings);
-            return;
-        }
-
-        const fetchFilings = async () => {
-            if (!job.company) {
-                setFilingCount(0);
-                return;
+        if (!job.company && !job.title) return;
+        const fetchData = async () => {
+            // --- Filing Count ---
+            if (job.lca_filings !== undefined) {
+                setFilingCount(job.lca_filings || null);
+            } else {
+                const fKey = `filing:${String(job.company || '').toLowerCase()}`;
+                const hit = _cGet(fKey);
+                if (hit !== null) {
+                    setFilingCount(hit || null);
+                } else {
+                    try {
+                        const normalize = (name) => {
+                            if (!name) return '';
+                            return name.toLowerCase()
+                                .replace(/\([^)]*\)/g, ' ')
+                                .replace(/[.,\-\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
+                                .replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies|group|holdings|usa|us|intl|international|solutions|aws|related|web|tech|software|management|financial|insurance|banking|health|healthcare|travel|company)\b/g, ' ')
+                                .replace(/\s+/g, ' ').trim();
+                        };
+                        const coreTerm = normalize(job.company).split(' ')[0] || normalize(job.company);
+                        const { data } = await supabase.from('h1b_sponsor_finder').select('"LCA Filings"').ilike('Company', `%${coreTerm}%`).limit(1);
+                        const count = (data && data[0]) ? (parseInt(data[0]["LCA Filings"]) || 0) : 0;
+                        _cSet(fKey, count);
+                        setFilingCount(count || null);
+                    } catch (e) { setFilingCount(null); }
+                }
             }
 
-            const normalize = (name) => {
-                if (!name) return '';
-                let n = name.toLowerCase()
-                    .replace(/\([^)]*\)/g, ' ')
-                    .replace(/[.,\-\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
-                    .replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies|group|holdings|usa|us|intl|international|solutions|aws|related|web|tech|software|management|financial|insurance|banking|health|healthcare|travel|company)\b/g, ' ')
-                    .replace(/\s+/g, ' ')
-                    .trim();
-                if (n.includes('amazon')) return 'amazon';
-                if (n.includes('google') || n.includes('alphabet')) return 'google';
-                if (n.includes('meta') || n.includes('facebook')) return 'meta';
-                if (n.includes('microsoft')) return 'microsoft';
-                if (n.includes('apple')) return 'apple';
-                return n;
-            };
-
-            const norm = normalize(job.company);
-            const words = norm.split(' ').filter(Boolean);
-            const coreTerm = words.length > 0 ? words[0] : norm;
-
-            try {
-                const { data } = await supabase
-                    .from('h1b_sponsor_finder')
-                    .select('Company, "LCA Filings"')
-                    .ilike('Company', `%${coreTerm}%`)
-                    .limit(10);
-
-                if (data && data.length > 0) {
-                    const parseCount = (v) => typeof v === 'number' ? v : parseInt(String(v).replace(/,/g, '')) || 0;
-                    const sorted = [...data].sort((a, b) => parseCount(b["LCA Filings"]) - parseCount(a["LCA Filings"]));
-                    let best = 0;
-                    const nNorm = normalize(job.company);
-
-                    for (const m of sorted) {
-                        const mNorm = normalize(m.Company);
-                        const nNormLower = nNorm.toLowerCase().trim();
-                        const mNormLower = mNorm.toLowerCase().trim();
-
-                        if (mNormLower === nNormLower || mNormLower.includes(nNormLower) || nNormLower.includes(mNormLower)) {
-                            best = parseCount(m["LCA Filings"]);
-                            break;
-                        }
-
-                        // Fallback matching
-                        const mWords = mNormLower.split(' ');
-                        const nWords = nNormLower.split(' ');
-                        if (mWords[0] === nWords[0] && mWords[0].length > 3) {
-                            if (parseCount(m["LCA Filings"]) > best) best = parseCount(m["LCA Filings"]);
-                        }
-                    }
-                    setFilingCount(best);
+            // --- Wage Level ---
+            if (job.wage_level) {
+                setWageInfo({ level: job.wage_level, loading: false });
+            } else if (job.title) {
+                const wKey = `wage:${String(job.title || '').toLowerCase().slice(0, 50)}:${String(job.location || '').toLowerCase().slice(0, 20)}`;
+                const hitW = _cGet(wKey);
+                if (hitW !== null) {
+                    setWageInfo({ level: hitW, loading: false });
                 } else {
-                    setFilingCount(0);
+                    try {
+                        const res = await getWageLevel(job.title, job.location, job.salary);
+                        const level = (res && res[0]) ? (res[0]['Wage Level'] || 'Level 2') : 'Level 2';
+                        _cSet(wKey, level);
+                        setWageInfo({ level, loading: false });
+                    } catch (e) {
+                        setWageInfo({ level: 'Level 2', loading: false });
+                    }
                 }
-            } catch (e) {
-                setFilingCount(0);
             }
         };
+        fetchData();
+    }, [job.company, job.title, job.lca_filings]);
 
-        const timer = setTimeout(fetchFilings, 100); // Small delay to let batch enrichment work first
-        return () => clearTimeout(timer);
-    }, [job.company, job.lca_filings]);
-
-    const formatDate = (d) => {
+    const formatTimeAgo = (d) => {
         if (!d) return 'Recently';
         try {
             const dt = new Date(d), now = new Date();
-            const days = Math.floor((now - dt) / 864e5);
-            if (days === 0) return 'Today';
-            if (days === 1) return '1d ago';
-            if (days < 7) return `${days}d ago`;
+            const hours = Math.floor((now - dt) / 36e5);
+            if (hours < 1) return 'Just now';
+            if (hours < 24) return `${hours} hours ago`;
+            const days = Math.floor(hours / 24);
+            if (days < 7) return `${days} days ago`;
             return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         } catch { return 'Recently'; }
     };
 
+    const getLevelValue = () => {
+        const match = (wageInfo.level || '').match(/\d/);
+        return match ? parseInt(match[0]) : 2;
+    };
+    const levelPercent = (getLevelValue() / 4) * 100;
+
     return (
         <div
-            style={{
-                background: '#fff',
-                borderRadius: isMobile ? '16px' : '16px',
-                border: '1.5px solid #ebebeb',
-                padding: isMobile ? '16px' : '20px 24px',
-                marginBottom: '12px',
-                display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                alignItems: isMobile ? 'stretch' : 'center',
-                gap: isMobile ? '12px' : '20px',
-                transition: 'all 0.2s ease',
-                boxShadow: hovered ? '0 6px 20px rgba(0,0,0,0.07)' : '0 1px 3px rgba(0,0,0,0.03)',
-                position: 'relative',
-                overflow: 'hidden'
-            }}
+            className="bg-white rounded-[24px] border border-[#f0f0f0] mb-5 shadow-sm hover:shadow-xl hover:border-[#FDB913]/20 transition-all duration-300 flex flex-col lg:flex-row overflow-hidden group lg:h-[280px]"
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
         >
-            {/* Header Area for Mobile: Logo + Stat Cards */}
-            {isMobile && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                    <LogoBox name={job.company} officialUrl={job.url} size={48} fontSize={16} />
-                    <div style={{ display: 'flex', gap: '8px' }}>
-                        {/* Wage Card */}
-                        <div style={{
-                            background: '#1a2b4b',
-                            borderRadius: '12px',
-                            padding: '8px 12px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            minWidth: '70px',
-                            boxShadow: '0 4px 12px rgba(26, 43, 75, 0.1)'
-                        }}>
-                            <div style={{ display: 'flex', gap: '2px', marginBottom: '2px' }}>
-                                {[1, 2, 3, 4].map(i => (
-                                    <Star key={i} size={8}
-                                        fill={i <= level ? '#FDB913' : 'none'}
-                                        color={i <= level ? '#FDB913' : '#3d4d6b'}
-                                        strokeWidth={3}
-                                    />
-                                ))}
-                            </div>
-                            <span style={{ fontSize: '15px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1 }}>{level ? `Lv ${level}` : 'Unk.'}</span>
-                            <span style={{ fontSize: '7px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.4px' }}>WAGE</span>
+            {/* Main Content Area */}
+            <div className="flex-1 p-6 flex flex-col min-w-0">
+                {/* Top Badges */}
+                <div className="flex flex-wrap gap-2 mb-5">
+                    {filingCount !== null && (
+                        <div className="bg-[#f5f3ff] text-[#7c3aed] px-3 py-1 rounded-full text-[11px] font-bold border border-[#ddd6fe]">
+                            📊 {filingCount.toLocaleString()} LCA Filings
                         </div>
+                    )}
+                    {filingCount > 100 && (
+                        <div className="bg-[#fdf2f8] text-[#be185d] px-3 py-1 rounded-full text-[11px] font-bold border border-[#fce7f3]">
+                            🔥 High Sponsorship Volume
+                        </div>
+                    )}
+                    <div className="bg-[#f0f9ff] text-[#0369a1] px-3 py-1 rounded-full text-[11px] font-bold border border-[#e0f2fe]">
+                        ✨ Be an early applicant
+                    </div>
+                </div>
 
-                        {/* Filings Card */}
-                        {filingCount > 0 && (
-                            <div style={{
-                                background: '#1a2b4b',
-                                borderRadius: '12px',
-                                padding: '8px 12px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                minWidth: '70px',
-                                boxShadow: '0 4px 12px rgba(26, 43, 75, 0.1)'
-                            }}>
-                                <Globe size={8} color="#718096" strokeWidth={3} style={{ marginBottom: '4px' }} />
-                                <span style={{ fontSize: '15px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1 }}>
-                                    {filingCount.toLocaleString()}
-                                </span>
-                                <span style={{ fontSize: '7px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.4px' }}>FILINGS</span>
-                            </div>
+                {/* Title & Company Section */}
+                <div className="flex items-start gap-4 mb-6">
+                    <div className="shrink-0 bg-white border border-[#f1f5f9] rounded-2xl p-2 shadow-sm group-hover:border-[#FDB913]/30 transition-colors">
+                        <LogoBox name={job.company} officialUrl={job.url} size={52} fontSize={18} />
+                    </div>
+                    <div className="min-w-0 pt-1">
+                        <h3 className="text-[20px] font-black text-[#1e293b] leading-[1.3] mb-1.5 h-[52px] line-clamp-2">
+                            {job.isTeaser ? (
+                                <Link to="/pricing" className="hover:text-[#FDB913] transition-colors">{job.title}</Link>
+                            ) : (
+                                <a href={job.url || job.apply_url} target="_blank" rel="noopener noreferrer" className="hover:text-[#FDB913] transition-colors">{job.title}</a>
+                            )}
+                        </h3>
+                        <div className="flex items-center gap-2 text-[#64748b] text-[14px] font-semibold">
+                            <span className="text-[#1e293b] font-bold">{job.company}</span>
+                            <span className="opacity-30">/</span>
+                            <span className="truncate">{job.role || 'Software Engineering'}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Metadata Grid */}
+                <div className="flex flex-wrap items-center gap-x-8 gap-y-3 mb-8">
+                    <div className="flex items-center gap-2.5 text-[#334155] font-semibold">
+                        <MapPin size={18} className="text-[#94a3b8]" />
+                        <span className="text-[14px]">{job.location || 'United States'}</span>
+                    </div>
+                    <div className="flex items-center gap-2.5 text-[#334155] font-semibold">
+                        <Clock size={18} className="text-[#94a3b8]" />
+                        <span className="text-[14px]">{job.employment_type || job.type || 'Full-time'}</span>
+                    </div>
+                    {filingCount !== null && (
+                        <div className="flex items-center gap-2.5 text-[#334155] font-semibold">
+                            <TrendingUp size={18} className="text-[#94a3b8]" />
+                            <span className="text-[14px]">{filingCount.toLocaleString()} LCA Filings</span>
+                        </div>
+                    )}
+                    {job.isVerified && (
+                        <div className="flex items-center bg-[#f0fdf4] border border-[#bbf7d0] px-3 py-1 rounded-lg">
+                            <span className="text-[10px] font-black text-[#15803d] uppercase tracking-wider mr-2">HUMAN VERIFIED</span>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#15803d" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2L14.43 3.63L17.29 2.89L18.47 5.56L21.31 6.36L21.14 9.3L23 11.5L21.14 13.7L21.31 16.64L18.47 17.44L17.29 20.11L14.43 19.37L12 21L9.57 19.37L6.71 20.11L5.53 17.44L2.69 16.64L2.86 13.7L1 11.5L2.86 9.3L2.69 6.36L5.53 5.56L6.71 2.89L9.57 3.63L12 2Z" />
+                                <path d="M10 14.5L7.5 12L6.5 13L10 16.5L17.5 9L16.5 8L10 14.5Z" fill="white" />
+                            </svg>
+                        </div>
+                    )}
+                </div>
+
+                {/* Bottom Actions Bar */}
+                <div className="flex flex-wrap items-center justify-between gap-6 mt-auto pt-5 border-t border-[#f1f5f9] shrink-0">
+                    <div className="flex items-center gap-4 text-[#94a3b8] text-[13px] font-semibold">
+                        {job.salary && (
+                            <span className="text-[#1e293b] font-bold">{job.salary}</span>
                         )}
                     </div>
-                </div>
-            )}
 
-            {/* Left side: Logo (Desktop Only) */}
-            {!isMobile && (
-                <div style={{ flexShrink: 0 }}>
-                    <LogoBox name={job.company} officialUrl={job.url} size={60} fontSize={18} />
-                </div>
-            )}
-
-            {/* Middle: Content */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-                {/* Row 1: Salary & Location First */}
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
-                    {job.salary && (
-                        <span style={{
-                            fontSize: '11.5px',
-                            fontWeight: 700,
-                            color: '#24385E',
-                            background: '#eef2f8',
-                            borderRadius: '6px',
-                            padding: '3px 10px',
-                            display: 'inline-flex',
-                            alignItems: 'center'
-                        }}>
-                            {job.salary}
-                        </span>
-                    )}
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <MapPin size={12} color="#94a3b8" />
-                        <span style={{ fontSize: '12px', fontWeight: 500, color: '#64748b' }}>{job.location || 'United States'}</span>
-                    </div>
-                </div>
-
-                    {/* Row 2: Job Title as Main Link */}
-                    <h3 style={{
-                        fontSize: isMobile ? '16px' : '17px',
-                        fontWeight: 800,
-                        margin: '0 0 2px',
-                        lineHeight: 1.25,
-                        letterSpacing: '-0.2px'
-                    }}>
+                    <div className="flex items-center gap-3 ml-auto">
                         {job.isTeaser ? (
                             <Link
                                 to="/pricing"
-                                style={{ color: '#111', textDecoration: 'none', transition: 'color 150ms ease' }}
-                                onMouseEnter={e => e.currentTarget.style.color = '#FDB913'}
-                                onMouseLeave={e => e.currentTarget.style.color = '#111'}
+                                className="h-12 px-8 bg-[#FDB913] text-[#1a1a1a] rounded-full flex items-center justify-center gap-2.5 font-extrabold text-[15px] hover:bg-[#f0af0e] transition-all shadow-[0_6px_20px_rgba(253,185,19,0.3)] active:scale-95"
                             >
-                                {job.title}
+                                Apply Now <ExternalLink size={20} className="stroke-[2.5]" />
                             </Link>
                         ) : (
                             <a
-                                href={job.url || job.apply_url || '#'}
+                                href={job.url || job.apply_url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                style={{ color: '#111', textDecoration: 'none', transition: 'color 150ms ease' }}
-                                onMouseEnter={e => e.currentTarget.style.color = '#FDB913'}
-                                onMouseLeave={e => e.currentTarget.style.color = '#111'}
-                                onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); }}
+                                className="h-12 px-8 bg-[#FDB913] text-[#1a1a1a] rounded-full flex items-center justify-center gap-2.5 font-extrabold text-[15px] hover:bg-[#f0af0e] transition-all shadow-[0_6px_20px_rgba(253,185,19,0.3)] active:scale-95"
                             >
-                                {job.title}
+                                Apply Now <ExternalLink size={20} className="stroke-[2.5]" />
                             </a>
                         )}
-                    </h3>
-
-                {/* Row 3: Company Name as Subtext */}
-                <div style={{ fontSize: '13px', fontWeight: 500, color: '#718096', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {job.company}
-                    {job.lca_filings > 0 && (
-                        <span style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#24385E', fontSize: '11px', fontWeight: 700, background: '#f1f5f9', borderRadius: '4px', padding: '1px 6px' }}>
-                            <Globe size={11} strokeWidth={2.5} /> {job.lca_filings.toLocaleString()}
-                        </span>
-                    )}
-                </div>
-
-
-                {/* Row 4: Verified Badge */}
-                {job.isVerified && (
-                    <div style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        background: '#f0fdf4',
-                        color: '#16a34a',
-                        padding: '6px 12px',
-                        borderRadius: '10px',
-                        border: '1px solid #dcfce7',
-                        fontSize: '10px',
-                        fontWeight: 900,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.8px'
-                    }}>
-                        HUMAN VERIFIED <VerifiedSeal size={13} />
                     </div>
-                )}
+                </div>
             </div>
 
-            {/* Right side: Wage trail (Desktop) + Action */}
-            <div style={{
-                display: 'flex',
-                flexDirection: isMobile ? 'row' : 'column',
-                alignItems: 'center',
-                justifyContent: isMobile ? 'flex-end' : 'center',
-                gap: isMobile ? '12px' : '12px',
-                minWidth: isMobile ? '100%' : '260px',
-                marginTop: isMobile ? '4px' : '0',
-                borderLeft: isMobile ? 'none' : '1px solid #f1f5f9',
-                paddingLeft: isMobile ? '0' : '20px'
-            }}>
-                {!isMobile && (
-                    <div style={{ display: 'flex', gap: '10px', width: '100%', marginBottom: '8px' }}>
-                        {/* Wage Level Card */}
-                        <div style={{
-                            background: '#1a2b4b',
-                            borderRadius: '12px',
-                            padding: '10px 14px',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            flex: 1,
-                            boxShadow: '0 4px 12px rgba(26, 43, 75, 0.08)',
-                        }}>
-                            <div style={{ display: 'flex', gap: '3px', marginBottom: '4px' }}>
-                                {[1, 2, 3, 4].map(i => (
-                                    <Star key={i} size={11}
-                                        fill={i <= level ? '#FDB913' : 'none'}
-                                        color={i <= level ? '#FDB913' : '#3d4d6b'}
-                                        strokeWidth={2.5}
-                                    />
-                                ))}
-                            </div>
-                            <span style={{ fontSize: '22px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1, letterSpacing: '0.4px' }}>{level ? `Lv ${level}` : 'Unk.'}</span>
-                            <span style={{ fontSize: '7.5px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.8px', marginTop: '3px' }}>WAGE LEVEL</span>
-                        </div>
+            <div className="hidden lg:flex w-[180px] bg-[#24385E] p-8 flex-col items-center justify-center text-center text-white shrink-0 relative lg:h-[260px]">
+                {/* Visual Accent */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
 
-                        {/* Filings Card */}
-                        {filingCount > 0 && (
-                            <div style={{
-                                background: '#1a2b4b',
-                                borderRadius: '14px',
-                                padding: '10px 14px',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                flex: 1,
-                                boxShadow: '0 4px 12px rgba(26, 43, 75, 0.08)',
-                            }}>
-                                <Globe size={11} color="#718096" strokeWidth={2.5} style={{ marginBottom: '5px' }} />
-                                <span style={{ fontSize: '22px', fontWeight: 900, color: '#fff', fontStyle: 'italic', lineHeight: 1, letterSpacing: '0.4px' }}>
-                                    {filingCount.toLocaleString()}
-                                </span>
-                                <span style={{ fontSize: '7.5px', fontWeight: 800, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.8px', marginTop: '3px' }}>LCA FILINGS</span>
+                <div className="relative z-10 w-full flex flex-col items-center justify-center">
+                    <div className="relative w-24 h-24 mb-4 flex items-center justify-center">
+                        <svg className="w-full h-full transform -rotate-90">
+                            <circle cx="48" cy="48" r="42" stroke="rgba(255,255,255,0.1)" strokeWidth="8" fill="transparent" />
+                            <circle
+                                cx="48" cy="48" r="42" stroke="#FDB913" strokeWidth="8" fill="transparent"
+                                strokeDasharray={2 * Math.PI * 42}
+                                strokeDashoffset={2 * Math.PI * 42 * (1 - levelPercent / 100)}
+                                strokeLinecap="round"
+                            />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-[24px] font-black leading-none">{wageInfo.loading ? '--' : (wageInfo.level.replace(/Level\s+/i, 'Lv '))}</span>
+                        </div>
+                    </div>
+                    <div className="text-[11px] font-black uppercase tracking-[2.5px] mb-2 opacity-60">WAGE LEVEL</div>
+                    <div className="w-10 h-[2px] bg-[#FDB913]/30"></div>
+                </div>
+
+                {/* Identity Badge - Perfectly centered at the bottom area */}
+                {job.isVerified && (
+                    <div className="absolute bottom-6 left-0 right-0 flex items-center justify-center px-4">
+                        <div className="flex items-center gap-2 bg-[#ecfdf5] border border-[#d1fae5] pl-3 pr-1.5 py-1.5 rounded-full shadow-sm whitespace-nowrap max-w-full">
+                            <span className="text-[9px] font-black text-[#059669] uppercase tracking-wider leading-none translate-y-[0.5px]">HUMAN VERIFIED</span>
+                            <div className="flex items-center justify-center p-0.5">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="#059669" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 2L14.43 3.63L17.29 2.89L18.47 5.56L21.31 6.36L21.14 9.3L23 11.5L21.14 13.7L21.31 16.64L18.47 17.44L17.29 20.11L14.43 19.37L12 21L9.57 19.37L6.71 20.11L5.53 17.44L2.69 16.64L2.86 13.7L1 11.5L2.86 9.3L2.69 6.36L5.53 5.56L6.71 2.89L9.57 3.63L12 2Z" />
+                                    <path d="M10 14.5L7.5 12L6.5 13L10 16.5L17.5 9L16.5 8L10 14.5Z" fill="white" />
+                                </svg>
                             </div>
-                        )}
+                        </div>
                     </div>
                 )}
-
-                <div style={{
-                    display: 'flex',
-                    flexDirection: isMobile ? 'row' : 'row',
-                    gap: '10px',
-                    width: '100%',
-                    alignItems: 'center'
-                }}>
-                    {job.isTeaser ? (
-                        <Link
-                            to="/pricing"
-                            style={{
-                                flex: 1,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '8px',
-                                padding: isMobile ? '12px 18px' : '10px 18px',
-                                borderRadius: '12px',
-                                background: '#FDB913',
-                                color: '#111',
-                                fontSize: '13.5px',
-                                fontWeight: 800,
-                                textDecoration: 'none',
-                                transition: 'all 0.2s',
-                                boxShadow: '0 3px 10px rgba(253, 185, 19, 0.15)',
-                            }}
-                        >
-                            Get Access to Apply <ExternalLink size={14} />
-                        </Link>
-                    ) : (
-                        <a
-                            href={job.url || job.apply_url || '#'}
-                            target="_blank" rel="noopener noreferrer"
-                            style={{
-                                flex: 1,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '8px',
-                                padding: isMobile ? '12px 18px' : '10px 18px',
-                                borderRadius: '12px',
-                                background: '#FDB913',
-                                color: '#111',
-                                fontSize: '13.5px',
-                                fontWeight: 800,
-                                textDecoration: 'none',
-                                transition: 'all 0.2s',
-                                boxShadow: '0 3px 10px rgba(253, 185, 19, 0.15)',
-                            }}
-                        >
-                            Apply <ExternalLink size={14} />
-                        </a>
-                    )}
-
-                    <button
-                        onClick={() => onSave(job)}
-                        style={{
-                            padding: isMobile ? '14px' : '12px',
-                            borderRadius: '14px',
-                            background: '#fff',
-                            border: '1.5px solid #e2e8f0',
-                            color: isSaved ? '#FDB913' : '#94a3b8',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.2s',
-                            flexShrink: 0
-                        }}
-                    >
-                        {isSaved ? <BookmarkCheck size={18} fill="#FDB913" /> : <Bookmark size={18} />}
-                    </button>
-                </div>
             </div>
         </div>
     );
@@ -640,14 +474,14 @@ const AllJobsTab = () => {
             const hasSal = j.salary && String(j.salary).includes('$');
             const hasLvl = parseWageLevel(j.wage_level) || parseWageLevel(j.wage_num) || parseWageLevel(j.salary);
             const isEligible = !!(hasSal || hasLvl);
-            
+
             const dateStr = j.upload_date || j.ingestedAt || j.date_posted || '1970-01-01';
             const timestamp = new Date(dateStr).getTime() || 0;
             const wageLvl = parseWageLevel(j.wage_level) || parseWageLevel(j.wage_num) || parseWageLevel(j.salary) || 0;
             const filings = parseInt(j.lca_filings) || 0;
             const brandRank = getCompanyRank(j.company);
             const isFamous = brandRank !== Infinity;
-            
+
             return {
                 ...j,
                 _isEligible: isEligible,
@@ -670,12 +504,12 @@ const AllJobsTab = () => {
         // 4. Categorize into Pools
         // Pool A: Primary (Famous OR Verified) AND Eligible
         const primaryPool = enriched.filter(j => (j._isFamous || j.isVerified) && j._isEligible);
-        
+
         // Pool B: Secondary (Unrelated BUT Eligible)
         const secondaryPool = enriched.filter(j => !(j._isFamous || j.isVerified) && j._isEligible).sort(jobSorter);
-        
+
         // Pool C: Tertiary (Not Eligible - No Salary/Wage)
-        const tertiaryPool = enriched.filter(j => !j._isEligible).sort((a,b) => b._timestamp - a._timestamp);
+        const tertiaryPool = enriched.filter(j => !j._isEligible).sort((a, b) => b._timestamp - a._timestamp);
 
         // 5. Build Interleaved Main Sequence from Primary Pool
         const famousInPrimary = new Map();
@@ -685,7 +519,7 @@ const AllJobsTab = () => {
             famousInPrimary.get(co).push(j);
         });
         famousInPrimary.forEach(jobs => jobs.sort(jobSorter));
-        
+
         const verifiedInPrimary = primaryPool.filter(j => j.isVerified).sort(jobSorter);
 
         const result = [];
@@ -706,7 +540,7 @@ const AllJobsTab = () => {
                         if (key.includes(searchKey) || searchKey.includes(key)) { group = jobs; break; }
                     }
                 }
-                
+
                 if (group && group[round]) {
                     const job = group[round];
                     if (!finalSeen.has(job._uk)) {
@@ -715,7 +549,7 @@ const AllJobsTab = () => {
                         foundInRound++;
 
                         // Sequence: 1 Famous -> 1 Verified
-                        while(vIdx < verifiedInPrimary.length) {
+                        while (vIdx < verifiedInPrimary.length) {
                             const vJob = verifiedInPrimary[vIdx++];
                             if (!finalSeen.has(vJob._uk)) {
                                 result.push(vJob);
@@ -871,9 +705,9 @@ const AllJobsTab = () => {
                     const { data: dData, count: dCount, error: dError } = await directQ
                         .order('date_posted', { ascending: false, nullsFirst: false })
                         .range(from, from + JOBS_PER_PAGE - 1);
-                        
+
                     console.log(`[DEBUG] Deep Fetch: from=${from}, dCount=${dCount}, dataLength=${dData?.length}`);
-                        
+
                     if (dError) throw dError;
 
                     let finalData = dData || [];
@@ -907,7 +741,7 @@ const AllJobsTab = () => {
                             processedListCache.current.set(listCacheKey, { list: finalInterleaved.length > 0 ? finalInterleaved : directJobs, total: finalCount });
                         }
                         return;
-                    } 
+                    }
                     // If truly no jobs, continue to Phase 1 to let it handle empty state
                 } catch (err) {
                     console.error('ajt deep-direct-fetch failure:', err);
@@ -949,7 +783,7 @@ const AllJobsTab = () => {
 
                 if (isRoleS && words.length >= 2) {
                     // Strictly NO role/domain search even in backup if we want 'ONLY title'
-                    qvBackup = qvBackup.filter('domain', 'ilike', '%NON_EXISTENT_NONE%'); 
+                    qvBackup = qvBackup.filter('domain', 'ilike', '%NON_EXISTENT_NONE%');
                 } else {
                     qvBackup = qvBackup.or(`${cvC}`);
                 }
@@ -989,7 +823,7 @@ const AllJobsTab = () => {
             const vIdsQ = [...new Set(vVerified.map(v => v.job_id))].filter(Boolean);
             const vUrlsQ = [...new Set(vVerified.map(v => v.url))].filter(Boolean);
             const vCosQ = [...new Set(vVerified.map(v => v.company))].filter(Boolean);
-            
+
             let qDeepSpon = [];
             try {
                 if (vIdsQ.length > 0 || vUrlsQ.length > 0 || vCosQ.length > 0) {
@@ -1079,16 +913,16 @@ const AllJobsTab = () => {
             // ── BATCH LCA FILING ENRICHMENT (Rule 4) ──
             const poolCos = [...new Set(qList.map(j => j.company))].filter(Boolean);
             if (poolCos.length > 0) {
-              const { data: fData } = await supabase.from('h1b_sponsor_finder')
-                .select('Company, "LCA Filings"').in('Company', poolCos.slice(0, 100)); // Batch 100
-              if (fData) {
-                const fMap = new Map();
-                fData.forEach(d => fMap.set(d.Company.toLowerCase(), parseInt(String(d["LCA Filings"]).replace(/,/g, '')) || 0));
-                qList.forEach(j => {
-                  const co = String(j.company || '').toLowerCase();
-                  if (fMap.has(co)) j.lca_filings = fMap.get(co);
-                });
-              }
+                const { data: fData } = await supabase.from('h1b_sponsor_finder')
+                    .select('Company, "LCA Filings"').in('Company', poolCos.slice(0, 100)); // Batch 100
+                if (fData) {
+                    const fMap = new Map();
+                    fData.forEach(d => fMap.set(d.Company.toLowerCase(), parseInt(String(d["LCA Filings"]).replace(/,/g, '')) || 0));
+                    qList.forEach(j => {
+                        const co = String(j.company || '').toLowerCase();
+                        if (fMap.has(co)) j.lca_filings = fMap.get(co);
+                    });
+                }
             }
 
             qList = interleaveJobs(qList);
@@ -1128,48 +962,48 @@ const AllJobsTab = () => {
                         const exp = level.flatMap(l => { const n = l.match(/\d/)?.[0]; if (!n) return [l]; const rom = { '1': 'I', '2': 'II', '3': 'III', '4': 'IV' }[n]; return [l, `Level ${n}`, `Level ${rom}`, n, `Lv ${n}`, `Lv${n}`]; });
                         directQ = directQ.in('wage_level', exp);
                     }
-                        const { data: directData, count: directCount } = await directQ;
-                        let finalDirectData = directData || [];
-                        let finalDirectCount = directCount !== null ? directCount : qTotal;
+                    const { data: directData, count: directCount } = await directQ;
+                    let finalDirectData = directData || [];
+                    let finalDirectCount = directCount !== null ? directCount : qTotal;
 
-                        // FALLBACK: If requested page is empty but total matches exist, show the absolute last page
-                        if (finalDirectData.length === 0 && finalDirectCount > 0) {
-                            const lastPageFrom = Math.max(0, Math.floor((finalDirectCount - 1) / JOBS_PER_PAGE) * JOBS_PER_PAGE);
-                            const { data: fData } = await directQ
-                                .order('date_posted', { ascending: false })
-                                .range(lastPageFrom, finalDirectCount - 1);
-                            if (fData && fData.length > 0) {
-                                finalDirectData = fData;
-                            }
+                    // FALLBACK: If requested page is empty but total matches exist, show the absolute last page
+                    if (finalDirectData.length === 0 && finalDirectCount > 0) {
+                        const lastPageFrom = Math.max(0, Math.floor((finalDirectCount - 1) / JOBS_PER_PAGE) * JOBS_PER_PAGE);
+                        const { data: fData } = await directQ
+                            .order('date_posted', { ascending: false })
+                            .range(lastPageFrom, finalDirectCount - 1);
+                        if (fData && fData.length > 0) {
+                            finalDirectData = fData;
                         }
+                    }
 
-                        if (finalDirectData.length > 0) {
-                            const vSet = verifiedSet || await getVerifiedSet();
-                            const directJobs = finalDirectData.map(j => ({
-                                ...j, job_id: j.id, role: j.job_role_name,
-                                isVerified: vSet.has(j.company) || false,
-                                isTeaser: paymentStatus === 'pending'
-                            }));
-                            setJobs(directJobs);
-                            setTotalJobs(finalDirectCount);
-                            setCurrentPage(page);
-                        } else {
-                            setJobs([]);
-                            setTotalJobs(qTotal);
-                            setCurrentPage(page);
-                        }
-                    } catch (_) {
+                    if (finalDirectData.length > 0) {
+                        const vSet = verifiedSet || await getVerifiedSet();
+                        const directJobs = finalDirectData.map(j => ({
+                            ...j, job_id: j.id, role: j.job_role_name,
+                            isVerified: vSet.has(j.company) || false,
+                            isTeaser: paymentStatus === 'pending'
+                        }));
+                        setJobs(directJobs);
+                        setTotalJobs(finalDirectCount);
+                        setCurrentPage(page);
+                    } else {
                         setJobs([]);
                         setTotalJobs(qTotal);
                         setCurrentPage(page);
                     }
-                    setLoading(false);
-                } else {
-                    setJobs(pagedSlice);
+                } catch (_) {
+                    setJobs([]);
                     setTotalJobs(qTotal);
                     setCurrentPage(page);
-                    setLoading(false);
                 }
+                setLoading(false);
+            } else {
+                setJobs(pagedSlice);
+                setTotalJobs(qTotal);
+                setCurrentPage(page);
+                setLoading(false);
+            }
 
             // ── Phase 2: Full background fetch (pages 11+, enriched) ──────────
             // Fires after quick data is on screen. No await — purely background.
@@ -1185,10 +1019,10 @@ const AllJobsTab = () => {
                         const words = sLow.split(/\s+/).filter(x => x.length >= 1);
                         const roleKeywords = ['analyst', 'developer', 'engineer', 'scientist', 'designer', 'manager', 'lead', 'senior', 'junior', 'architect', 'data', 'software', 'ai', 'ml', 'researcher'];
                         const isRoleS = words.some(x => roleKeywords.includes(x));
-                        
+
                         const tC = `and(${words.map(x => `title.ilike.%${x}%`).join(',')})`;
                         const cC = `and(${words.map(x => `company.ilike.%${x}%`).join(',')})`;
-                        
+
                         // Phase 2 background: use the same search logic as Phase 1
                         if (isRoleS && words.length >= 2) {
                             rankedQuery = rankedQuery.or(`${tC}`);
@@ -1199,7 +1033,7 @@ const AllJobsTab = () => {
                         }
 
                         // For verified backup, only match by company if title-strict (backup table has no title column)
-                        vBackup = vBackup.filter('domain', 'ilike', '%NON_EXISTENT_NONE%'); 
+                        vBackup = vBackup.filter('domain', 'ilike', '%NON_EXISTENT_NONE%');
                     }
                     if (level && level.length > 0) {
                         const exp = level.flatMap(l => { const n = l.match(/\d/)?.[0]; if (!n) return [l]; const rom = { '1': 'I', '2': 'II', '3': 'III', '4': 'IV' }[n]; return [l, `Level ${n}`, `Level ${rom}`, n, `Lv ${n}`, `Lv${n}`]; });
@@ -1242,17 +1076,17 @@ const AllJobsTab = () => {
                         if (vIdsB.length > 0 || vUrlsB.length > 0 || vCosB.length > 0) {
                             const chunks = [];
                             const idNumList = vIdsB.map(id => parseInt(id)).filter(n => !isNaN(n));
-                            
+
                             if (idNumList.length > 0) {
-                                for (let i = 0; i < idNumList.length; i += 200) 
+                                for (let i = 0; i < idNumList.length; i += 200)
                                     chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').in('id', idNumList.slice(i, i + 200)));
                             }
                             if (vIdsB.length > 0) {
-                                for (let i = 0; i < vIdsB.length; i += 200) 
+                                for (let i = 0; i < vIdsB.length; i += 200)
                                     chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').in('jobId', vIdsB.slice(i, i + 200)));
                             }
                             if (vUrlsB.length > 0) {
-                                for (let i = 0; i < vUrlsB.length; i += 100) 
+                                for (let i = 0; i < vUrlsB.length; i += 100)
                                     chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').in('url', vUrlsB.slice(i, i + 100)));
                             }
                             if (vCosB.length > 0) {
@@ -1264,53 +1098,53 @@ const AllJobsTab = () => {
                         }
                     } catch (_deepErr) { /* non-fatal */ }
 
-                        const sponsoredJobs = [...(rankedRes.data || []), ...(standardRes.data || [])]
-                            .map(j => ({ ...j, job_id: j.id, isVerified: j.isVerified || vSet.has(j.company) || false, isTeaser: paymentStatus === 'pending' }));
+                    const sponsoredJobs = [...(rankedRes.data || []), ...(standardRes.data || [])]
+                        .map(j => ({ ...j, job_id: j.id, isVerified: j.isVerified || vSet.has(j.company) || false, isTeaser: paymentStatus === 'pending' }));
 
-                        const fullMetaMap = new Map();
-                        [...sponsoredJobs, ...deepSponsored].forEach(s => {
-                            const uk = _urlKey(s.url);
-                            if (uk) fullMetaMap.set('u:' + uk, s);
-                            if (s.id) fullMetaMap.set('i:' + s.id, s);
-                            if (s.jobId) fullMetaMap.set('j:' + s.jobId, s);
-                        });
+                    const fullMetaMap = new Map();
+                    [...sponsoredJobs, ...deepSponsored].forEach(s => {
+                        const uk = _urlKey(s.url);
+                        if (uk) fullMetaMap.set('u:' + uk, s);
+                        if (s.id) fullMetaMap.set('i:' + s.id, s);
+                        if (s.jobId) fullMetaMap.set('j:' + s.jobId, s);
+                    });
 
-                        qvVerified.forEach(v => {
-                            const vk = _urlKey(v.url);
-                            let meta = fullMetaMap.get('u:' + vk) || fullMetaMap.get('i:' + v.job_id) || fullMetaMap.get('j:' + v.job_id);
-                            
-                            // STRICT SAFETY: Prevent cross-company data leakage!
-                            if (meta && meta.company && v.company && _normR(meta.company) !== _normR(v.company)) {
-                                const mWords = _normR(meta.company).split(' ').filter(Boolean);
-                                const vWords = _normR(v.company).split(' ').filter(Boolean);
-                                const looseMatch = mWords.length > 0 && vWords.length > 0 && (mWords[0] === vWords[0]);
-                                if (!looseMatch) meta = null;
+                    qvVerified.forEach(v => {
+                        const vk = _urlKey(v.url);
+                        let meta = fullMetaMap.get('u:' + vk) || fullMetaMap.get('i:' + v.job_id) || fullMetaMap.get('j:' + v.job_id);
+
+                        // STRICT SAFETY: Prevent cross-company data leakage!
+                        if (meta && meta.company && v.company && _normR(meta.company) !== _normR(v.company)) {
+                            const mWords = _normR(meta.company).split(' ').filter(Boolean);
+                            const vWords = _normR(v.company).split(' ').filter(Boolean);
+                            const looseMatch = mWords.length > 0 && vWords.length > 0 && (mWords[0] === vWords[0]);
+                            if (!looseMatch) meta = null;
+                        }
+
+                        if (meta) {
+                            v.title = meta.title; v.job_id = meta.id; v.wage_level = meta.wage_level || v.wage_level;
+                            v.location = meta.location || v.location; v.salary = meta.salary || v.salary;
+                        } else {
+                            // Fallback matching by company + normalized role/domain if direct ID/URL match fails
+                            const companyJobs = deepSponsored.filter(j => j.company === v.company);
+                            const vRole = _normR(v.role || v.domain || '');
+                            const bestMatch = companyJobs.find(j => _normR(j.title).includes(vRole) || _normR(j.job_role_name).includes(vRole));
+                            if (bestMatch) {
+                                v.title = bestMatch.title;
+                                v.job_id = bestMatch.id;
+                                v.wage_level = bestMatch.wage_level || v.wage_level;
                             }
+                        }
+                        if (!v.location) v.location = 'united states';
+                    });
 
-                            if (meta) {
-                                v.title = meta.title; v.job_id = meta.id; v.wage_level = meta.wage_level || v.wage_level;
-                                v.location = meta.location || v.location; v.salary = meta.salary || v.salary;
-                            } else {
-                                // Fallback matching by company + normalized role/domain if direct ID/URL match fails
-                                const companyJobs = deepSponsored.filter(j => j.company === v.company);
-                                const vRole = _normR(v.role || v.domain || '');
-                                const bestMatch = companyJobs.find(j => _normR(j.title).includes(vRole) || _normR(j.job_role_name).includes(vRole));
-                                if (bestMatch) {
-                                    v.title = bestMatch.title;
-                                    v.job_id = bestMatch.id;
-                                    v.wage_level = bestMatch.wage_level || v.wage_level;
-                                }
-                            }
-                            if (!v.location) v.location = 'united states';
-                        });
-
-                        const uMap = new Map();
-                        sponsoredJobs.forEach(j => { if (!j.location) j.location = 'united states'; uMap.set(_jobKey(j), j); });
-                        qvVerified.forEach(v => {
-                            const jk = _jobKey(v);
-                            const ex = uMap.get(jk);
-                            uMap.set(jk, ex ? { ...ex, ...v, isVerified: true, title: ex.title || v.title, wage_level: ex.wage_level || v.wage_level, salary: ex.salary || v.salary, location: ex.location || v.location, job_id: ex.job_id || v.job_id } : v);
-                        });
+                    const uMap = new Map();
+                    sponsoredJobs.forEach(j => { if (!j.location) j.location = 'united states'; uMap.set(_jobKey(j), j); });
+                    qvVerified.forEach(v => {
+                        const jk = _jobKey(v);
+                        const ex = uMap.get(jk);
+                        uMap.set(jk, ex ? { ...ex, ...v, isVerified: true, title: ex.title || v.title, wage_level: ex.wage_level || v.wage_level, salary: ex.salary || v.salary, location: ex.location || v.location, job_id: ex.job_id || v.job_id } : v);
+                    });
 
                     let fullList = Array.from(uMap.values());
 
@@ -1447,21 +1281,21 @@ const AllJobsTab = () => {
                     const vUrlsS = [...new Set(svVerified.map(v => v.url))].filter(Boolean);
                     const vCosS = [...new Set(svVerified.map(v => v.company))].filter(Boolean);
                     let deepSponsored = [];
-                    
+
                     if (vIdsS.length > 0 || vUrlsS.length > 0 || vCosS.length > 0) {
                         const chunks = [];
                         const idNumList = vIdsS.map(id => parseInt(id)).filter(n => !isNaN(n));
-                        
+
                         if (idNumList.length > 0) {
-                            for (let i = 0; i < idNumList.length; i += 200) 
+                            for (let i = 0; i < idNumList.length; i += 200)
                                 chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').in('id', idNumList.slice(i, i + 200)));
                         }
                         if (vIdsS.length > 0) {
-                            for (let i = 0; i < vIdsS.length; i += 200) 
+                            for (let i = 0; i < vIdsS.length; i += 200)
                                 chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').in('jobId', vIdsS.slice(i, i + 200)));
                         }
                         if (vUrlsS.length > 0) {
-                            for (let i = 0; i < vUrlsS.length; i += 100) 
+                            for (let i = 0; i < vUrlsS.length; i += 100)
                                 chunks.push(supabase.from('job_jobrole_sponsored_sync').select('*').in('url', vUrlsS.slice(i, i + 100)));
                         }
                         if (vCosS.length > 0) {
@@ -1486,7 +1320,7 @@ const AllJobsTab = () => {
                     svVerified.forEach(v => {
                         const vk = _urlKey(v.url);
                         let meta = fullMetaMap.get('u:' + vk) || fullMetaMap.get('i:' + v.job_id) || fullMetaMap.get('j:' + v.job_id);
-                        
+
                         // STRICT SAFETY: Prevent cross-company data leakage!
                         if (meta && meta.company && v.company && _normR(meta.company) !== _normR(v.company)) {
                             const mWords = _normR(meta.company).split(' ').filter(Boolean);
@@ -1538,7 +1372,7 @@ const AllJobsTab = () => {
                     }
 
                     let interleaved = interleaveJobs(unique);
-                    
+
                     const actualTotal = isVerifiedTab ? (actualVerifiedCount || interleaved.length) : (standardRes?.count || interleaved.length);
 
                     // Populate the Map cache — no UI updates
@@ -1880,7 +1714,7 @@ const AllJobsTab = () => {
             {activeFilter === 'verified' && !loading && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', fontSize: '13px', color: '#16a34a', fontWeight: 600, marginBottom: '14px' }}>
                     <VerifiedSeal size={14} />
-                    Showing jobs from <strong style={{ marginLeft: '4px' }}>Human-Verified H-1B sponsoring companies</strong>
+                    Showing Jobs From <strong style={{ marginLeft: '4px' }}>Human-Verified H-1B Sponsoring Companies</strong>
                 </div>
             )}
 

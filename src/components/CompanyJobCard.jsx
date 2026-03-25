@@ -1,278 +1,184 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, DollarSign, Clock, ExternalLink, Star, Globe } from 'lucide-react';
+import { MapPin, DollarSign, Clock, ExternalLink, Star, Globe, Bookmark, CheckCircle, TrendingUp, Building2 } from 'lucide-react';
 import LogoBox from './LogoBox';
 import useAuth from '../hooks/useAuth';
+import { supabase } from '../supabaseClient';
+import { getWageLevel } from '../dataSyncService';
+
+// ── Module-level cache (shared across all CompanyJobCard instances) ────────────
+const _cjcCache = new Map();
+const _CJC_TTL = 10 * 60 * 1000; // 10 min
+function _cjcGet(key) { const e = _cjcCache.get(key); return (e && Date.now() - e.ts < _CJC_TTL) ? e.value : null; }
+function _cjcSet(key, value) { _cjcCache.set(key, { value, ts: Date.now() }); }
 
 const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, isMobile }) => {
     const { user } = useAuth();
     const [filingCount, setFilingCount] = useState(job.lca_filings || 0);
+    const [wageInfo, setWageInfo] = useState({ 
+        level: job.wage_level || 'Level 2', 
+        loading: !job.wage_level 
+    });
+
     const formatTimeAgo = (dateStr) => {
         if (!dateStr) return 'Recently';
         try {
             const d = new Date(dateStr), now = new Date();
-            const h = Math.floor((now - d) / 36e5), days = Math.floor((now - d) / 864e5);
+            const h = Math.floor((now - d) / 36e5);
             if (h < 1) return 'Just now';
-            if (h < 24) return `New ${h}m ago`;
+            if (h < 24) return `${h}h ago`;
+            const days = Math.floor(h / 24);
             if (days < 7) return `${days}d ago`;
             return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         } catch { return dateStr; }
     };
 
-    const level = job.wage_level ? parseInt(job.wage_level.match(/\d/)?.[0]) : null;
-    const timeAgo = formatTimeAgo(job.date_posted || job.time);
-    const isNew = timeAgo.includes('m ago') || timeAgo === 'Just now';
+    const levelValue = wageInfo.level ? parseInt(wageInfo.level.match(/\d/)?.[0] || '2') : 2;
+    const levelPercent = (levelValue / 4) * 100;
 
-    // Fetch missing fillings if needed
-    React.useEffect(() => {
-        if (job.lca_filings === undefined && job.company) {
-            const fetchFilings = async () => {
-                const normalize = (name) => {
-                    if (!name) return '';
-                    let n = name.toLowerCase()
-                        .replace(/[\.,]/g, ' ')
-                        .replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies|group|holdings|usa|us|intl|international|solutions|aws|related|web|tech|software|management|financial|insurance|banking|health|healthcare|travel|company)\b/g, ' ')
-                        .replace(/\s+/g, ' ')
-                        .trim();
-                    if (n.includes('amazon')) return 'amazon';
-                    if (n.includes('google') || n.includes('alphabet')) return 'google';
-                    if (n.includes('meta') || n.includes('facebook')) return 'meta';
-                    if (n.includes('microsoft')) return 'microsoft';
-                    if (n.includes('apple')) return 'apple';
-                    return n;
-                };
+    useEffect(() => {
+        const fetchData = async () => {
+            // --- Filing Count (cached) ---
+            if (job.lca_filings !== undefined) {
+                setFilingCount(job.lca_filings || 0);
+            } else if (job.company) {
+                const fKey = `cjc_filing:${String(job.company).toLowerCase()}`;
+                const hit = _cjcGet(fKey);
+                if (hit !== null) {
+                    setFilingCount(hit);
+                } else {
+                    const normalize = (name) => {
+                        if (!name) return '';
+                        return name.toLowerCase()
+                            .replace(/[\.,:]/g, ' ')
+                            .replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies|group|holdings|usa|us|intl|international|solutions|aws|related|web|tech|software|management|financial|insurance|banking|health|healthcare|travel|company)\b/g, ' ')
+                            .replace(/\s+/g, ' ').trim();
+                    };
+                    const coreTerm = normalize(job.company).split(' ')[0] || normalize(job.company);
+                    try {
+                        const { data } = await supabase.from('h1b_sponsor_finder').select('"LCA Filings"').ilike('Company', `%${coreTerm}%`).limit(1);
+                        const count = (data && data[0]) ? (parseInt(data[0]["LCA Filings"]) || 0) : 0;
+                        _cjcSet(fKey, count);
+                        setFilingCount(count);
+                    } catch (e) {}
+                }
+            }
 
-                const norm = normalize(job.company);
-                const words = norm.split(' ').filter(Boolean);
-                const coreTerm = words.length > 0 ? words[0] : norm;
-
-                try {
-                    const { data } = await supabase
-                        .from('h1b_sponsor_finder')
-                        .select('Company, "LCA Filings"')
-                        .ilike('Company', `%${coreTerm}%`)
-                        .limit(10);
-
-                    if (data && data.length > 0) {
-                        const parseCount = (v) => typeof v === 'number' ? v : parseInt(String(v).replace(/,/g, '')) || 0;
-                        const sorted = [...data].sort((a, b) => parseCount(b["LCA Filings"]) - parseCount(a["LCA Filings"]));
-                        let best = 0;
-                        const nNorm = normalize(job.company);
-
-                        for (const m of sorted) {
-                            const mNorm = normalize(m.Company);
-                            if (mNorm === nNorm || mNorm.includes(nNorm) || nNorm.includes(mNorm)) {
-                                best = parseCount(m["LCA Filings"]);
-                                break;
-                            }
-                        }
-                        if (best > 0) setFilingCount(best);
+            // --- Wage Level (cached) ---
+            if (job.wage_level) {
+                setWageInfo({ level: job.wage_level, loading: false });
+            } else if (job.title) {
+                const wKey = `cjc_wage:${String(job.title).toLowerCase().slice(0, 50)}:${String(job.location || '').toLowerCase().slice(0, 20)}`;
+                const hitW = _cjcGet(wKey);
+                if (hitW !== null) {
+                    setWageInfo({ level: hitW, loading: false });
+                } else {
+                    try {
+                        const res = await getWageLevel(job.title, job.location, job.salary);
+                        const level = (res && res[0]) ? (res[0]['Wage Level'] || 'Level 2') : 'Level 2';
+                        _cjcSet(wKey, level);
+                        setWageInfo({ level, loading: false });
+                    } catch (e) {
+                        setWageInfo({ level: 'Level 2', loading: false });
                     }
-                } catch (e) { /* ignore */ }
-            };
-            fetchFilings();
-        }
-    }, [job.company, job.lca_filings]);
-
-    const renderCTA = () => {
-        const baseStyle = {
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-            width: '100%', padding: isMobile ? '10px 8px' : '11px 8px',
-            background: '#EAB308', color: '#1a1a1a',
-            borderRadius: '12px', fontSize: '11px', fontWeight: 800,
-            textDecoration: 'none', border: 'none', cursor: 'pointer',
-            transition: 'all 180ms ease',
-            boxShadow: '0 2px 8px rgba(234,179,8,0.35)',
-            whiteSpace: 'nowrap',
+                }
+            }
         };
+        fetchData();
+    }, [job.company, job.title, job.lca_filings]);
 
-        const handleMouseEnter = e => {
-            e.currentTarget.style.background = '#ca9f00';
-            e.currentTarget.style.boxShadow = '0 4px 14px rgba(234,179,8,0.45)';
-        };
-        const handleMouseLeave = e => {
-            e.currentTarget.style.background = '#EAB308';
-            e.currentTarget.style.boxShadow = '0 2px 8px rgba(234,179,8,0.35)';
-        };
-
-        if (isLandingPage) {
-            return (
-                <Link to={user ? "/pricing" : "/signup"} style={baseStyle} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-                    {user ? "Get Access to Apply" : "Get Access to Apply"} <ExternalLink size={13} />
-                </Link>
-            );
-        }
-
-        if (job.isTeaser) {
-            return (
-                <Link to="/pricing" style={baseStyle} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
-                    Get Access to Apply <ExternalLink size={13} />
-                </Link>
-            );
-        }
-
-        return (
-            <a
-                href={job.url || job.apply_url || '#'}
-                target="_blank" rel="noopener noreferrer"
-                style={baseStyle}
-                onMouseEnter={handleMouseEnter}
-                onMouseLeave={handleMouseLeave}
-                onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); }}
-            >
-                Apply Now <ExternalLink size={13} />
-            </a>
-        );
-    };
+    const baseButtonStyle = "h-12 px-8 bg-[#FDB913] text-[#1a1a1a] rounded-full flex items-center justify-center gap-2.5 font-extrabold text-[15px] hover:bg-[#f0af0e] transition-all shadow-[0_6px_20px_rgba(253,185,19,0.3)] active:scale-95 shrink-0";
 
     return (
-        <div style={{
-            background: '#fff',
-            borderRadius: '16px',
-            border: '1.5px solid #ebebeb',
-            padding: isMobile ? '16px' : '20px 22px',
-            marginBottom: '12px',
-            boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-            transition: 'all 200ms ease',
-            display: 'flex',
-            flexDirection: isMobile ? 'column' : 'row',
-            gap: isMobile ? '12px' : '16px',
-            alignItems: isMobile ? 'flex-start' : 'stretch',
-        }}
-            onMouseEnter={e => {
-                e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.08)';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.borderColor = '#d8d8d8';
-            }}
-            onMouseLeave={e => {
-                e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)';
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.borderColor = '#ebebeb';
-            }}
-        >
-            {/* ── LEFT: Job info ── */}
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', gap: '12px', alignItems: 'flex-start', width: '100%' }}>
-                <LogoBox name={job.company} officialUrl={job.url || job.apply_url} size={isMobile ? 32 : 38} fontSize={11} />
-
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Row 1: Salary & Location First */}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', marginBottom: '8px' }}>
-                        {job.salary && (
-                            <span style={{
-                                fontSize: '11px',
-                                fontWeight: 700,
-                                color: '#24385E',
-                                background: '#f1f5f9',
-                                borderRadius: '6px',
-                                padding: '3px 8px'
-                            }}>
-                                {job.salary}
-                            </span>
-                        )}
-                        <span style={{ fontSize: '11px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}>
-                            <MapPin size={12} /> {job.location || 'United States'}
-                        </span>
+        <div className="bg-white rounded-2xl border border-[#ebebeb] p-5 mb-3 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col md:flex-row gap-5 relative overflow-hidden group">
+            <div className="flex-1 min-w-0">
+                <div className="flex items-start gap-4 mb-4">
+                    <div className="shrink-0">
+                        <LogoBox name={job.company} officialUrl={job.url || job.apply_url} size={44} fontSize={14} />
                     </div>
-
-                    {/* Row 2: Job Title as Main Link */}
-                    <h3 style={{ fontSize: isMobile ? '16px' : '17px', fontWeight: 800, margin: '0 0 2px', lineHeight: 1.3 }}>
-                        {job.isTeaser ? (
-                            <Link
-                                to="/pricing"
-                                style={{
-                                    color: '#111',
-                                    textDecoration: 'none',
-                                    transition: 'color 150ms ease'
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.color = '#EAB308'}
-                                onMouseLeave={e => e.currentTarget.style.color = '#111'}
-                            >
-                                {job.title}
-                            </Link>
-                        ) : (
-                            <a
-                                href={job.url || job.apply_url || '#'}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                    color: '#111',
-                                    textDecoration: 'none',
-                                    transition: 'color 150ms ease'
-                                }}
-                                onMouseEnter={e => e.currentTarget.style.color = '#EAB308'}
-                                onMouseLeave={e => e.currentTarget.style.color = '#111'}
-                                onClick={e => { if (!job.url && !job.apply_url) e.preventDefault(); }}
-                            >
-                                {job.title}
-                            </a>
-                        )}
-                    </h3>
-
-                    {/* Row 3: Company Name as Subtext */}
-                    <div style={{ fontSize: '13px', fontWeight: 500, color: '#718096', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        {job.company}
+                    <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                             {job.salary && (
+                                <span className="text-[10px] font-bold text-[#24385E] bg-[#eef2f8] px-2 py-0.5 rounded-full font-black">
+                                    {job.salary}
+                                </span>
+                            )}
+                        </div>
+                        <h3 className="text-[17px] font-extrabold text-[#111] leading-tight mb-0.5 truncate group-hover:text-[#EAB308] transition-colors">
+                            {job.isTeaser ? (
+                                <Link to="/pricing">{job.title}</Link>
+                            ) : (
+                                <a href={job.url || job.apply_url} target="_blank" rel="noopener noreferrer">{job.title}</a>
+                            )}
+                        </h3>
+                        <div className="text-[13px] font-bold text-[#718096] flex items-center gap-1.5">
+                            {job.company}
+                        </div>
                     </div>
+                </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {job.isVerified && (
-                            <span style={{
-                                fontSize: '9px', fontWeight: 800, color: '#16a34a',
-                                background: '#f0fdf4', border: '1px solid #bbf7d0',
-                                borderRadius: '6px', padding: '3px 8px',
-                                display: 'inline-flex', alignItems: 'center', gap: '5px',
-                                textTransform: 'uppercase', letterSpacing: '0.5px'
-                            }}>
-                                Human Verified <svg width="12" height="12" viewBox="0 0 100 100"><path d="M50 4 L57 16 L70 10 L70 24 L84 24 L78 37 L91 44 L81 55 L88 68 L74 69 L70 83 L57 78 L50 90 L43 78 L30 83 L26 69 L12 68 L19 55 L9 44 L22 37 L16 24 L30 24 L30 10 L43 16 Z" fill="#22c55e" /><polyline points="33,52 44,63 68,38" fill="none" stroke="white" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                            </span>
-                        )}
+                <div className="flex flex-wrap items-center gap-5 mb-4">
+                    <div className="flex items-center gap-2 text-[#64748b] text-[13px] font-semibold border-r border-gray-200 pr-4 last:border-0 last:pr-0">
+                        <MapPin size={15} className="text-[#94a3b8]" /> {job.location || 'United States'}
                     </div>
+                    <div className="flex items-center gap-2 text-[#64748b] text-[13px] font-semibold border-r border-gray-200 pr-4 last:border-0 last:pr-0">
+                        <Clock size={15} className="text-[#94a3b8]" /> {job.employment_type || job.type || 'Full-time'}
+                    </div>
+                    {job.isVerified && (
+                        <div className="flex items-center bg-[#f0fdf4] border border-[#bbf7d0] px-3 py-1 rounded-full shadow-sm">
+                            <span className="text-[10px] font-black text-[#15803d] uppercase tracking-wider mr-2">HUMAN VERIFIED</span>
+                            <div className="flex items-center justify-center p-0.5">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="#15803d" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M12 2L14.43 3.63L17.29 2.89L18.47 5.56L21.31 6.36L21.14 9.3L23 11.5L21.14 13.7L21.31 16.64L18.47 17.44L17.29 20.11L14.43 19.37L12 21L9.57 19.37L6.71 20.11L5.53 17.44L2.69 16.64L2.86 13.7L1 11.5L2.86 9.3L2.69 6.36L5.53 5.56L6.71 2.89L9.57 3.63L12 2Z" />
+                                    <path d="M10 14.5L7.5 12L6.5 13L10 16.5L17.5 9L16.5 8L10 14.5Z" fill="white" />
+                                </svg>
+                            </div>
+                        </div>
+                    )}
+                </div>
+                
+                <div className="flex items-center justify-end gap-3 mt-auto pt-4 border-t border-[#f1f5f9] shrink-0 w-full">
+                    {job.isTeaser ? (
+                        <Link to="/pricing" className={baseButtonStyle}>
+                            Apply Now <ExternalLink size={20} className="stroke-[2.5]" />
+                        </Link>
+                    ) : (
+                        <a href={job.url || job.apply_url} target="_blank" rel="noopener noreferrer" className={baseButtonStyle}>
+                            Apply Now <ExternalLink size={20} className="stroke-[2.5]" />
+                        </a>
+                    )}
                 </div>
             </div>
 
-            {/* ── RIGHT: Wage level / Apply ── */}
-            <div style={{
-                display: 'flex',
-                flexDirection: isMobile ? 'row' : 'column',
-                alignItems: isMobile ? 'center' : 'stretch',
-                gap: '10px',
-                flexShrink: 0,
-                width: isMobile ? '100%' : '140px',
-                justifyContent: 'space-between',
-                paddingTop: isMobile ? '8px' : '0',
-                borderTop: isMobile ? '1px solid #f1f5f9' : 'none'
-            }}>
-                <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
-                    {/* Wage Level Card */}
-                    <div style={{
-                        background: '#24385E',
-                        borderRadius: '12px',
-                        padding: isMobile ? '10px 10px' : '11px 10px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '2px',
-                        flex: 1,
-                        minWidth: 0
-                    }}>
-                        <div style={{ display: 'flex', gap: '2px', marginBottom: '1px' }}>
-                            {[1, 2, 3, 4].map(i => (
-                                <Star key={i} size={isMobile ? 8 : 10}
-                                    fill={i <= level ? '#FDB913' : 'none'}
-                                    color={i <= level ? '#FDB913' : '#4a5e7a'}
-                                    strokeWidth={1.5}
-                                />
-                            ))}
-                        </div>
-                        <span style={{ fontSize: isMobile ? '16px' : '20px', fontWeight: 900, color: '#ffffff', lineHeight: 1, fontStyle: 'italic' }}>
-                            {level ? `Lv ${level}` : 'Lv 1'}
-                        </span>
-                        <span style={{ fontSize: '7px', fontWeight: 700, color: '#7a9bbf', textTransform: 'uppercase', marginTop: '1px', letterSpacing: '1px' }}>WAGE LEVEL</span>
+            {/* Wage Level Panel (Desktop Only) */}
+            <div className="hidden md:flex w-[120px] bg-[#24385E] rounded-xl p-4 flex-col items-center justify-center text-center text-white shrink-0">
+                <div className="relative w-14 h-14 mb-2 flex items-center justify-center">
+                    <svg className="w-full h-full transform -rotate-90">
+                        <circle cx="28" cy="28" r="24" stroke="rgba(255,255,255,0.1)" strokeWidth="4" fill="transparent" />
+                        <circle 
+                            cx="28" cy="28" r="24" stroke="#EAB308" strokeWidth="4" fill="transparent"
+                            strokeDasharray={2 * Math.PI * 24}
+                            strokeDashoffset={2 * Math.PI * 24 * (1 - levelPercent / 100)}
+                            strokeLinecap="round"
+                        />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-[14px] font-black italic">{wageInfo.level.replace(/Level\s+/i, 'Lv ')}</span>
                     </div>
                 </div>
-
-                <div style={{ flex: 1 }}>
-                    {renderCTA()}
-                </div>
+                <div className="text-[8px] font-black uppercase tracking-[1px] opacity-70 mb-2">WAGE LEVEL</div>
+                 <div className="w-full h-[1px] bg-white/10 mb-2"></div>
+                {job.isVerified && (
+                     <div className="flex items-center gap-1 bg-[#ecfdf5] border border-[#d1fae5] pl-2 pr-1 py-1 rounded-lg mt-2 scale-90">
+                         <span className="text-[8px] font-black text-[#059669] uppercase tracking-wider leading-none translate-y-[0.5px] whitespace-nowrap">HUMAN VERIFIED</span>
+                         <div className="flex items-center justify-center">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#059669" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 2L14.43 3.63L17.29 2.89L18.47 5.56L21.31 6.36L21.14 9.3L23 11.5L21.14 13.7L21.31 16.64L18.47 17.44L17.29 20.11L14.43 19.37L12 21L9.57 19.37L6.71 20.11L5.53 17.44L2.69 16.64L2.86 13.7L1 11.5L2.86 9.3L2.69 6.36L5.53 5.56L6.71 2.89L9.57 3.63L12 2Z" />
+                                <path d="M10 14.5L7.5 12L6.5 13L10 16.5L17.5 9L16.5 8L10 14.5Z" fill="white" />
+                            </svg>
+                         </div>
+                     </div>
+                )}
             </div>
         </div>
     );

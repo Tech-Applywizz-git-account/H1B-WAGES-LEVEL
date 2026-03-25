@@ -2786,13 +2786,13 @@ const Homepage = () => {
   // Safety net: also check localStorage in case context hasn't hydrated yet
   const isAdmin = isAdminFromCtx || role === 'admin' || localStorage.getItem('userRole') === 'admin';
   const navigate = useNavigate();
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1280);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileActiveCol, setMobileActiveCol] = useState('left'); // 'left' or 'right'
 
   useEffect(() => {
     const handleResize = () => {
-      const mobile = window.innerWidth < 1024;
+      const mobile = window.innerWidth < 1280;
       setIsMobile(mobile);
       if (!mobile) setMobileMenuOpen(false);
     };
@@ -4367,7 +4367,7 @@ const Homepage = () => {
                                 onMouseEnter={e => e.currentTarget.style.textDecoration = 'underline'}
                                 onMouseLeave={e => e.currentTarget.style.textDecoration = 'none'}
                               >
-                                {(selectedCompanyData?.domain && selectedCompanyData.domain !== 'N/A') ? selectedCompanyData.domain : `${selectedCompany.toLowerCase().replace(/\s+/g, '')}.com`}
+                                {`${selectedCompany.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`}
                               </a>
                             </p>
                           </div>
