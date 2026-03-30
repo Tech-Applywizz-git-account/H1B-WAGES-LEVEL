@@ -35,6 +35,15 @@ const AppHeader = ({ title = "Job Board", onMenuClick }) => {
                     <Menu size={24} />
                 </button>
                 <h1 className="text-[14px] md:text-[15px] font-black text-[#24385E] tracking-tight truncate max-w-[150px] md:max-w-none">{title}</h1>
+                <a
+                    href="https://consulting.wagetrail.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hidden lg:flex flex-col items-center gap-0.5 bg-[#FDB913] text-black px-4 py-1.5 rounded-xl text-[10px] font-black border border-[#FDB913]/30 hover:bg-[#e5a811] transition-all ml-4 group shadow-lg shadow-[#FDB913]/10"
+                >
+                    <span className="leading-none">Get Expert Guidance</span>
+                    <span className="opacity-60 text-[9px] group-hover:opacity-100">$34.99/hr</span>
+                </a>
             </div>
 
             <div className="flex items-center gap-4 relative" ref={dropdownRef}>

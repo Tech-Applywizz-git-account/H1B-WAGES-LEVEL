@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, X, CheckCircle, ArrowRight } from 'lucide-react';
+import { Plus, X, CheckCircle, ArrowRight, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getCompanyLogo } from '../utils/logoHelper';
 
@@ -155,43 +155,38 @@ const MigrateMiddleSections = () => {
                         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white opacity-[0.05] rounded-full blur-[100px] -mr-64 -mt-64 text-white"></div>
                         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-yellow-400 opacity-[0.05] rounded-full blur-[100px] -ml-64 -mb-64"></div>
 
-                        <div className="grid lg:grid-cols-2 gap-10 items-center relative z-10">
-                            <div className="text-left">
-                                <h2 className="text-2xl md:text-4xl font-black leading-[1.05] mb-6">
-                                    Sign up.<br />Find a job.<br />Get sponsored.
-                                </h2>
-                                <p className="text-base text-gray-200 font-bold mb-8 max-w-md">The most effective platform for international talent to build a career in the United States.</p>
-
-                                <div className="flex flex-wrap gap-4">
-                                    {['H1B', 'Green Card', 'L1', 'E3', 'TN'].map(visa => (
-                                        <span key={visa} className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-xl text-sm font-black tracking-widest uppercase">{visa}</span>
-                                    ))}
+                        <div className="flex justify-center relative z-10">
+                            {/* Option 2: Expert Guidance (Highlighted) */}
+                            <div className="bg-white rounded-[28px] p-8 md:p-12 shadow-2xl text-left border-4 border-[#FDB913] relative overflow-hidden group max-w-lg w-full">
+                                <div className="absolute top-4 right-4 animate-pulse">
+                                    <Sparkles className="text-[#FDB913]" size={32} />
                                 </div>
-                            </div>
+                                <div className="text-[12px] font-black text-[#FDB913] uppercase tracking-widest mb-4">Personalized Support</div>
+                                <h3 className="text-2xl md:text-3xl font-black text-[#24385E] mb-8">Expert Guidance</h3>
 
-                            <div className="bg-white rounded-[28px] p-8 shadow-2xl">
-                                <h3 className="text-lg font-black text-[#1F2937] mb-6 text-center uppercase tracking-tight">Access Pro Features</h3>
+                                <p className="text-gray-600 font-medium mb-10 text-sm leading-relaxed italic">
+                                    Book a direct consultation with our H-1B experts. We help you navigate the entire sponsorship process, review your profile, and connect you with top sponsors.
+                                </p>
 
-                                <ul className="space-y-5 mb-10">
+                                <ul className="space-y-4 mb-10">
                                     {[
-                                        '7-day unlimited search trial',
-                                        'Verified open roles',
-                                        'Wage Trail filters (L1, L2, L3, L4)',
-                                        'Direct recruiter email access',
-                                        'Cancel any time, no lock-in'
+                                        'H-1B Profile Audit',
+                                        'Direct Sponsor Connections',
+                                        'Exclusive Interview Tips'
                                     ].map(item => (
                                         <li key={item} className="flex items-center gap-4">
-                                            <div className="shrink-0 w-6 h-6 bg-yellow-50 text-yellow-500 rounded-full flex items-center justify-center">
-                                                <CheckCircle size={16} fill="currentColor" className="text-yellow-500 fill-white" />
+                                            <div className="w-6 h-6 bg-yellow-50 rounded-full flex items-center justify-center">
+                                                <CheckCircle size={16} className="text-[#FDB913]" />
                                             </div>
-                                            <span className="font-bold text-[#4B5563] text-base">{item}</span>
+                                            <span className="font-black text-[#24385E] text-sm uppercase tracking-tight">{item}</span>
                                         </li>
                                     ))}
                                 </ul>
 
-                                <Link to="/signup" className="inline-block w-full py-4 bg-yellow-500 hover:bg-yellow-600 text-[#24385E] text-center font-black text-base rounded-full shadow-2xl transition-all transform hover:scale-[1.03]">
-                                    Get Access Now
-                                </Link>
+                                <a href="https://consulting.wagetrail.com/" target="_blank" rel="noopener noreferrer" 
+                                   className="inline-block w-full py-5 bg-[#FDB913] hover:bg-[#e5a811] text-[#24385E] text-center font-black text-lg rounded-full transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1">
+                                    Book Guidance Session
+                                </a>
                             </div>
                         </div>
                     </div>

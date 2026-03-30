@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import LogoBox from './LogoBox';
 
@@ -66,6 +66,15 @@ const HeroSection = () => {
                                 >
                                     Get Access Now
                                 </button>
+                                <a
+                                    href="https://consulting.wagetrail.com/"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="w-full sm:w-auto flex flex-col items-center justify-center bg-[#FDB913] text-black font-black px-8 py-3 rounded-2xl hover:bg-[#e5a811] transition-all text-base shadow-[0_10px_30px_rgba(253,185,19,0.3)] active:scale-95 group"
+                                >
+                                    <span>Get Expert Guidance</span>
+                                    <span className="text-[10px] text-black/60 font-bold uppercase tracking-widest mt-0.5 group-hover:text-black transition-colors">$34.99 per session</span>
+                                </a>
                                 <button
                                     onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
                                     className="w-full sm:w-auto inline-flex items-center justify-center border border-white/20 text-white font-bold px-8 py-4 rounded-2xl hover:bg-white/5 transition-all text-base"

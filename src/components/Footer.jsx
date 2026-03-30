@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 
 const Footer = () => {
@@ -44,6 +44,7 @@ const Footer = () => {
                     <div>
                         <h3 className="font-semibold text-white mb-4 text-sm">About Us</h3>
                         <ul className="space-y-2.5 text-sm">
+                            <li><a href="https://consulting.wagetrail.com/" target="_blank" rel="noopener noreferrer" className="text-[#FDB913] font-bold hover:text-white transition-colors">Book Consultation ($34.99)</a></li>
                             <li><a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">About Us</a></li>
                             <li><a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">Is Wage Trail Legit?</a></li>
                             <li><a href="#" className="text-gray-500 hover:text-gray-900 transition-colors">How to Use Wage Trail</a></li>

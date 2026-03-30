@@ -2344,7 +2344,7 @@
 
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { externalSupabase } from '../externalSupabaseClient';
 import useAuth from '../hooks/useAuth';
@@ -3836,7 +3836,7 @@ const Homepage = () => {
   };
 
   if (authLoading || paymentLoading) return <div className="h-screen w-screen flex items-center justify-center bg-[#f5f5f7]"><Loader2 className="w-8 h-8 text-[#24385E] animate-spin" /></div>;
-  if (!user) return <div className="bg-white"><Navbar /><HeroSection /><Testimonials /><FAQ /><Footer /></div>;
+  if (!user && !authLoading) return <Navigate to="/" replace />;
 
   // ── Payment gate: show teaser if not paid (admins always bypass) ──
   const isPaid = paymentStatus === 'paid' || paymentStatus === 'active' || paymentStatus === 'completed' || isAdmin;
@@ -3846,6 +3846,7 @@ const Homepage = () => {
     { id: 'all_companies', label: 'All Companies\nthat Sponsor', icon: Building2 },
     { id: 'all_jobs', label: 'All Jobs', icon: Briefcase },
     { id: 'h1b_finder', label: 'H-1B Visa Sponsor Finder', icon: Globe },
+    { id: 'consultation', label: 'Get Expert Guidance\n($34.99)', icon: MessageSquare, external: true, url: 'https://consulting.wagetrail.com/' },
     { id: 'billing', label: 'Billing & Plan', icon: CreditCard },
   ];
 
@@ -3971,13 +3972,20 @@ const Homepage = () => {
             const active = activeView === item.id;
             const isMultiLine = item.label.includes('\n');
             return (
-              <button key={item.id} style={S.navItem(active)} onClick={() => { setActiveView(item.id); if (isMobile) setMobileMenuOpen(false); }}
-                onMouseEnter={e => { if (!active) { e.currentTarget.style.background = '#f5f5f5'; e.currentTarget.style.color = '#333'; } }}
-                onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#666'; } }}
+              <button key={item.id} style={S.navItem(active || item.id === 'consultation')} onClick={() => { 
+                if (item.external) {
+                  window.open(item.url, '_blank', 'noopener,noreferrer');
+                } else {
+                  setActiveView(item.id); 
+                }
+                if (isMobile) setMobileMenuOpen(false); 
+              }}
+                onMouseEnter={e => { if (!active && item.id !== 'consultation') { e.currentTarget.style.background = 'rgba(0,0,0,0.03)'; } }}
+                onMouseLeave={e => { if (!active && item.id !== 'consultation') { e.currentTarget.style.background = 'transparent'; } }}
               >
-                <Icon size={18} strokeWidth={active ? 2.2 : 1.6} />
+                <Icon size={18} strokeWidth={active || item.id === 'consultation' ? 2.2 : 1.6} color={active || item.id === 'consultation' ? '#24385E' : '#666'} />
                 {isMultiLine
-                  ? <span style={{ lineHeight: '1.35' }}>{item.label.split('\n').map((line, i) => i === 0 ? <React.Fragment key="l0">{line}</React.Fragment> : <React.Fragment key={i}><br />{line}</React.Fragment>)}</span>
+                  ? <span style={{ lineHeight: '1.2' }}>{item.label.split('\n').map((line, i) => i === 0 ? <React.Fragment key="l0">{line}</React.Fragment> : <React.Fragment key={i}><br />{line}</React.Fragment>)}</span>
                   : <span>{item.label}</span>
                 }
               </button>

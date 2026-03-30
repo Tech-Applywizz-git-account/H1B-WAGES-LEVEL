@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, LogOut, User, LayoutDashboard, ChevronDown, Search, Heart, Briefcase, CreditCard, Shield } from 'lucide-react';
 import useAuth from '../hooks/useAuth';
@@ -88,6 +88,15 @@ const Navbar = () => {
                         >
                             Pricing
                         </Link>
+
+                        <a
+                            href="https://consulting.wagetrail.com/"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-[#FDB913] text-black text-xs font-black px-4 py-2 rounded-full hover:bg-[#e5a811] transition-all shadow-[0_5px_15px_rgba(253,185,19,0.3)] flex items-center gap-2"
+                        >
+                            Get Expert Guidance <span className="opacity-60 text-[10px]">($34.99)</span>
+                        </a>
                     </div>
 
                     {/* RIGHT — Login / Profile */}
@@ -193,6 +202,15 @@ const Navbar = () => {
                     >
                         Pricing
                     </Link>
+                    <a
+                        href="https://consulting.wagetrail.com/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block text-center bg-[#FDB913] text-[#24385E] text-sm font-black py-4 rounded-xl shadow-lg mb-4"
+                        onClick={() => setIsMenuOpen(false)}
+                    >
+                        Get Expert Guidance ($34.99)
+                    </a>
 
                     <div className="pt-3 mt-2">
                         {user ? (
