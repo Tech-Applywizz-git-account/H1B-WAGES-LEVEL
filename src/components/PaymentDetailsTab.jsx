@@ -150,7 +150,7 @@ const PaymentDetailsTab = () => {
 
             <div className="mt-8 text-center p-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
                 <p className="text-sm text-gray-500 font-medium">
-                    Questions about your billing? <a href="mailto:support@applywizz.com" className="text-[#24385E] border-b border-[#24385E] hover:text-[#FDB913] hover:border-[#FDB913] transition-colors font-bold">Contact Support</a>
+                    Questions about your billing? <a href="mailto:manasa@wagetrail.com" className="text-[#24385E] border-b border-[#24385E] hover:text-[#FDB913] hover:border-[#FDB913] transition-colors font-bold">Contact Support</a>
                 </p>
             </div>
         </div>

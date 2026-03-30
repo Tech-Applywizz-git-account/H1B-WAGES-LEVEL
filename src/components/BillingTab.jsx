@@ -426,8 +426,8 @@ const BillingTab = () => {
                         <h4 className="text-blue-900 font-semibold mb-1">Need Help?</h4>
                         <p className="text-blue-700 text-sm">
                             If you have any questions about your billing or need a refund, please contact our support team at{' '}
-                            <a href="mailto:support@h1bwagelevel.com" className="underline font-medium">
-                                support@h1bwagelevel.com
+                            <a href="mailto:manasa@wagetrail.com" className="underline font-medium">
+                                manasa@wagetrail.com
                             </a>
                         </p>
                     </div>
