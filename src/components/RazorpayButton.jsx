@@ -25,32 +25,21 @@ const RazorpayButton = ({ amount = import.meta.env.VITE_PAYMENT_AMOUNT || "39.99
         setLoading(true);
         setError(null);
         try {
-            console.log("🚀 Initializing Razorpay payment...");
+            console.log("🚀 Opening Razorpay modal...");
 
             // 1. Create Order on Backend
             const { data: orderData, error: invokeError } = await supabase.functions.invoke('create-razorpay-order', {
-                body: { amount, currency: 'USD' } // Or 'INR' depending on your Razorpay account
+                body: { amount, currency: 'USD' }
             });
 
-            if (invokeError) {
-                console.error("❌ Network error calling function:", invokeError);
-                throw new Error("Unable to connect to payment server. Please check your internet.");
-            }
-
-            if (orderData?.error) {
-                console.error("❌ Razorpay API Error:", orderData.error);
-                throw new Error(orderData.error);
-            }
-
-            if (!orderData?.id) {
-                console.error("❌ Missing Order ID in response:", orderData);
-                throw new Error("Payment service did not return an order ID.");
+            if (invokeError || orderData?.error) {
+                throw new Error(invokeError?.message || orderData?.error || "Payment system unavailable.");
             }
 
             // 2. Open Razorpay Checkout Modal
             const options = {
-                key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_live_SCjkNy569aq6F2', 
-                amount: orderData.amount, // Amount is in currency subunits
+                key: import.meta.env.VITE_RA_KEY_ID || 'rzp_live_SCjkNy569aq6F2', 
+                amount: orderData.amount,
                 currency: orderData.currency,
                 name: "Wage Trail",
                 description: "Premium Subscription",
@@ -60,14 +49,11 @@ const RazorpayButton = ({ amount = import.meta.env.VITE_PAYMENT_AMOUNT || "39.99
                     email: user?.email || '',
                     contact: user?.user_metadata?.mobile_number || ''
                 },
-                theme: {
-                    color: "#FDB913"
-                },
+                theme: { color: "#FDB913" },
                 handler: async function (response) {
                     setLoading(true);
                     try {
                         const meta = user?.user_metadata || {};
-                        // 3. Verify Payment on Backend
                         const { data: captureData, error: captureError } = await supabase.functions.invoke('capture-razorpay-order', {
                             body: {
                                 razorpay_order_id: response.razorpay_order_id,
@@ -83,19 +69,14 @@ const RazorpayButton = ({ amount = import.meta.env.VITE_PAYMENT_AMOUNT || "39.99
                             }
                         });
 
-                        if (captureError || captureData?.error) {
-                            throw new Error(captureError?.message || captureData?.error || "Payment verification failed.");
-                        }
-
                         if (captureData?.success) {
                             setSuccess(true);
                             if (refresh) await refresh();
                             if (onSuccess) onSuccess(captureData);
                         } else {
-                            throw new Error("Payment could not be verified.");
+                            throw new Error(captureData?.error || "Payment verification failed.");
                         }
                     } catch (err) {
-                        console.error("❌ verification failed:", err);
                         setError(err.message);
                     } finally {
                         setLoading(false);
@@ -104,15 +85,14 @@ const RazorpayButton = ({ amount = import.meta.env.VITE_PAYMENT_AMOUNT || "39.99
             };
 
             const rzp = new window.Razorpay(options);
-            rzp.on('payment.failed', function (response){
-                console.error("Payment failed", response.error);
-                setError(response.error.description || "Payment failed");
-                setLoading(false);
+            rzp.on('payment.failed', (res) => {
+                console.error("Payment failed inside browser:", res.error);
+                // Note: The Webhook will catch this failure server-side and save the ID.
+                setError(res.error.description);
             });
             rzp.open();
 
         } catch (err) {
-             console.error("❌ handlePayment failed:", err);
              setError(err.message);
              setLoading(false);
         }

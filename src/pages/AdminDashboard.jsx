@@ -44,7 +44,7 @@ const S = {
     select: { width: '100%', border: '1.5px solid #e0e0e0', borderRadius: '10px', padding: '9px 12px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', background: '#fff' },
     btn: (color) => ({ padding: '9px 18px', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '13px', background: color || '#24385E', color: color ? '#333' : '#fff', fontFamily: 'inherit' }),
     badge: (type) => {
-        const map = { completed: '#d1fae5:#065f46', paid: '#d1fae5:#065f46', pending: '#fef3c7:#92400e', failed: '#fee2e2:#991b1b', admin: '#ede9fe:#5b21b6', user: '#dbeafe:#1e40af', active: '#d1fae5:#065f46' };
+        const map = { completed: '#d1fae5:#065f46', paid: '#d1fae5:#065f46', pending: '#fef3c7:#92400e', failed: '#fee2e2:#991b1b', cancelled: '#f3f4f6:#666', admin: '#ede9fe:#5b21b6', user: '#dbeafe:#1e40af', active: '#d1fae5:#065f46' };
         const [bg, col] = (map[type] || map.pending).split(':');
         return { display: 'inline-block', padding: '2px 9px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, background: bg, color: col, textTransform: 'capitalize' };
     },
@@ -82,7 +82,7 @@ const StatCard = ({ icon: Icon, label, value, sub, iconBg, iconColor }) => (
 
 // ── Overview Tab ──────────────────────────────────────────────────────────────
 const OverviewTab = ({ setActiveTab }) => {
-    const [stats, setStats] = useState({ totalUsers: 0, paidUsers: 0, pendingUsers: 0, activeJobs: 0, totalVisits: 0, uniqueVisitors: 0 });
+    const [stats, setStats] = useState({ totalUsers: 0, paidUsers: 0, pendingUsers: 0, failedUsers: 0, activeJobs: 0, totalVisits: 0, uniqueVisitors: 0 });
     const [activity, setActivity] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -101,16 +101,22 @@ const OverviewTab = ({ setActiveTab }) => {
             const users = usersRes.data || [];
             const paid = users.filter(u => u.role !== 'admin' && (u.payment_status === 'completed' || u.payment_status === 'paid' || u.payment_status === 'active')).length;
             const pending = users.filter(u => u.role !== 'admin' && u.payment_status === 'pending').length;
+            const failed = users.filter(u => u.role !== 'admin' && u.payment_status === 'failed').length;
             
-            const visitData = visitsRes.data?.[0] || { total_visits: 0, unique_visitors: 0 };
+            const visitData = visitsRes.count || { total_visits: 0, unique_visitors: 0 };
+            // Note: I already fixed the visitData logic in a previous turn if needed, 
+            // but let's keep it consistent with the user's current version or the RPC response.
+            // If the RPC returns an array, we handle it:
+            const vData = (visitsRes.data && visitsRes.data[0]) || { total_visits: 0, unique_visitors: 0 };
 
             setStats({ 
                 totalUsers: users.length, 
                 paidUsers: paid, 
                 pendingUsers: pending, 
+                failedUsers: failed,
                 activeJobs: jobsRes.count || 0,
-                totalVisits: visitData.total_visits,
-                uniqueVisitors: visitData.unique_visitors
+                totalVisits: vData.total_visits,
+                uniqueVisitors: vData.unique_visitors
             });
             setActivity(recentRes.data || []);
         } catch (e) { console.error(e); }
@@ -121,12 +127,18 @@ const OverviewTab = ({ setActiveTab }) => {
 
     return (
         <div>
-            {/* Stat Cards Row 1 */}
-            <div style={S.grid4}>
+            {/* Row 1: Users & Payments */}
+            <div style={{ ...S.grid4, marginBottom: 16 }}>
                 <StatCard icon={Users} label="Total Users" value={stats.totalUsers} sub="Registered" iconBg="#dbeafe" iconColor="#1d4ed8" />
                 <StatCard icon={CheckCircle} label="Paid Users" value={stats.paidUsers} sub="Active subs" iconBg="#d1fae5" iconColor="#059669" />
-                <StatCard icon={Activity} label="Total Visits" value={stats.totalVisits} sub="All clicks" iconBg="#fef3c7" iconColor="#d97706" />
-                <StatCard icon={PieChart} label="Unq Visitors" value={stats.uniqueVisitors} sub="Unique people" iconBg="#ede9fe" iconColor="#7c3aed" />
+                <StatCard icon={Clock} label="Pending" value={stats.pendingUsers} sub="Checkout open" iconBg="#fef3c7" iconColor="#d97706" />
+                <StatCard icon={XCircle} label="Failed" value={stats.failedUsers} sub="Payment errors" iconBg="#fee2e2" iconColor="#dc2626" />
+            </div>
+
+            {/* Row 2: Traffic Stats */}
+            <div style={{ ...S.grid4, gridTemplateColumns: 'repeat(2, 1fr)', marginBottom: 20 }}>
+                <StatCard icon={Activity} label="Total Site Visits" value={stats.totalVisits} sub="Total page views" iconBg="#f0fdf4" iconColor="#15803d" />
+                <StatCard icon={PieChart} label="Unique Visitors" value={stats.uniqueVisitors} sub="Unique browsers" iconBg="#f5f3ff" iconColor="#6d28d9" />
             </div>
 
             {/* Bottom Row */}
@@ -446,11 +458,20 @@ const PaymentsTab = () => {
                                     <tr key={p.id} onMouseEnter={e => e.currentTarget.style.background = '#fafafa'} onMouseLeave={e => e.currentTarget.style.background = ''}>
                                         <td style={S.td}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                                                <Avatar name={`${p.first_name} ${p.last_name}`} size={28} />
-                                                <div><p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#1a1a1a' }}>{p.first_name} {p.last_name}</p><p style={{ margin: 0, fontSize: 11, color: '#999' }}>{p.email}</p></div>
+                                                <Avatar name={`${p.first_name || 'U'} ${p.last_name || 'N'}`} size={28} />
+                                                <div>
+                                                    <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: p.payment_status === 'failed' ? '#dc2626' : '#1a1a1a' }}>
+                                                        {p.first_name} {p.last_name}
+                                                    </p>
+                                                    <p style={{ margin: 0, fontSize: 11, color: '#999' }}>{p.email}</p>
+                                                </div>
                                             </div>
                                         </td>
-                                        <td style={S.td}><span style={S.badge(p.payment_status)}>{p.payment_status || 'pending'}</span></td>
+                                        <td style={S.td}>
+                                            <span style={S.badge(p.payment_status || 'pending')}>
+                                                {p.payment_status || 'pending'}
+                                            </span>
+                                        </td>
                                         <td style={{ ...S.td, fontSize: 11, fontFamily: 'monospace', color: '#777' }}>{p.transaction_id || '—'}</td>
                                         <td style={{ ...S.td, fontSize: 11, fontFamily: 'monospace', color: '#777' }}>{p.order_id || '—'}</td>
                                         <td style={{ ...S.td, fontSize: 12, color: '#777' }}>{p.promo_code || '—'}</td>
