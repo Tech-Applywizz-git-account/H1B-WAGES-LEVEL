@@ -18,11 +18,14 @@ import './output.css';
 // Site Visit Tracker - Logs activity to Supabase
 const VisitTracker = () => {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const lastPath = useRef('');
 
   useEffect(() => {
     const logVisit = async () => {
+      // 🛑 DON'T log visits if the user is an admin
+      if (isAdmin) return;
+
       // Avoid duplicate logs for the same page on re-renders
       if (lastPath.current === location.pathname) return;
       lastPath.current = location.pathname;

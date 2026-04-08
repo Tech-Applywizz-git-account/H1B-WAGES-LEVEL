@@ -1,7 +1,7 @@
 import { Globe } from 'lucide-react';
 import LogoBox from './LogoBox';
 
-const CompanyCard = ({ company, jobCount, wageLevel, wageLevels, industries, isSelected, onClick, isMobile, isVerified, lca_filings, officialUrl }) => {
+const CompanyCard = ({ company, jobCount, wageLevel, wageLevels, industries, isSelected, onClick, isMobile, isVerified, lca_filings, officialUrl, isLandingPage = false }) => {
     // Build a Set of actual levels this company has (e.g. {'Lv 1', 'Lv 3'})
     const actualLevels = (() => {
         if (wageLevels) {
@@ -22,8 +22,8 @@ const CompanyCard = ({ company, jobCount, wageLevel, wageLevels, industries, isS
         width: '100%',
         background: '#ffffff',
         borderRadius: '20px',
-        padding: isMobile ? '14px 16px' : '20px 22px',
-        marginBottom: '10px',
+        padding: isLandingPage ? '12px 18px' : (isMobile ? '14px 16px' : '20px 22px'),
+        marginBottom: isLandingPage ? '8px' : '10px',
         border: isSelected ? '1.5px solid rgba(36,56,94,0.25)' : '1.5px solid #ebebeb',
         boxShadow: isSelected
             ? '0 4px 24px rgba(36,56,94,0.12)'
@@ -53,11 +53,11 @@ const CompanyCard = ({ company, jobCount, wageLevel, wageLevels, industries, isS
             {/* Row 1: Logo + Name + Content */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-                    <LogoBox name={company} officialUrl={officialUrl} size={isMobile ? 36 : 44} fontSize={isMobile ? 12 : 14} className={isSelected ? 'bg-navy-select' : ''} />
+                    <LogoBox name={company} officialUrl={officialUrl} size={isLandingPage ? 40 : (isMobile ? 36 : 44)} fontSize={isLandingPage ? 13 : (isMobile ? 12 : 14)} className={isSelected ? 'bg-navy-select' : ''} />
 
                     <div style={{ minWidth: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px', flexWrap: 'wrap' }}>
-                            <p style={{ fontSize: isMobile ? '15px' : '17px', fontWeight: 700, color: '#111', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <p style={{ fontSize: isLandingPage ? '16px' : (isMobile ? '15px' : '17px'), fontWeight: 700, color: '#111', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                 {company}
                             </p>
                             {lca_filings !== undefined && lca_filings !== null && lca_filings > 0 && (

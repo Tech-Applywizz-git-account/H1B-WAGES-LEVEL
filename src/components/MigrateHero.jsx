@@ -39,12 +39,70 @@ const MigrateHero = () => {
     const [filteredSuggestions, setFilteredSuggestions] = useState([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
 
-    // Load target company names for suggestions
-    useEffect(() => {
-        const TARGETS = ['Google', 'Microsoft', 'Meta'];
-        setAllCompanies(TARGETS);
-    }, []);
+    const [filingCounts, setFilingCounts] = useState({});
 
+    // Global name normalizer for consistent lookups (Sync with Homepage)
+    const normalizeName = (name) => {
+        if (!name) return '';
+        let n = name.toLowerCase()
+            .replace(/\([^)]*\)/g, ' ')
+            .replace(/[.,\-\/#!$%\^&\*;:{}=\-_`~()]/g, ' ')
+            .replace(/\b(inc|llc|corp|ltd|co|services|com|systems|technologies|group|holdings|usa|us|intl|international|asia|europe|solutions|aws|related)\b/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+        if (n.includes('amazon')) return 'amazon';
+        if (n.includes('google') || n.includes('alphabet')) return 'google';
+        if (n.includes('meta') || n.includes('facebook')) return 'meta';
+        if (n.includes('microsoft')) return 'microsoft';
+        if (n === 'apple' || n.startsWith('apple ')) return 'apple';
+        return n;
+    };
+
+    // Fetch filing counts for landing page companies
+    useEffect(() => {
+        if (companies.length === 0) return;
+        const fetchFilings = async () => {
+            try {
+                const rawNames = companies.map(c => c.company).filter(Boolean);
+                const searchTerms = new Set();
+                rawNames.forEach(n => {
+                    const norm = normalizeName(n);
+                    if (norm.length > 2) searchTerms.add(norm);
+                    const words = norm.split(' ').filter(Boolean);
+                    if (words.length >= 2) searchTerms.add(words.slice(0, 2).join(' '));
+                    if (words.length >= 1) searchTerms.add(words[0]);
+                });
+
+                const searchNames = Array.from(searchTerms).filter(n => n.length > 2);
+                if (searchNames.length === 0) return;
+
+                const orFilter = searchNames.map(n => `Company.ilike.*${n.replace(/,/g, '\\,')}*`).join(',');
+                const { data } = await supabase
+                    .from('h1b_sponsor_finder')
+                    .select('Company, "LCA Filings"')
+                    .or(orFilter);
+
+                if (data) {
+                    const map = {};
+                    const sorted = [...data].sort((a, b) => {
+                        const valA = typeof a["LCA Filings"] === 'number' ? a["LCA Filings"] : parseInt(String(a["LCA Filings"]).replace(/,/g, '')) || 0;
+                        const valB = typeof b["LCA Filings"] === 'number' ? b["LCA Filings"] : parseInt(String(b["LCA Filings"]).replace(/,/g, '')) || 0;
+                        return valB - valA;
+                    });
+                    sorted.forEach(f => {
+                        const count = typeof f["LCA Filings"] === 'number' ? f["LCA Filings"] : parseInt(String(f["LCA Filings"]).replace(/,/g, '')) || 0;
+                        map[f.Company.toLowerCase()] = count;
+                        const norm = normalizeName(f.Company);
+                        if (norm && (!map[norm] || map[norm] < count)) map[norm] = count;
+                    });
+                    setFilingCounts(prev => ({ ...prev, ...map }));
+                }
+            } catch (err) { console.error("Filing fetch error:", err); }
+        };
+        fetchFilings();
+    }, [companies]);
+
+    // Role state
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
     useEffect(() => {
@@ -206,7 +264,7 @@ const MigrateHero = () => {
         } finally {
             setCompaniesLoading(false);
         }
-    }, [debouncedCompanySearch, sortBy, companyPage, selectedCompany]);
+    }, [debouncedCompanySearch, sortBy, companyPage]);
 
     // Fetch Jobs for selected company
     const fetchCompanyJobs = useCallback(async () => {
@@ -351,9 +409,28 @@ const MigrateHero = () => {
             {/* Content Area: Exact App Clone Dashboard */}
             <div className="relative z-20 mt-12 max-w-7xl mx-auto px-6 pb-20">
                 <div className="bg-[#f5f5f7] rounded-[32px] md:rounded-[48px] shadow-2xl overflow-hidden border border-white/50">
-                    <div className="pt-10 pb-4 px-8 md:px-10 text-left">
-                        <h2 className="text-xl md:text-2xl font-black text-[#24385E] mb-1 tracking-tight">Search for your perfect role.</h2>
-                        {/* <p className="text-gray-400 font-bold text-xs mb-8 uppercase tracking-widest">Data verified by the U.S. Government.</p> */}
+                    <div className="pt-10 pb-6 px-8 md:px-10 text-left">
+                        {/* Full Width Search Bar with Heading as Placeholder */}
+                        <div className="relative w-full">
+                            <div className={`
+                                bg-white border-2 transition-all duration-300 flex items-center gap-3 px-5 h-16 rounded-2xl shadow-sm
+                                ${companySearch ? 'border-[#24385E]' : 'border-[#e2e8f0]'}
+                                hover:border-[#24385E] group
+                            `}>
+                                <Search size={24} className={`${companySearch ? 'text-[#24385E]' : 'text-gray-400'} transition-colors`} strokeWidth={2.5} />
+                                <input 
+                                    value={companySearch}
+                                    onChange={handleSearchChange}
+                                    placeholder="Search for your perfect role."
+                                    className="flex-1 bg-transparent border-none outline-none text-lg font-black text-[#24385E] placeholder:text-gray-400 placeholder:font-black placeholder:tracking-tight"
+                                />
+                                {companySearch && (
+                                    <button onClick={() => setCompanySearch('')} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
+                                        <X size={20} className="text-gray-400" />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', borderTop: '1px solid #ebebeb', minHeight: isMobile ? 'auto' : '700px' }}>
@@ -464,7 +541,7 @@ const MigrateHero = () => {
                             </div>
 
                             {/* Company list scrollable area */}
-                            <div style={{ flex: 1, overflowY: isMobile ? 'visible' : 'auto', maxHeight: isMobile ? 'none' : '800px', marginBottom: '12px', paddingRight: '4px' }} className="custom-scrollbar">
+                            <div style={{ overflowY: isMobile ? 'visible' : 'auto', maxHeight: isMobile ? 'none' : '800px', marginBottom: '12px', paddingRight: '4px' }} className="custom-scrollbar">
                                 {companiesLoading ? (
                                     <div style={{ display: 'flex', justifyContent: 'center', padding: '40px 0' }}><Loader2 className="animate-spin text-[#24385E]" /></div>
                                 ) : companies.map((co) => (
@@ -476,14 +553,16 @@ const MigrateHero = () => {
                                         wageLevel={co.wageLevel}
                                         isMobile={isMobile}
                                         isVerified={true}
+                                        isLandingPage={true}
                                         isSelected={selectedCompany === co.company}
+                                        lca_filings={filingCounts[co.company.toLowerCase()] || filingCounts[normalizeName(co.company)] || 0}
                                         onClick={() => handleCompanySelect(co)}
                                     />
                                 ))}
                             </div>
 
                             {/* CTA to Signup instead of Pagination */}
-                            <div style={{ marginTop: 'auto', paddingTop: '10px', textAlign: 'center' }}>
+                            <div style={{ paddingTop: '10px', textAlign: 'center' }}>
                                 <Link
                                     to={user ? "/app" : "/signup"}
                                     style={{
@@ -510,7 +589,7 @@ const MigrateHero = () => {
                         <div style={{
                             flex: 1,
                             background: '#fff',
-                            padding: isMobile ? '24px 15px' : '40px',
+                            padding: isMobile ? '16px 12px' : '20px 32px', // Reduced from 40px
                             textAlign: 'left',
                             display: isMobile && !selectedCompany ? 'none' : 'flex',
                             flexDirection: 'column'
@@ -522,7 +601,7 @@ const MigrateHero = () => {
                                             <ChevronLeft size={18} /> Back to list
                                         </button>
                                     )}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '12px' : '20px', marginBottom: '24px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px', marginBottom: '12px' }}>
                                         <LogoBox name={selectedCompany} size={isMobile ? 48 : 64} fontSize={isMobile ? 16 : 20} />
                                         <div>
                                             <h3 style={{ fontSize: isMobile ? '18px' : '24px', fontWeight: 800, color: '#111', margin: '0 0 5px' }}>{selectedCompany}</h3>
@@ -549,14 +628,14 @@ const MigrateHero = () => {
                                     </div>
 
                                     {/* Company Info row */}
-                                    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', flexWrap: 'wrap', gap: isMobile ? '20px' : '32px', marginBottom: '24px' }}>
+                                    <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', flexWrap: 'wrap', gap: isMobile ? '12px' : '16px', marginBottom: '12px' }}>
                                         <div>
                                             <p style={{ fontSize: '11px', color: '#aaa', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Visa Sponsorship</p>
                                         </div>
                                     </div>
 
                                     {/* Work authorization note from app */}
-                                    <div style={{ background: '#f9fafb', border: '1px solid #f1f1f1', borderRadius: '16px', padding: '16px', marginBottom: '24px' }}>
+                                    <div style={{ background: '#f9fafb', border: '1px solid #f1f1f1', borderRadius: '12px', padding: '12px', marginBottom: '16px' }}>
                                         <h4 style={{ fontSize: '13px', fontWeight: 800, color: '#24385E', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
                                             <Info size={16} className="text-yellow-500" /> Work authorization note
                                         </h4>
@@ -565,10 +644,10 @@ const MigrateHero = () => {
                                         </p>
                                     </div>
 
-                                    <h4 style={{ fontSize: '18px', fontWeight: 800, color: '#111', marginBottom: '16px' }}>Open Jobs at {selectedCompany}</h4>
+                                    <h4 style={{ fontSize: '15px', fontWeight: 800, color: '#111', marginBottom: '8px' }}>Open Jobs at {selectedCompany}</h4>
 
                                     {/* Job list scrollable */}
-                                    <div style={{ flex: 1, overflowY: isMobile ? 'visible' : 'auto', marginBottom: '16px' }} className="custom-scrollbar">
+                                    <div style={{ overflowY: isMobile ? 'visible' : 'auto', marginBottom: '16px' }} className="custom-scrollbar">
                                         {jobsLoading ? (
                                             <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}><Loader2 className="animate-spin text-[#24385E]" size={32} /></div>
                                         ) : companyJobs.length > 0 ? (
@@ -583,7 +662,7 @@ const MigrateHero = () => {
                                     </div>
 
                                     {/* CTA to Signup instead of Job Pagination */}
-                                    <div style={{ marginTop: 'auto', paddingTop: '10px', textAlign: 'center' }}>
+                                    <div style={{ paddingTop: '10px', textAlign: 'center' }}>
                                         <Link
                                             to={user ? "/app" : "/signup"}
                                             style={{

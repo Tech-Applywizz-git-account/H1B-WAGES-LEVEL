@@ -87,14 +87,16 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
         fetchData();
     }, [job.company, job.title, job.lca_filings]);
 
-    const baseButtonStyle = "h-12 px-8 bg-[#FDB913] text-[#1a1a1a] rounded-full flex items-center justify-center gap-2.5 font-extrabold text-[15px] hover:bg-[#f0af0e] transition-all shadow-[0_6px_20px_rgba(253,185,19,0.3)] active:scale-95 shrink-0";
+    const baseButtonStyle = isLandingPage 
+        ? "h-9 px-5 bg-[#FDB913] text-[#1a1a1a] rounded-full flex items-center justify-center gap-2 font-extrabold text-[12px] hover:bg-[#f0af0e] transition-all shadow-[0_4px_12px rgba(253,185,19,0.2)] active:scale-95 shrink-0"
+        : "h-12 px-8 bg-[#FDB913] text-[#1a1a1a] rounded-full flex items-center justify-center gap-2.5 font-extrabold text-[15px] hover:bg-[#f0af0e] transition-all shadow-[0_6px_20px_rgba(253,185,19,0.3)] active:scale-95 shrink-0";
 
     return (
-        <div className="bg-white rounded-2xl border border-[#ebebeb] p-5 mb-3 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col md:flex-row gap-5 relative overflow-hidden group">
+        <div className={`bg-white rounded-2xl border border-[#ebebeb] ${isLandingPage ? 'p-3 mb-2' : 'p-5 mb-3'} shadow-sm hover:shadow-md transition-all duration-300 flex flex-col md:flex-row gap-3 relative overflow-hidden group`}>
             <div className="flex-1 min-w-0">
                 <div className="flex items-start gap-4 mb-4">
                     <div className="shrink-0">
-                        <LogoBox name={job.company} officialUrl={job.url || job.apply_url} size={44} fontSize={14} />
+                        <LogoBox name={job.company} officialUrl={job.url || job.apply_url} size={isLandingPage ? 32 : 44} fontSize={isLandingPage ? 11 : 14} />
                     </div>
                     <div className="min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -104,24 +106,24 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                                 </span>
                             )}
                         </div>
-                        <h3 className="text-[17px] font-extrabold text-[#111] leading-tight mb-0.5 truncate group-hover:text-[#EAB308] transition-colors">
+                        <h3 className={`${isLandingPage ? 'text-[14px]' : 'text-[17px]'} font-extrabold text-[#111] leading-tight mb-0.5 truncate group-hover:text-[#EAB308] transition-colors`}>
                             {job.isTeaser ? (
                                 <Link to="/pricing">{job.title}</Link>
                             ) : (
                                 <a href={job.url || job.apply_url} target="_blank" rel="noopener noreferrer">{job.title}</a>
                             )}
                         </h3>
-                        <div className="text-[13px] font-bold text-[#718096] flex items-center gap-1.5">
+                        <div className={`${isLandingPage ? 'text-[11px]' : 'text-[13px]'} font-bold text-[#718096] flex items-center gap-1.5`}>
                             {job.company}
                         </div>
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-5 mb-4">
-                    <div className="flex items-center gap-2 text-[#64748b] text-[13px] font-semibold border-r border-gray-200 pr-4 last:border-0 last:pr-0">
+                <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 ${isLandingPage ? 'mb-2' : 'mb-4'}`}>
+                    <div className={`flex items-center gap-2 text-[#64748b] ${isLandingPage ? 'text-[11px]' : 'text-[13px]'} font-semibold border-r border-gray-100 pr-3 last:border-0 last:pr-0`}>
                         <MapPin size={15} className="text-[#94a3b8]" /> {job.location || 'United States'}
                     </div>
-                    <div className="flex items-center gap-2 text-[#64748b] text-[13px] font-semibold border-r border-gray-200 pr-4 last:border-0 last:pr-0">
+                    <div className={`flex items-center gap-2 text-[#64748b] ${isLandingPage ? 'text-[11px]' : 'text-[13px]'} font-semibold border-r border-gray-100 pr-3 last:border-0 last:pr-0`}>
                         <Clock size={15} className="text-[#94a3b8]" /> {job.employment_type || job.type || 'Full-time'}
                     </div>
                     {job.isVerified && (
@@ -140,7 +142,7 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                 <div className="flex items-center justify-end gap-3 mt-auto pt-4 border-t border-[#f1f5f9] shrink-0 w-full">
                     {job.isTeaser ? (
                         <Link to="/pricing" className={baseButtonStyle}>
-                            Apply Now <ExternalLink size={20} className="stroke-[2.5]" />
+                            Apply Now <ExternalLink size={isLandingPage ? 14 : 20} className="stroke-[2.5]" />
                         </Link>
                     ) : (
                         <a href={job.url || job.apply_url} target="_blank" rel="noopener noreferrer" className={baseButtonStyle}>
@@ -151,19 +153,27 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
             </div>
 
             {/* Wage Level Panel (Desktop Only) */}
-            <div className="hidden md:flex w-[120px] bg-[#24385E] rounded-xl p-4 flex-col items-center justify-center text-center text-white shrink-0">
-                <div className="relative w-14 h-14 mb-2 flex items-center justify-center">
+            <div className={`hidden md:flex ${isLandingPage ? 'w-[80px] p-2' : 'w-[120px] p-4'} bg-[#24385E] rounded-xl flex-col items-center justify-center text-center text-white shrink-0`}>
+                <div className={`relative ${isLandingPage ? 'w-10 h-10 mb-1' : 'w-14 h-14 mb-2'} flex items-center justify-center`}>
                     <svg className="w-full h-full transform -rotate-90">
-                        <circle cx="28" cy="28" r="24" stroke="rgba(255,255,255,0.1)" strokeWidth="4" fill="transparent" />
                         <circle 
-                            cx="28" cy="28" r="24" stroke="#EAB308" strokeWidth="4" fill="transparent"
-                            strokeDasharray={2 * Math.PI * 24}
-                            strokeDashoffset={2 * Math.PI * 24 * (1 - levelPercent / 100)}
+                            cx={isLandingPage ? "20" : "28"} 
+                            cy={isLandingPage ? "20" : "28"} 
+                            r={isLandingPage ? "18" : "24"} 
+                            stroke="rgba(255,255,255,0.1)" strokeWidth="3" fill="transparent" 
+                        />
+                        <circle 
+                            cx={isLandingPage ? "20" : "28"} 
+                            cy={isLandingPage ? "20" : "28"} 
+                            r={isLandingPage ? "18" : "24"} 
+                            stroke="#EAB308" strokeWidth={isLandingPage ? "3" : "4"} fill="transparent"
+                            strokeDasharray={isLandingPage ? 2 * Math.PI * 18 : 2 * Math.PI * 24}
+                            strokeDashoffset={(isLandingPage ? 2 * Math.PI * 18 : 2 * Math.PI * 24) * (1 - levelPercent / 100)}
                             strokeLinecap="round"
                         />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-[14px] font-black italic">{wageInfo.level.replace(/Level\s+/i, 'Lv ')}</span>
+                        <span className={`${isLandingPage ? 'text-[11px]' : 'text-[14px]'} font-black italic`}>{wageInfo.level.replace(/Level\s+/i, 'Lv ')}</span>
                     </div>
                 </div>
                 <div className="text-[8px] font-black uppercase tracking-[1px] opacity-70 mb-2">WAGE LEVEL</div>

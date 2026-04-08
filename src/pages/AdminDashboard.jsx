@@ -103,20 +103,15 @@ const OverviewTab = ({ setActiveTab }) => {
             const pending = users.filter(u => u.role !== 'admin' && u.payment_status === 'pending').length;
             const failed = users.filter(u => u.role !== 'admin' && u.payment_status === 'failed').length;
             
-            const visitData = visitsRes.count || { total_visits: 0, unique_visitors: 0 };
-            // Note: I already fixed the visitData logic in a previous turn if needed, 
-            // but let's keep it consistent with the user's current version or the RPC response.
-            // If the RPC returns an array, we handle it:
-            const vData = (visitsRes.data && visitsRes.data[0]) || { total_visits: 0, unique_visitors: 0 };
+            const vData = (visitsRes.data && visitsRes.data[0]) || { today_unique: 0, total_unique: 0 };
 
             setStats({ 
                 totalUsers: users.length, 
                 paidUsers: paid, 
                 pendingUsers: pending, 
                 failedUsers: failed,
-                activeJobs: jobsRes.count || 0,
-                totalVisits: vData.total_visits,
-                uniqueVisitors: vData.unique_visitors
+                todayUnique: vData.today_unique,
+                totalUnique: vData.total_unique
             });
             setActivity(recentRes.data || []);
         } catch (e) { console.error(e); }
@@ -135,14 +130,21 @@ const OverviewTab = ({ setActiveTab }) => {
                 <StatCard icon={XCircle} label="Failed" value={stats.failedUsers} sub="Payment errors" iconBg="#fee2e2" iconColor="#dc2626" />
             </div>
 
-            {/* Row 2: Traffic Stats */}
+            {/* Row 2: Pure Unique Traffic Stats */}
             <div style={{ ...S.grid4, gridTemplateColumns: 'repeat(2, 1fr)', marginBottom: 20 }}>
-                <StatCard icon={Activity} label="Total Site Visits" value={stats.totalVisits} sub="Total page views" iconBg="#f0fdf4" iconColor="#15803d" />
+                <StatCard 
+                   icon={Activity} 
+                   label="Today's Unq Visitors" 
+                   value={stats.todayUnique} 
+                   sub="Unique people today" 
+                   iconBg="#f0fdf4" 
+                   iconColor="#15803d" 
+                />
                 <StatCard 
                     icon={PieChart} 
-                    label="Unique Visitors" 
-                    value={stats.uniqueVisitors} 
-                    sub="Click to see who 👥" 
+                    label="Total Unq Visitors" 
+                    value={stats.totalUnique} 
+                    sub="Total unique base" 
                     iconBg="#f5f3ff" 
                     iconColor="#6d28d9" 
                     onClick={() => setActiveTab('visitors')}
@@ -580,15 +582,21 @@ const VisitorsTab = () => {
         (async () => {
             setLoading(true);
             try {
+                // Fetch site visits
                 const { data } = await supabase
                     .from('site_visits')
                     .select('*')
                     .order('created_at', { ascending: false });
                 
+                // Fetch admin emails to filter them out
+                const { data: admins } = await supabase.from('profiles').select('email').eq('role', 'admin');
+                const adminEmails = new Set(admins?.map(a => a.email) || []);
+
                 const uniqueBySession = [];
                 const seen = new Set();
                 (data || []).forEach(v => {
-                    if (!seen.has(v.session_id)) {
+                    // Filter out ADMINS and ensure uniqueness
+                    if (!seen.has(v.session_id) && !adminEmails.has(v.user_email)) {
                         seen.add(v.session_id);
                         uniqueBySession.push(v);
                     }

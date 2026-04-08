@@ -1,5 +1,5 @@
 import React from 'react';
-import { Star, Play, Instagram, Twitter, Linkedin, Facebook } from 'lucide-react';
+import { Star, Play, Instagram, Twitter, Linkedin, Facebook, LifeBuoy } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
 
@@ -10,11 +10,11 @@ const MigrateFooterSections = () => {
 
 
             {/* 10) FOOTER */}
-            <footer className="pt-24 border-t border-gray-100 pb-20">
+            <footer className="pt-24 border-t border-gray-100 pb-20 bg-white">
                 <div className="max-w-6xl mx-auto px-6">
-                    <div className="grid lg:grid-cols-12 gap-10 mb-14">
-                        <div className="lg:col-span-5">
-                            <Link to="/" className="flex items-center gap-2 mb-6 group">
+                    <div className="flex flex-col lg:flex-row justify-between items-start gap-12 mb-16">
+                        <div className="flex-1">
+                            <Link to="/" className="flex items-center gap-2 mb-8 group">
                                 <div className="relative">
                                     <div className="w-10 h-10 bg-[#24385E] rounded-xl flex items-center justify-center transform rotate-12 transition-transform group-hover:rotate-0 shadow-lg">
                                         <span className="text-white font-black text-xs tracking-tighter">H1-B</span>
@@ -26,57 +26,53 @@ const MigrateFooterSections = () => {
                                     <span className="text-xl font-bold text-yellow-500 tracking-tight leading-none">Trail</span>
                                 </div>
                             </Link>
-                            <p className="text-gray-400 font-bold text-lg mb-8 max-w-sm leading-relaxed">
+
+                            <p className="text-gray-400 font-bold text-[18px] md:text-[20px] mb-10 leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis">
                                 Find US jobs with verified visa sponsorship. The #1 platform for global talent discovery.
                             </p>
+
                             <div className="flex gap-4">
                                 {[Instagram, Twitter, Linkedin, Facebook].map((Icon, i) => (
-                                    <a key={i} href="#" className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-[#24385E] hover:bg-yellow-500 hover:text-white transition-all shadow-sm">
-                                        <Icon size={20} />
+                                    <a key={i} href="#" className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-[#24385E] hover:bg-white hover:shadow-xl transition-all border border-transparent hover:border-gray-100">
+                                        <Icon size={20} strokeWidth={2.5} />
                                     </a>
                                 ))}
                             </div>
                         </div>
 
-                        <div className="lg:col-span-7 grid grid-cols-2 md:grid-cols-3 gap-10">
-                            <div className="space-y-6">
-                                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-[#24385E]">Platform</h4>
-                                <ul className="space-y-4">
-                                    {['Job Search', 'How it works', 'Pricing', 'Visa Guides'].map(link => (
-                                        <li key={link}><Link to="#" className="text-base font-bold text-gray-500 hover:text-yellow-600 transition-colors">{link}</Link></li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <div className="space-y-6">
-                                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-[#24385E]">Company</h4>
-                                <ul className="space-y-4">
-                                    {['About Us', 'Contact', 'Blog', 'Twitter'].map(link => (
-                                        <li key={link}><Link to="#" className="text-base font-bold text-gray-500 hover:text-yellow-600 transition-colors">{link}</Link></li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <div className="space-y-6">
-                                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-[#24385E]">Support</h4>
-                                <ul className="space-y-4">
-                                    {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map(link => (
-                                        <li key={link}><Link to="#" className="text-base font-bold text-gray-500 hover:text-yellow-600 transition-colors">{link}</Link></li>
-                                    ))}
-                                </ul>
+                        <div className="shrink-0">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4 text-center">Help & Support</h4>
+                            <div className="bg-gray-50/50 border border-gray-100 rounded-[32px] p-1.5 shadow-sm max-w-[240px]">
+                                <a 
+                                    href="mailto:manasa@wagetrail.com" 
+                                    style={{ backgroundColor: '#24385E' }}
+                                    className="flex items-center gap-3 text-white p-3 rounded-[28px] font-bold text-sm hover:opacity-90 transition-all shadow-md active:scale-95 group"
+                                >
+                                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                                        <span className="text-lg font-black text-white">?</span>
+                                    </div>
+                                    <span className="text-white">Contact Support</span>
+                                </a>
+                                <div className="py-3 text-center">
+                                    <p className="text-[11px] font-bold text-gray-500 mb-0.5">Need help?</p>
+                                    <p className="text-[10px] font-bold text-gray-400">Our team is here for you.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="pt-12 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6">
-                        <p className="text-xs font-black text-gray-300 uppercase tracking-widest">
-                            © 2026 Wage Trail. All rights reserved.
-                        </p>
-                        <div className="flex gap-8">
-                            <span className="text-xs font-black text-gray-300 uppercase tracking-widest cursor-pointer hover:text-gray-400 transition-colors">US SPONSORSHIP VERIFIED</span>
-                            <span className="text-xs font-black text-gray-300 uppercase tracking-widest cursor-pointer hover:text-gray-400 transition-colors">SSL SECURE PLATFORM</span>
+                    <div className="pt-12 border-t border-gray-100">
+                        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-[11px] font-black text-gray-300 uppercase tracking-[0.2em] text-center">
+                            <span>© 2026 Wage Trail. All rights reserved.</span>
+                            <div className="w-1.5 h-1.5 bg-gray-200 rounded-full"></div>
+                            <span className="hover:text-gray-400 transition-colors cursor-pointer">US Sponsorship Verified</span>
+                            <div className="w-1.5 h-1.5 bg-gray-200 rounded-full"></div>
+                            <span className="hover:text-gray-400 transition-colors cursor-pointer">SSL Secure Platform</span>
                         </div>
                     </div>
                 </div>
             </footer>
+
         </div>
     );
 };
