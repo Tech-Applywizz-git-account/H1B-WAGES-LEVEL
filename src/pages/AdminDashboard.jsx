@@ -82,7 +82,7 @@ const StatCard = ({ icon: Icon, label, value, sub, iconBg, iconColor }) => (
 
 // ── Overview Tab ──────────────────────────────────────────────────────────────
 const OverviewTab = ({ setActiveTab }) => {
-    const [stats, setStats] = useState({ totalUsers: 0, paidUsers: 0, pendingUsers: 0, activeJobs: 0 });
+    const [stats, setStats] = useState({ totalUsers: 0, paidUsers: 0, pendingUsers: 0, activeJobs: 0, totalVisits: 0, uniqueVisitors: 0 });
     const [activity, setActivity] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -91,17 +91,27 @@ const OverviewTab = ({ setActiveTab }) => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [usersRes, jobsRes, recentRes] = await Promise.all([
+            const [usersRes, jobsRes, recentRes, visitsRes] = await Promise.all([
                 supabase.from('profiles').select('id, email, first_name, last_name, created_at, payment_status, role'),
                 supabase.from('job_jobrole_sponsored_sync').select('id', { count: 'exact', head: true }),
                 supabase.from('profiles').select('email, first_name, last_name, created_at, payment_status').order('created_at', { ascending: false }).limit(6),
+                supabase.rpc('get_site_stats')
             ]);
 
             const users = usersRes.data || [];
             const paid = users.filter(u => u.role !== 'admin' && (u.payment_status === 'completed' || u.payment_status === 'paid' || u.payment_status === 'active')).length;
             const pending = users.filter(u => u.role !== 'admin' && u.payment_status === 'pending').length;
+            
+            const visitData = visitsRes.data?.[0] || { total_visits: 0, unique_visitors: 0 };
 
-            setStats({ totalUsers: users.length, paidUsers: paid, pendingUsers: pending, activeJobs: jobsRes.count || 0 });
+            setStats({ 
+                totalUsers: users.length, 
+                paidUsers: paid, 
+                pendingUsers: pending, 
+                activeJobs: jobsRes.count || 0,
+                totalVisits: visitData.total_visits,
+                uniqueVisitors: visitData.unique_visitors
+            });
             setActivity(recentRes.data || []);
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
@@ -111,12 +121,12 @@ const OverviewTab = ({ setActiveTab }) => {
 
     return (
         <div>
-            {/* Stat Cards */}
+            {/* Stat Cards Row 1 */}
             <div style={S.grid4}>
                 <StatCard icon={Users} label="Total Users" value={stats.totalUsers} sub="Registered" iconBg="#dbeafe" iconColor="#1d4ed8" />
                 <StatCard icon={CheckCircle} label="Paid Users" value={stats.paidUsers} sub="Active subs" iconBg="#d1fae5" iconColor="#059669" />
-                <StatCard icon={Clock} label="Pending" value={stats.pendingUsers} sub="Awaiting pay" iconBg="#fef3c7" iconColor="#d97706" />
-                <StatCard icon={Briefcase} label="Active Jobs" value={stats.activeJobs} sub="In database" iconBg="#ede9fe" iconColor="#7c3aed" />
+                <StatCard icon={Activity} label="Total Visits" value={stats.totalVisits} sub="All clicks" iconBg="#fef3c7" iconColor="#d97706" />
+                <StatCard icon={PieChart} label="Unq Visitors" value={stats.uniqueVisitors} sub="Unique people" iconBg="#ede9fe" iconColor="#7c3aed" />
             </div>
 
             {/* Bottom Row */}
@@ -131,7 +141,7 @@ const OverviewTab = ({ setActiveTab }) => {
                         <p style={{ textAlign: 'center', color: '#aaa', padding: '40px 0', fontSize: 13 }}>No recent activity</p>
                     ) : activity.map((u, i) => (
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 20px', borderBottom: i < activity.length - 1 ? '1px solid #f5f5f5' : 'none' }}>
-                            <Avatar name={`${u.first_name} ${u.last_name}`} size={34} />
+                            <Avatar name={`${u.first_name || 'U'} ${u.last_name || 'N'}`} size={34} />
                             <div style={{ flex: 1, minWidth: 0 }}>
                                 <p style={{ margin: 0, fontWeight: 600, fontSize: 13, color: '#1a1a1a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.first_name} {u.last_name}</p>
                                 <p style={{ margin: 0, fontSize: 11, color: '#999', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</p>
