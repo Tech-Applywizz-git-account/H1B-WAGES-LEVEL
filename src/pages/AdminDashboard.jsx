@@ -44,7 +44,7 @@ const S = {
     select: { width: '100%', border: '1.5px solid #e0e0e0', borderRadius: '10px', padding: '9px 12px', fontSize: '13px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', background: '#fff' },
     btn: (color) => ({ padding: '9px 18px', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '13px', background: color || '#24385E', color: color ? '#333' : '#fff', fontFamily: 'inherit' }),
     badge: (type) => {
-        const map = { completed: '#d1fae5:#065f46', paid: '#d1fae5:#065f46', pending: '#fef3c7:#92400e', failed: '#fee2e2:#991b1b', cancelled: '#f3f4f6:#666', admin: '#ede9fe:#5b21b6', user: '#dbeafe:#1e40af', active: '#d1fae5:#065f46' };
+        const map = { completed: '#d1fae5:#065f46', paid: '#d1fae5:#065f46', pending: '#fef3c7:#92400e', failed: '#fee2e2:#991b1b', cancelled: '#f3f4f6:#666', admin: '#ede9fe:#5b21b6', user: '#dbeafe:#1e40af', active: '#d1fae5:#065f46', anonymous: '#f1f5f9:#475569', india: '#eff6ff:#1d4ed8', international: '#f0fdf4:#166534' };
         const [bg, col] = (map[type] || map.pending).split(':');
         return { display: 'inline-block', padding: '2px 9px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, background: bg, color: col, textTransform: 'capitalize' };
     },
@@ -67,9 +67,9 @@ const Avatar = ({ name, size = 32 }) => (
 );
 
 // ── StatCard ──────────────────────────────────────────────────────────────────
-const StatCard = ({ icon: Icon, label, value, sub, iconBg, iconColor }) => (
-    <div style={S.statCard}>
-        <div>
+const StatCard = ({ icon: Icon, label, value, sub, iconBg, iconColor, onClick }) => (
+    <div style={{ ...S.statCard, cursor: onClick ? 'pointer' : 'default' }} onClick={onClick}>
+        <div style={{ flex: 1 }}>
             <p style={{ fontSize: 10, fontWeight: 800, color: '#aaa', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>{label}</p>
             <p style={{ fontSize: 28, fontWeight: 900, color: '#1e2d4a', margin: 0 }}>{value}</p>
             {sub && <p style={{ fontSize: 11, fontWeight: 700, color: '#666', marginTop: 6, background: '#f3f4f6', padding: '2px 8px', borderRadius: 20, display: 'inline-block' }}>{sub}</p>}
@@ -138,7 +138,15 @@ const OverviewTab = ({ setActiveTab }) => {
             {/* Row 2: Traffic Stats */}
             <div style={{ ...S.grid4, gridTemplateColumns: 'repeat(2, 1fr)', marginBottom: 20 }}>
                 <StatCard icon={Activity} label="Total Site Visits" value={stats.totalVisits} sub="Total page views" iconBg="#f0fdf4" iconColor="#15803d" />
-                <StatCard icon={PieChart} label="Unique Visitors" value={stats.uniqueVisitors} sub="Unique browsers" iconBg="#f5f3ff" iconColor="#6d28d9" />
+                <StatCard 
+                    icon={PieChart} 
+                    label="Unique Visitors" 
+                    value={stats.uniqueVisitors} 
+                    sub="Click to see who 👥" 
+                    iconBg="#f5f3ff" 
+                    iconColor="#6d28d9" 
+                    onClick={() => setActiveTab('visitors')}
+                />
             </div>
 
             {/* Bottom Row */}
@@ -563,6 +571,89 @@ const AnalyticsTab = () => {
     );
 };
 
+// ── Visitors Tab ─────────────────────────────────────────────────────────────
+const VisitorsTab = () => {
+    const [visitors, setVisitors] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        (async () => {
+            setLoading(true);
+            try {
+                const { data } = await supabase
+                    .from('site_visits')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                const uniqueBySession = [];
+                const seen = new Set();
+                (data || []).forEach(v => {
+                    if (!seen.has(v.session_id)) {
+                        seen.add(v.session_id);
+                        uniqueBySession.push(v);
+                    }
+                });
+                setVisitors(uniqueBySession);
+            } catch (e) { console.error(e); }
+            setLoading(false);
+        })();
+    }, []);
+
+    return (
+        <div>
+            <div style={{ ...S.card, overflow: 'hidden' }}>
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f0' }}>
+                    <span style={{ fontWeight: 800, color: '#1e2d4a', fontSize: 14 }}>Unique Visitor Logs</span>
+                    <p style={{ margin: '4px 0 0', fontSize: 11, color: '#999' }}>Real-time list of people browsing your site</p>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr>{['Visitor', 'Status', 'Location', 'Last Path', 'Last Seen'].map(h => <th key={h} style={S.th}>{h}</th>)}</tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr><td colSpan={5} style={{ ...S.td, textAlign: 'center', padding: '50px 0', color: '#aaa' }}>Loading visitors…</td></tr>
+                            ) : visitors.length === 0 ? (
+                                <tr><td colSpan={5} style={{ ...S.td, textAlign: 'center', padding: '50px 0', color: '#aaa' }}>No visitors tracked yet</td></tr>
+                            ) : visitors.map((v, i) => (
+                                <tr key={i} onMouseEnter={e => e.currentTarget.style.background = '#fafafa'} onMouseLeave={e => e.currentTarget.style.background = ''}>
+                                    <td style={S.td}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <Avatar name={v.user_email || 'A'} size={28} />
+                                            <div>
+                                                <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: v.user_email ? '#24385E' : '#666' }}>
+                                                    {v.user_email || 'Anonymous Guest'}
+                                                </p>
+                                                <p style={{ margin: 0, fontSize: 10, color: '#aaa', fontFamily: 'monospace' }}>ID: {v.session_id.slice(0, 8)}...</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td style={S.td}>
+                                        <span style={S.badge(v.user_email ? 'user' : 'anonymous')}>
+                                            {v.user_email ? 'Logged In' : 'Anonymous'}
+                                        </span>
+                                    </td>
+                                    <td style={S.td}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={S.badge(v.country === 'India' ? 'india' : 'international')}>
+                                                {v.country || 'Unknown'}
+                                            </span>
+                                            {v.country && v.country !== 'India' && <span style={{ fontSize: 13 }}>✈️</span>}
+                                        </div>
+                                    </td>
+                                    <td style={{ ...S.td, fontSize: 12, color: '#6366f1', fontWeight: 600 }}>{v.path}</td>
+                                    <td style={{ ...S.td, fontSize: 12, color: '#888', whiteSpace: 'nowrap' }}>{fmtDT(v.created_at)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // ── Shell ─────────────────────────────────────────────────────────────────────
 const AdminDashboard = () => {
     const { user, loading, isAdmin, signOut, role } = useAuth();
@@ -582,11 +673,12 @@ const AdminDashboard = () => {
     const tabs = [
         { id: 'overview', label: 'Overview', icon: LayoutDashboard },
         { id: 'users', label: 'User Management', icon: Users },
+        { id: 'visitors', label: 'Visitor Logs', icon: Activity },
         { id: 'payments', label: 'Payments', icon: CreditCard },
         { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     ];
 
-    const titles = { overview: 'Dashboard Overview', users: 'User Management', payments: 'Payments', analytics: 'Analytics' };
+    const titles = { overview: 'Dashboard Overview', users: 'User Management', visitors: 'Visitor Logs', payments: 'Payments', analytics: 'Analytics' };
 
     return (
         <div style={S.page}>
@@ -654,6 +746,7 @@ const AdminDashboard = () => {
                     <div style={{ maxWidth: 1100, margin: '0 auto' }}>
                         {activeTab === 'overview' && <OverviewTab setActiveTab={setActiveTab} />}
                         {activeTab === 'users' && <UsersTab />}
+                        {activeTab === 'visitors' && <VisitorsTab />}
                         {activeTab === 'payments' && <PaymentsTab />}
                         {activeTab === 'analytics' && <AnalyticsTab />}
                     </div>

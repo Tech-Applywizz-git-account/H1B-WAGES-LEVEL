@@ -27,28 +27,44 @@ const VisitTracker = () => {
       if (lastPath.current === location.pathname) return;
       lastPath.current = location.pathname;
 
-      // Get or create a session ID for unique visitor tracking
-      let sessionId = sessionStorage.getItem('site_session_id');
-      if (!sessionId) {
-        sessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        sessionStorage.setItem('site_session_id', sessionId);
+      let session_id = sessionStorage.getItem('visit_session_id');
+      if (!session_id) {
+        session_id = crypto.randomUUID();
+        sessionStorage.setItem('visit_session_id', session_id);
       }
 
       try {
+                // Determine country via free Geo-IP API
+                let country = 'Unknown';
+                try {
+                    const geoRes = await fetch('https://ipapi.co/json/');
+                    if (geoRes.ok) {
+                        const geoData = await geoRes.json();
+                        country = geoData.country_name || 'Unknown';
+                    } else {
+                        // Backup Service
+                        const backupRes = await fetch('http://ip-api.com/json/');
+                        const backupData = await backupRes.json();
+                        country = backupData.country || 'Unknown';
+                    }
+                } catch (geoErr) {
+                    console.error("Geo-IP detection failed", geoErr);
+                }
+
         await supabase.from('site_visits').insert([{
           path: location.pathname,
           user_email: user?.email || null,
-          session_id: sessionId,
-          user_agent: navigator.userAgent
+          session_id: session_id,
+          user_agent: navigator.userAgent,
+          country: country
         }]);
       } catch (err) {
-        // Silently fail to not interrupt user experience
-        console.error('Visit log error:', err);
+        console.error("Visit tracking failed", err);
       }
     };
 
     logVisit();
-  }, [location.pathname, user]);
+  }, [location.pathname, user?.email]);
 
   return null;
 };
