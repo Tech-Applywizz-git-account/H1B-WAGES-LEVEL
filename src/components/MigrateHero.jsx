@@ -151,7 +151,7 @@ const MigrateHero = () => {
         setCompaniesLoading(true);
         try {
             const TARGETS = ['Google', 'Microsoft', 'Meta'];
-            
+
             // STEP 1: Fetch job counts and info for these companies in ONE batch.
             const { data: jobData, error: jobError } = await supabase
                 .from('job_jobrole_sponsored_sync')
@@ -211,7 +211,7 @@ const MigrateHero = () => {
             if (debouncedCompanySearch && debouncedCompanySearch.trim()) {
                 const n = (s) => String(s || '').toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim().replace(/\s+/g, ' ');
                 const nS = n(debouncedCompanySearch);
-                
+
                 arr = arr.filter(c => {
                     const cName = n(c.company);
                     // Allow partial match for the company cards themselves so they don't vanish while typing
@@ -298,14 +298,14 @@ const MigrateHero = () => {
             if (debouncedCompanySearch && debouncedCompanySearch.trim()) {
                 const n = (s) => String(s || '').toLowerCase().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").trim().replace(/\s+/g, ' ');
                 const nS = n(debouncedCompanySearch);
-                
+
                 // If search is NOT a company brand match (prefix or exact), apply strict role matching
                 const TARGETS = ['Google', 'Microsoft', 'Meta'];
                 const isCompanySearch = TARGETS.some(t => {
                     const nt = n(t);
                     return nt.includes(nS) || nS.includes(nt);
                 });
-                
+
                 if (!isCompanySearch) {
                     data = data.filter(j => {
                         const primary = j.title || '';
@@ -411,7 +411,7 @@ const MigrateHero = () => {
                 <div className="bg-[#f5f5f7] rounded-[24px] md:rounded-[48px] shadow-2xl overflow-hidden border border-white/50">
                     <div className="pt-6 md:pt-10 pb-4 md:pb-6 px-4 md:px-10 text-left">
                         {/* Full Width Search Bar with Heading as Placeholder */}
-                        <div className="relative w-full">
+                        {/* <div className="relative w-full">
                             <div className={`
                                 bg-white border-2 transition-all duration-300 flex items-center gap-2 md:gap-3 px-3 md:px-5 h-12 md:h-16 rounded-xl md:rounded-2xl shadow-sm
                                 ${companySearch ? 'border-[#24385E]' : 'border-[#e2e8f0]'}
@@ -430,7 +430,7 @@ const MigrateHero = () => {
                                     </button>
                                 )}
                             </div>
-                        </div>
+                        </div> */}
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', borderTop: '1px solid #ebebeb', minHeight: isMobile ? 'auto' : '700px' }}>
