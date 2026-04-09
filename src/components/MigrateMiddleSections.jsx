@@ -103,11 +103,11 @@ const MigrateMiddleSections = () => {
                                         <img src={`https://i.pravatar.cc/150?img=${i + 20}`} alt="User" />
                                     </div>
                                 ))}
-                                <div className="w-14 h-14 rounded-full border-[3px] border-white bg-[#24385E] flex items-center justify-center text-white text-[10px] font-black shadow-md uppercase">
+                                {/* <div className="w-14 h-14 rounded-full border-[3px] border-white bg-[#24385E] flex items-center justify-center text-white text-[10px] font-black shadow-md uppercase">
                                     +45k
-                                </div>
+                                </div> */}
                             </div>
-                            <h3 className="text-xl font-black text-[#24385E] mb-2">Trusted by 45,000+ happy jobseekers</h3>
+                            {/* <h3 className="text-xl font-black text-[#24385E] mb-2">Trusted by 45,000+ happy jobseekers</h3> */}
                             <p className="text-gray-400 font-bold mb-8 max-w-sm mx-auto text-sm">Join the fastest growing community of international talent and US sponsors.</p>
                             <Link to="/signup" className="group w-full py-4 bg-[#24385E] hover:bg-[#1a2a47] text-white font-black text-base rounded-full shadow-2xl transition-all flex items-center justify-center gap-3">
                                 Get Access <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
@@ -187,8 +187,8 @@ const MigrateMiddleSections = () => {
                                     ))}
                                 </ul>
 
-                                <a href="https://consulting.wagetrail.com/" target="_blank" rel="noopener noreferrer" 
-                                   className="inline-block w-full py-5 bg-[#FDB913] hover:bg-[#e5a811] text-[#24385E] text-center font-black text-lg rounded-full transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1">
+                                <a href="https://consulting.wagetrail.com/" target="_blank" rel="noopener noreferrer"
+                                    className="inline-block w-full py-5 bg-[#FDB913] hover:bg-[#e5a811] text-[#24385E] text-center font-black text-lg rounded-full transition-all shadow-xl hover:shadow-2xl hover:-translate-y-1">
                                     Book Guidance Session
                                 </a>
                             </div>
