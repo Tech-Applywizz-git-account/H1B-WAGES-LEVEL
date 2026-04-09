@@ -40,7 +40,7 @@ const RazorpayButton = ({ amount = "39.99", onSuccess }) => {
 
             // 2. Open Razorpay Checkout Modal
             const options = {
-                key: import.meta.env.VITE_RA_KEY_ID || 'rzp_live_SCjkNy569aq6F2', 
+                key: import.meta.env.VITE_RA_KEY_ID || 'rzp_live_SCjkNy569aq6F2',
                 amount: orderData.amount,
                 currency: orderData.currency,
                 name: "Wage Trail",
@@ -95,8 +95,8 @@ const RazorpayButton = ({ amount = "39.99", onSuccess }) => {
             rzp.open();
 
         } catch (err) {
-             setError(err.message);
-             setLoading(false);
+            setError(err.message);
+            setLoading(false);
         }
     };
 
@@ -159,7 +159,7 @@ const RazorpayButton = ({ amount = "39.99", onSuccess }) => {
                     onClick={handlePayment}
                     className="w-full flex items-center justify-center py-4 bg-[#FDB913] hover:bg-[#e5a811] text-[#24385E] text-lg font-black rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98]"
                 >
-                    Pay with Razorpay
+                    Pay Now
                 </button>
             )}
         </div>

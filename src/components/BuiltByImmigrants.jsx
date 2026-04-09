@@ -37,11 +37,11 @@ const BuiltByImmigrants = () => {
                             Get Started Today
                         </button>
 
-                        <div className="mt-8">
+                        {/* <div className="mt-8">
                             <p className="text-gray-500 font-bold italic text-xs uppercase tracking-widest opacity-60">
                                 Cancel anytime. No commitment. 100% Verified.
                             </p>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </div>

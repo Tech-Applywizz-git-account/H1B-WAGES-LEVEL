@@ -9,6 +9,8 @@ import ForgotPassword from './pages/ForgotPassword';
 import JobSearch from './pages/JobSearch';
 import AuthCallback from './pages/AuthCallback';
 import AdminDashboard from './pages/AdminDashboard';
+import BlogPage from './pages/BlogPage';
+import BlogArticlePage from './pages/BlogArticlePage';
 import { AuthProvider } from './hooks/useAuth';
 import useAuth from './hooks/useAuth';
 import useDataSync from './hooks/useDataSync';
@@ -23,8 +25,8 @@ const VisitTracker = () => {
 
   useEffect(() => {
     const logVisit = async () => {
-      // 🛑 DON'T log visits if the user is an admin
-      if (isAdmin) return;
+      // 🛑 DON'T log visits if the user is an admin OR accessing admin pages
+      if (isAdmin || location.pathname.startsWith('/admin')) return;
 
       // Avoid duplicate logs for the same page on re-renders
       if (lastPath.current === location.pathname) return;
@@ -40,15 +42,18 @@ const VisitTracker = () => {
                 // Determine country via free Geo-IP API
                 let country = 'Unknown';
                 try {
+                    // Try ipapi.co first
                     const geoRes = await fetch('https://ipapi.co/json/');
                     if (geoRes.ok) {
                         const geoData = await geoRes.json();
                         country = geoData.country_name || 'Unknown';
                     } else {
-                        // Backup Service
-                        const backupRes = await fetch('http://ip-api.com/json/');
-                        const backupData = await backupRes.json();
-                        country = backupData.country || 'Unknown';
+                        // Backup Service (FreeIPAPI - better for HTTPS)
+                        const backupRes = await fetch('https://freeipapi.com/api/json');
+                        if (backupRes.ok) {
+                            const backupData = await backupRes.json();
+                            country = backupData.countryName || 'Unknown';
+                        }
                     }
                 } catch (geoErr) {
                     console.error("Geo-IP detection failed", geoErr);
@@ -102,6 +107,10 @@ function App() {
 
             {/* Admin Dashboard */}
             <Route path="/admin" element={<AdminDashboard />} />
+
+            {/* Blog / Resource Pages */}
+            <Route path="/blog" element={<BlogPage />} />
+            <Route path="/blog/:slug" element={<BlogArticlePage />} />
 
             {/* Redirect old /dashboard to new /app */}
             <Route path="/dashboard" element={<Navigate to="/app" replace />} />

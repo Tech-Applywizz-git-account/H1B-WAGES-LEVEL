@@ -15,9 +15,9 @@ function _cjcSet(key, value) { _cjcCache.set(key, { value, ts: Date.now() }); }
 const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, isMobile }) => {
     const { user } = useAuth();
     const [filingCount, setFilingCount] = useState(job.lca_filings || 0);
-    const [wageInfo, setWageInfo] = useState({ 
-        level: job.wage_level || 'Level 2', 
-        loading: !job.wage_level 
+    const [wageInfo, setWageInfo] = useState({
+        level: job.wage_level || 'Level 2',
+        loading: !job.wage_level
     });
 
     const formatTimeAgo = (dateStr) => {
@@ -60,7 +60,7 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                         const count = (data && data[0]) ? (parseInt(data[0]["LCA Filings"]) || 0) : 0;
                         _cjcSet(fKey, count);
                         setFilingCount(count);
-                    } catch (e) {}
+                    } catch (e) { }
                 }
             }
 
@@ -87,7 +87,7 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
         fetchData();
     }, [job.company, job.title, job.lca_filings]);
 
-    const baseButtonStyle = isLandingPage 
+    const baseButtonStyle = isLandingPage
         ? "h-9 px-5 bg-[#FDB913] text-[#1a1a1a] rounded-full flex items-center justify-center gap-2 font-extrabold text-[12px] hover:bg-[#f0af0e] transition-all shadow-[0_4px_12px rgba(253,185,19,0.2)] active:scale-95 shrink-0"
         : "h-12 px-8 bg-[#FDB913] text-[#1a1a1a] rounded-full flex items-center justify-center gap-2.5 font-extrabold text-[15px] hover:bg-[#f0af0e] transition-all shadow-[0_6px_20px_rgba(253,185,19,0.3)] active:scale-95 shrink-0";
 
@@ -100,7 +100,7 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                     </div>
                     <div className="min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                             {job.salary && (
+                            {job.salary && (
                                 <span className="text-[10px] font-bold text-[#24385E] bg-[#eef2f8] px-2 py-0.5 rounded-full font-black">
                                     {job.salary}
                                 </span>
@@ -127,7 +127,7 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                         <Clock size={15} className="text-[#94a3b8]" /> {job.employment_type || job.type || 'Full-time'}
                     </div>
                     {job.isVerified && (
-                        <div className="flex items-center bg-[#f0fdf4] border border-[#bbf7d0] px-3 py-1 rounded-full shadow-sm">
+                        <div className="flex items-center bg-[#f0fdf4] border border-[#bbf7d0] px-3 py-1 rounded-full shadow-sm mt-1.5 md:mt-0">
                             <span className="text-[10px] font-black text-[#15803d] uppercase tracking-wider mr-2">HUMAN VERIFIED</span>
                             <div className="flex items-center justify-center p-0.5">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="#15803d" xmlns="http://www.w3.org/2000/svg">
@@ -138,17 +138,27 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                         </div>
                     )}
                 </div>
-                
-                <div className="flex items-center justify-end gap-3 mt-auto pt-4 border-t border-[#f1f5f9] shrink-0 w-full">
+
+                <div className="flex items-center justify-between md:justify-start gap-4 mt-auto pt-4 border-t border-[#f1f5f9] shrink-0 w-full overflow-hidden">
                     {job.isTeaser ? (
-                        <Link to="/pricing" className={baseButtonStyle}>
+                        <Link to="/pricing" className={`${baseButtonStyle} whitespace-nowrap flex-1 md:flex-none md:w-fit md:px-4`}>
                             Apply Now <ExternalLink size={isLandingPage ? 14 : 20} className="stroke-[2.5]" />
                         </Link>
                     ) : (
-                        <a href={job.url || job.apply_url} target="_blank" rel="noopener noreferrer" className={baseButtonStyle}>
+                        <a href={job.url || job.apply_url} target="_blank" rel="noopener noreferrer" className={`${baseButtonStyle} whitespace-nowrap flex-1 md:flex-none md:w-fit md:px-4`}>
                             Apply Now <ExternalLink size={20} className="stroke-[2.5]" />
                         </a>
                     )}
+
+                    {/* Mobile Wage Level Badge - Match Apply button size */}
+                    <div className="md:hidden flex flex-1 items-center justify-center bg-[#24385E] px-4 py-3.5 rounded-full border-b-4 border-[#1a2a47] shadow-lg shrink-0 h-full">
+                        <div className="flex items-center justify-center mr-2">
+                            <span className="text-[12px] font-black text-[#FDB913] leading-none whitespace-nowrap">
+                                {wageInfo.level.replace(/Level\s+/i, 'Lv ')}
+                            </span>
+                        </div>
+                        <span className="text-[11px] font-black text-white uppercase tracking-wider whitespace-nowrap">Wage Level</span>
+                    </div>
                 </div>
             </div>
 
@@ -156,16 +166,16 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
             <div className={`hidden md:flex ${isLandingPage ? 'w-[80px] p-2' : 'w-[120px] p-4'} bg-[#24385E] rounded-xl flex-col items-center justify-center text-center text-white shrink-0`}>
                 <div className={`relative ${isLandingPage ? 'w-10 h-10 mb-1' : 'w-14 h-14 mb-2'} flex items-center justify-center`}>
                     <svg className="w-full h-full transform -rotate-90">
-                        <circle 
-                            cx={isLandingPage ? "20" : "28"} 
-                            cy={isLandingPage ? "20" : "28"} 
-                            r={isLandingPage ? "18" : "24"} 
-                            stroke="rgba(255,255,255,0.1)" strokeWidth="3" fill="transparent" 
+                        <circle
+                            cx={isLandingPage ? "20" : "28"}
+                            cy={isLandingPage ? "20" : "28"}
+                            r={isLandingPage ? "18" : "24"}
+                            stroke="rgba(255,255,255,0.1)" strokeWidth="3" fill="transparent"
                         />
-                        <circle 
-                            cx={isLandingPage ? "20" : "28"} 
-                            cy={isLandingPage ? "20" : "28"} 
-                            r={isLandingPage ? "18" : "24"} 
+                        <circle
+                            cx={isLandingPage ? "20" : "28"}
+                            cy={isLandingPage ? "20" : "28"}
+                            r={isLandingPage ? "18" : "24"}
                             stroke="#EAB308" strokeWidth={isLandingPage ? "3" : "4"} fill="transparent"
                             strokeDasharray={isLandingPage ? 2 * Math.PI * 18 : 2 * Math.PI * 24}
                             strokeDashoffset={(isLandingPage ? 2 * Math.PI * 18 : 2 * Math.PI * 24) * (1 - levelPercent / 100)}
@@ -177,17 +187,17 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                     </div>
                 </div>
                 <div className="text-[8px] font-black uppercase tracking-[1px] opacity-70 mb-2">WAGE LEVEL</div>
-                 <div className="w-full h-[1px] bg-white/10 mb-2"></div>
+                <div className="w-full h-[1px] bg-white/10 mb-2"></div>
                 {job.isVerified && (
-                     <div className="flex items-center gap-1 bg-[#ecfdf5] border border-[#d1fae5] pl-2 pr-1 py-1 rounded-lg mt-2 scale-90">
-                         <span className="text-[8px] font-black text-[#059669] uppercase tracking-wider leading-none translate-y-[0.5px] whitespace-nowrap">HUMAN VERIFIED</span>
-                         <div className="flex items-center justify-center">
+                    <div className="flex items-center gap-1 bg-[#ecfdf5] border border-[#d1fae5] pl-2 pr-1 py-1 rounded-lg mt-2 scale-90">
+                        <span className="text-[8px] font-black text-[#059669] uppercase tracking-wider leading-none translate-y-[0.5px] whitespace-nowrap">HUMAN VERIFIED</span>
+                        <div className="flex items-center justify-center">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="#059669" xmlns="http://www.w3.org/2000/svg">
                                 <path d="M12 2L14.43 3.63L17.29 2.89L18.47 5.56L21.31 6.36L21.14 9.3L23 11.5L21.14 13.7L21.31 16.64L18.47 17.44L17.29 20.11L14.43 19.37L12 21L9.57 19.37L6.71 20.11L5.53 17.44L2.69 16.64L2.86 13.7L1 11.5L2.86 9.3L2.69 6.36L5.53 5.56L6.71 2.89L9.57 3.63L12 2Z" />
                                 <path d="M10 14.5L7.5 12L6.5 13L10 16.5L17.5 9L16.5 8L10 14.5Z" fill="white" />
                             </svg>
-                         </div>
-                     </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </div>

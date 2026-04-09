@@ -397,10 +397,10 @@ const MigrateHero = () => {
 
                 <div className="relative z-10">
                     <div className="flex justify-center gap-0.5 mb-3">
-                        {[1, 2, 3, 4, 5].map(i => <Star key={i} size={16} className="fill-yellow-400 text-yellow-400" />)}
+                        {[1, 2, 3, 4, 5].map(i => <Star key={i} size={14} className="fill-yellow-400 text-yellow-400 md:w-[16px] md:h-[16px]" />)}
                     </div>
-                    <p className="text-white text-xs font-bold mb-4 tracking-wide drop-shadow-sm uppercase">Trusted by 30,000+ job seekers</p>
-                    <h1 className="text-[28px] md:text-[44px] font-[900] text-white leading-[1.1] tracking-tight mb-6 drop-shadow-lg max-w-2xl mx-auto">
+                    <p className="text-white text-[10px] md:text-xs font-bold mb-4 tracking-wide drop-shadow-sm uppercase">Trusted by 30,000+ job seekers</p>
+                    <h1 className="text-[24px] md:text-[44px] font-[900] text-white leading-[1.2] md:leading-[1.1] tracking-tight mb-6 drop-shadow-lg max-w-2xl mx-auto px-2">
                         Land your dream job in the U.S.
                     </h1>
                 </div>
@@ -408,25 +408,25 @@ const MigrateHero = () => {
 
             {/* Content Area: Exact App Clone Dashboard */}
             <div className="relative z-20 mt-12 max-w-7xl mx-auto px-6 pb-20">
-                <div className="bg-[#f5f5f7] rounded-[32px] md:rounded-[48px] shadow-2xl overflow-hidden border border-white/50">
-                    <div className="pt-10 pb-6 px-8 md:px-10 text-left">
+                <div className="bg-[#f5f5f7] rounded-[24px] md:rounded-[48px] shadow-2xl overflow-hidden border border-white/50">
+                    <div className="pt-6 md:pt-10 pb-4 md:pb-6 px-4 md:px-10 text-left">
                         {/* Full Width Search Bar with Heading as Placeholder */}
                         <div className="relative w-full">
                             <div className={`
-                                bg-white border-2 transition-all duration-300 flex items-center gap-3 px-5 h-16 rounded-2xl shadow-sm
+                                bg-white border-2 transition-all duration-300 flex items-center gap-2 md:gap-3 px-3 md:px-5 h-12 md:h-16 rounded-xl md:rounded-2xl shadow-sm
                                 ${companySearch ? 'border-[#24385E]' : 'border-[#e2e8f0]'}
                                 hover:border-[#24385E] group
                             `}>
-                                <Search size={24} className={`${companySearch ? 'text-[#24385E]' : 'text-gray-400'} transition-colors`} strokeWidth={2.5} />
+                                <Search size={isMobile ? 18 : 24} className={`${companySearch ? 'text-[#24385E]' : 'text-gray-400'} transition-colors`} strokeWidth={2.5} />
                                 <input 
                                     value={companySearch}
                                     onChange={handleSearchChange}
-                                    placeholder="Search for your perfect role."
-                                    className="flex-1 bg-transparent border-none outline-none text-lg font-black text-[#24385E] placeholder:text-gray-400 placeholder:font-black placeholder:tracking-tight"
+                                    placeholder={isMobile ? "Search Role..." : "Search for your perfect role."}
+                                    className="flex-1 bg-transparent border-none outline-none text-[15px] md:text-lg font-black text-[#24385E] placeholder:text-gray-400 placeholder:font-black placeholder:tracking-tight min-w-0"
                                 />
                                 {companySearch && (
                                     <button onClick={() => setCompanySearch('')} className="p-1 hover:bg-gray-100 rounded-full transition-colors">
-                                        <X size={20} className="text-gray-400" />
+                                        <X size={16} className="text-gray-400" />
                                     </button>
                                 )}
                             </div>
@@ -439,7 +439,7 @@ const MigrateHero = () => {
                             width: isMobile ? '100%' : '420px',
                             minWidth: isMobile ? '0' : '420px',
                             background: '#f5f5f7',
-                            padding: isMobile ? '20px 15px' : '24px 20px',
+                            padding: isMobile ? '16px 10px' : '24px 20px',
                             borderRight: isMobile ? 'none' : '1px solid #e8e8e8',
                             display: isMobile && selectedCompany ? 'none' : 'flex',
                             flexDirection: 'column',
@@ -597,8 +597,8 @@ const MigrateHero = () => {
                             {selectedCompany ? (
                                 <>
                                     {isMobile && (
-                                        <button onClick={() => setSelectedCompany(null)} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: 'none', color: '#24385E', fontWeight: 800, padding: '0 0 16px', cursor: 'pointer' }}>
-                                            <ChevronLeft size={18} /> Back to list
+                                        <button onClick={() => setSelectedCompany(null)} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#FDB913', border: 'none', color: '#24385E', fontWeight: 900, padding: '8px 16px', borderRadius: '12px', cursor: 'pointer', marginBottom: '16px', fontSize: '12px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                                            <ChevronLeft size={16} /> Back to companies
                                         </button>
                                     )}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '8px' : '12px', marginBottom: '12px' }}>

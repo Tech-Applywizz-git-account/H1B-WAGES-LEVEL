@@ -29,3 +29,6 @@ build
 # temp output files
 jobs-output.txt
 output.txt
+
+# supabase edge functions
+supabase/

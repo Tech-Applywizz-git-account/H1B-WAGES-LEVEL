@@ -321,10 +321,53 @@ const Pricing = () => {
     ];
 
     return (
-        <div>
+        <div className="pricing-page overflow-x-hidden">
+            <style>{`
+                .pricing-card {
+                    background: #ffffff;
+                    border-radius: 32px;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.12);
+                    border: 1px solid #f0f0f5;
+                    max-width: 640px;
+                    margin: 0 auto;
+                    overflow: hidden;
+                }
+                .price-pill {
+                    background: linear-gradient(#1e3060, #1e3060) padding-box, linear-gradient(135deg, #FDB913 0%, #f5c842 35%, #f7dfa0 60%, #ffffff 85%) border-box;
+                    border-radius: 60px;
+                    padding: 16px 40px;
+                    border: 6px solid transparent;
+                    box-shadow: 0 12px 30px rgba(30,48,96,0.3);
+                    display: inline-block;
+                }
+                .price-text {
+                    font-size: 44px;
+                    font-weight: 900;
+                    color: #ffffff;
+                    letter-spacing: -1px;
+                    font-family: 'Inter', system-ui, sans-serif;
+                }
+                .features-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1px 1fr;
+                    gap: 0 32px;
+                    text-align: left;
+                    max-width: 600px;
+                    margin: 0 auto 36px;
+                    padding-top: 8px;
+                }
+                @media (max-width: 768px) {
+                    .pricing-card { border-radius: 24px; margin: 0 12px; }
+                    .price-pill { padding: 12px 20px; border-width: 4px; }
+                    .price-text { font-size: 24px; }
+                    .features-grid { grid-template-columns: 1fr; gap: 16px; }
+                    .features-divider { display: none; }
+                    .pricing-header-padding { padding: 24px 20px !important; }
+                }
+            `}</style>
             <MigrateNavbar />
 
-            <div className="min-h-screen bg-gradient-to-b from-[#f8f9fc] to-white">
+            <div className="min-h-screen bg-gradient-to-b from-[#f8f9fc] to-white overflow-x-hidden">
                 {/* Hero Section */}
                 <div className="bg-[#24385E] text-white py-16 md:py-24 relative overflow-hidden">
                     {/* Decorative elements */}
@@ -347,95 +390,141 @@ const Pricing = () => {
                 </div>
 
                 {/* Pricing Card */}
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 -mt-14 relative z-20">
-                    <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
-                        {/* Ribbon */}
-                        <div className="bg-[#FDB913] text-[#24385E] text-center py-3.5 font-black text-sm uppercase tracking-widest">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 pricing-card-container">
+                    <style>{`
+                        .pricing-card-container {
+                            margin-top: -80px;
+                        }
+                        @media (max-width: 768px) {
+                            .pricing-card-container {
+                                margin-top: -40px;
+                            }
+                        }
+                    `}</style>
+                    <div className="pricing-card">
+                        {/* Top Header Banner */}
+                        <div style={{
+                            background: '#FDB913',
+                            color: '#1e3060',
+                            textAlign: 'center',
+                            padding: '14px 24px',
+                            fontWeight: 900,
+                            fontSize: '11px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.15em',
+                        }}>
                             ★ MOST POPULAR PLAN · LIMITED TIME OFFER ★
                         </div>
 
-                        <div className="p-8 md:p-14">
-                            {/* Price */}
-                            <div className="text-center mb-10">
-                                {/* Strikethrough Price */}
-                                <div className="flex justify-center mb-1">
-                                    <div className="relative inline-block">
-                                        <span className="text-5xl md:text-6xl font-black text-[#24385E] opacity-90 tracking-tight">
-                                            $80/6 months
-                                        </span>
-                                        <div className="absolute top-1/2 left-0 w-full h-1.5 bg-[#24385E] -translate-y-1/2"></div>
-                                    </div>
-                                </div>
+                        <div className="pricing-header-padding" style={{ padding: '32px 36px', textAlign: 'center' }}>
+                            {/* Strikethrough Price */}
+                            <div style={{ marginBottom: '12px' }}>
+                                <span style={{
+                                    fontSize: '24px',
+                                    fontWeight: 800,
+                                    color: '#1e3060',
+                                    textDecoration: 'line-through',
+                                    textDecorationColor: '#1e3060',
+                                    textDecorationThickness: '2px',
+                                    opacity: 0.7,
+                                    letterSpacing: '-0.5px'
+                                }}>
+                                    $80/6 months
+                                </span>
+                            </div>
 
-                                {/* Actual Price */}
-                                <div className="flex justify-center mb-6">
-                                    <span className="text-6xl md:text-7xl font-black text-[#24385E] tracking-tight">
-                                        $39.99/6 months
+                            {/* Main Price Pill */}
+                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '24px' }}>
+                                <div className="price-pill">
+                                    <span className="price-text">
+                                        $39.99 / 6 months
                                     </span>
                                 </div>
+                            </div>
 
-                                <div className="inline-flex items-center gap-2 px-6 py-2.5 border border-gray-200 rounded-full bg-white shadow-sm">
-                                    <span className="text-[15px] font-bold text-[#24385E] tracking-tight">50% Launch Discount — Limited to First 1,000 Users</span>
+                            {/* Discount Badge */}
+                            <div style={{ marginBottom: '36px' }}>
+                                <span style={{
+                                    display: 'inline-block',
+                                    background: '#FEF3C7',
+                                    border: '1px solid #FDE68A',
+                                    borderRadius: '50px',
+                                    padding: '8px 24px',
+                                    fontSize: '14px',
+                                    fontWeight: 700,
+                                    color: '#1e3060',
+                                    letterSpacing: '-0.2px'
+                                }}>
+                                    50% Launch Discount – Limited to First 1,000 Users
+                                </span>
+                            </div>
+
+                            {/* Features Section - 2 columns with divider */}
+                            <div className="features-grid">
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                                    {['Verified open roles', 'Daily job updates', 'Advanced search & filters', 'Email job alerts'].map((f, i) => (
+                                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <Check style={{ width: '18px', height: '18px', color: '#1e3060', flexShrink: 0 }} strokeWidth={3} />
+                                            <span style={{ fontSize: '15px', fontWeight: 600, color: '#1e3060' }}>{f}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                {/* Vertical divider */}
+                                <div className="features-divider" style={{ background: '#e5e7eb', width: '1px' }}></div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                                    {['All visa types (H-1B, TN, etc.)', 'Full salary information', 'Save unlimited jobs'].map((f, i) => (
+                                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <Check style={{ width: '18px', height: '18px', color: '#1e3060', flexShrink: 0 }} strokeWidth={3} />
+                                            <span style={{ fontSize: '15px', fontWeight: 600, color: '#1e3060' }}>{f}</span>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
 
-                            {/* Features Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-5 gap-x-10 mb-12">
-                                {[
-                                    'Verified open roles',
-                                    'All visa types (H-1B, TN, etc.)',
-                                    'Daily job updates',
-                                    'Full salary information',
-                                    'Advanced search & filters',
-                                    'Save unlimited jobs',
-                                    'Email job alerts'
-                                ].map((feature, index) => (
-                                    <div key={index} className="flex items-center gap-3 group">
-                                        <div className="w-6 h-6 bg-[#FDB913]/15 rounded-full flex items-center justify-center shrink-0 group-hover:bg-[#FDB913]/30 transition-colors">
-                                            <Check className="w-3.5 h-3.5 text-[#24385E]" strokeWidth={3} />
-                                        </div>
-                                        <span className="text-[#24385E] font-semibold text-[15px]">{feature}</span>
-                                    </div>
-                                ))}
+                            {/* CTA Button */}
+                            <div style={{ maxWidth: '480px', margin: '0 auto' }}>
+                                {user ? (
+                                    paymentStatus === 'paid' ? (
+                                        <Link to="/app" style={{
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            width: '100%', height: '64px',
+                                            background: '#10b981', color: '#fff',
+                                            borderRadius: '16px', fontWeight: 900, fontSize: '20px',
+                                            textDecoration: 'none', boxShadow: '0 8px 20px rgba(16,185,129,0.3)'
+                                        }}>
+                                            Go to Dashboard →
+                                        </Link>
+                                    ) : (
+                                        <RazorpayButton amount={import.meta.env.VITE_PAYMENT_AMOUNT || '39.99'} />
+                                    )
+                                ) : (
+                                    <Link to="/signup" style={{
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        width: '100%', height: '64px',
+                                        background: '#FDB913',
+                                        borderBottom: '5px solid #c8920e',
+                                        borderRadius: '50px',
+                                        color: '#1e3060',
+                                        fontWeight: 900,
+                                        fontSize: '22px',
+                                        textDecoration: 'none',
+                                        boxShadow: '0 8px 24px rgba(253,185,19,0.4)',
+                                        letterSpacing: '-0.3px'
+                                    }}>
+                                        Get Access Now →
+                                    </Link>
+                                )}
                             </div>
 
-                            {/* CTA Section or Payment UI */}
-                            {user ? (
-                                paymentStatus === 'paid' ? (
-                                    <Link
-                                        to="/app"
-                                        className="block w-full text-center text-lg font-black py-4 px-8 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98]"
-                                    >
-                                        Go to Dashboard →
-                                    </Link>
-                                ) : (
-                                    <div className="space-y-6">
-                                        <div className="text-center bg-[#24385E]/5 p-4 rounded-xl border border-[#24385E]/10 border-dashed">
-                                            <p className="text-[#24385E] font-black text-sm uppercase tracking-widest">Complete Your Payment</p>
-                                        </div>
-                                        <div className="p-1">
-                                            <RazorpayButton amount={import.meta.env.VITE_PAYMENT_AMOUNT || '39.99'} />
-                                        </div>
-                                        <p className="text-center text-[11px] text-gray-400 font-bold uppercase tracking-tighter">
-                                            SECURE 256-BIT SSL ENCRYPTED PAYMENT
-                                        </p>
-                                    </div>
-                                )
-                            ) : (
-                                <Link
-                                    to="/signup"
-                                    className="block w-full text-center text-lg font-black py-4 px-8 bg-[#FDB913] hover:bg-[#e5a811] text-[#24385E] rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] active:scale-[0.98]"
-                                >
-                                    Get Access Now →
-                                </Link>
-                            )}
-                            <p className="text-center text-sm text-gray-400 font-bold mt-4">
+                            {/* Footer Text */}
+                            <p style={{ marginTop: '20px', fontSize: '14px', color: '#9ca3af', fontWeight: 500 }}>
                                 Join 30,000+ members finding their dream jobs
                             </p>
                         </div>
                     </div>
 
                     {/* Trust Badges */}
+
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 md:gap-8 mt-14 mb-20 md:mb-24">
                         {[
                             { icon: Star, value: 'All', label: 'Verified Jobs' },
@@ -487,12 +576,12 @@ const Pricing = () => {
                 </div>
             </div>
 
-            {/* Branded Footer — matches landing page */}
-            <footer className="pt-24 border-t border-gray-100 pb-20">
+            {/* Footer — matches MigrateFooterSections exactly */}
+            <footer className="pt-24 border-t border-gray-100 pb-20 bg-white">
                 <div className="max-w-6xl mx-auto px-6">
-                    <div className="grid lg:grid-cols-12 gap-10 mb-14">
-                        <div className="lg:col-span-5">
-                            <Link to="/" className="flex items-center gap-2 mb-6 group">
+                    <div className="flex flex-col lg:flex-row justify-between items-start gap-12 mb-16">
+                        <div className="flex-1">
+                            <Link to="/" className="flex items-center gap-2 mb-8 group">
                                 <div className="relative">
                                     <div className="w-10 h-10 bg-[#24385E] rounded-xl flex items-center justify-center transform rotate-12 transition-transform group-hover:rotate-0 shadow-lg">
                                         <span className="text-white font-black text-xs tracking-tighter">H1-B</span>
@@ -504,53 +593,48 @@ const Pricing = () => {
                                     <span className="text-xl font-bold text-yellow-500 tracking-tight leading-none">Trail</span>
                                 </div>
                             </Link>
-                            <p className="text-gray-400 font-bold text-lg mb-8 max-w-sm leading-relaxed">
+
+                            <p className="text-gray-400 font-bold text-[18px] md:text-[19px] mb-10 leading-relaxed max-w-lg">
                                 Find US jobs with verified visa sponsorship. The #1 platform for global talent discovery.
                             </p>
+
                             <div className="flex gap-4">
                                 {[Instagram, Twitter, Linkedin, Facebook].map((Icon, i) => (
-                                    <a key={i} href="#" className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center text-[#24385E] hover:bg-[#FDB913] hover:text-[#24385E] transition-all shadow-sm">
-                                        <Icon size={20} />
+                                    <a key={i} href="#" className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center text-[#24385E] hover:bg-white hover:border-gray-100 transition-all border border-transparent shadow-sm">
+                                        <Icon size={20} strokeWidth={2.5} />
                                     </a>
                                 ))}
                             </div>
                         </div>
 
-                        <div className="lg:col-span-7 grid grid-cols-2 md:grid-cols-3 gap-10">
-                            <div className="space-y-6">
-                                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-[#24385E]">Platform</h4>
-                                <ul className="space-y-4">
-                                    {['Job Search', 'How it works', 'Pricing', 'Visa Guides'].map(link => (
-                                        <li key={link}><Link to="#" className="text-base font-bold text-gray-500 hover:text-[#FDB913] transition-colors">{link}</Link></li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <div className="space-y-6">
-                                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-[#24385E]">Company</h4>
-                                <ul className="space-y-4">
-                                    {['About Us', 'Contact', 'Blog', 'Twitter'].map(link => (
-                                        <li key={link}><Link to="#" className="text-base font-bold text-gray-500 hover:text-[#FDB913] transition-colors">{link}</Link></li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <div className="space-y-6">
-                                <h4 className="text-xs font-black uppercase tracking-[0.2em] text-[#24385E]">Support</h4>
-                                <ul className="space-y-4">
-                                    {['Privacy Policy', 'Terms of Service', 'Cookie Policy'].map(link => (
-                                        <li key={link}><Link to="#" className="text-base font-bold text-gray-500 hover:text-[#FDB913] transition-colors">{link}</Link></li>
-                                    ))}
-                                </ul>
+                        <div className="shrink-0">
+                            <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4 text-center">Help & Support</h4>
+                            <div className="bg-gray-50/30 border border-gray-100 rounded-[32px] p-2 shadow-sm max-w-[260px]">
+                                <a
+                                    href="mailto:manasa@wagetrail.com"
+                                    style={{ background: '#24385E', color: '#ffffff' }}
+                                    className="flex items-center gap-3 px-6 py-4 rounded-full font-black text-sm hover:opacity-90 transition-all shadow-lg active:scale-95"
+                                >
+                                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center shrink-0">
+                                        <span className="text-lg font-black text-white">?</span>
+                                    </div>
+                                    <span className="whitespace-nowrap" style={{ color: '#FDB913' }}>Contact Support</span>
+                                </a>
+                                <div className="py-4 text-center">
+                                    <p className="text-[11px] font-black text-gray-500 mb-0.5">Need help?</p>
+                                    <p className="text-[10px] font-bold text-gray-400">Our team is here for you.</p>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="pt-12 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-6">
-                        <p className="text-xs font-black text-gray-300 uppercase tracking-widest">
-                            © 2026 H1-B Wage Trail. All rights reserved.
-                        </p>
-                        <div className="flex gap-8">
-                            <span className="text-xs font-black text-gray-300 uppercase tracking-widest cursor-pointer hover:text-gray-400 transition-colors">US SPONSORSHIP VERIFIED</span>
-                            <span className="text-xs font-black text-gray-300 uppercase tracking-widest cursor-pointer hover:text-gray-400 transition-colors">SSL SECURE PLATFORM</span>
+                    <div className="pt-12 border-t border-gray-100">
+                        <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 text-[11px] font-black text-gray-300 uppercase tracking-[0.2em] text-center">
+                            <span>© 2026 Wage Trail. All rights reserved.</span>
+                            <div className="w-1.5 h-1.5 bg-gray-200 rounded-full"></div>
+                            <span className="hover:text-gray-400 transition-colors cursor-pointer">US Sponsorship Verified</span>
+                            <div className="w-1.5 h-1.5 bg-gray-200 rounded-full"></div>
+                            <span className="hover:text-gray-400 transition-colors cursor-pointer">SSL Secure Platform</span>
                         </div>
                     </div>
                 </div>

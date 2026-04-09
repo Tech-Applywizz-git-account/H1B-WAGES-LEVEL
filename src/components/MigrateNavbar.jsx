@@ -56,8 +56,6 @@ const MigrateNavbar = () => {
 
                 {/* Desktop Nav */}
                 <div className="hidden md:flex items-center gap-8">
-                    {/* <Link to="#" className="text-[15px] font-semibold text-[#24385E] hover:text-yellow-600 transition-colors">Post a job</Link>
-                    <Link to="#" className="text-[15px] font-semibold text-[#24385E] hover:text-yellow-600 transition-colors">Resources</Link> */}
                     <Link to="/pricing" className="text-[15px] font-semibold text-[#24385E] hover:text-yellow-600 transition-colors">Pricing</Link>
 
                     {!useAuth().loading && (
@@ -125,25 +123,34 @@ const MigrateNavbar = () => {
                 {/* Mobile Toggle */}
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className="md:hidden p-2 text-[#1F2937]"
+                    className="md:hidden p-2 text-[#1F2937] relative z-[70]"
                 >
                     {isOpen ? <X size={24} /> : <Menu size={24} />}
                 </button>
             </div>
 
-            {/* Mobile Menu */}
-            <div className={`fixed inset-0 bg-white z-[60] md:hidden transition-transform duration-300 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            {/* Mobile Menu Overlay */}
+            <div 
+                className={`fixed inset-0 bg-white z-[9999] md:hidden transition-all duration-500 ease-in-out ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none translate-x-full'}`}
+                style={{ height: '100vh', width: '100vw' }}
+            >
                 <div className="p-6">
                     <div className="flex justify-between items-center mb-10">
                         <div className="flex items-center gap-2">
-                            <Globe size={28} className="text-[#1F2937]" />
-                            <span className="font-bold text-xl text-[#1F2937]">Wage Trail</span>
+                            <div className="relative">
+                                <div className="w-10 h-10 bg-[#24385E] rounded-xl flex items-center justify-center transform rotate-12 shadow-md">
+                                    <span className="text-white font-black text-xs tracking-tighter">H1-B</span>
+                                </div>
+                                <div className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full border-2 border-white"></div>
+                            </div>
+                            <div className="flex flex-col">
+                                <span className="text-xl font-bold text-[#24385E] tracking-tight leading-none">Wage</span>
+                                <span className="text-xl font-bold text-yellow-500 tracking-tight leading-none">Trail</span>
+                            </div>
                         </div>
                         <button onClick={() => setIsOpen(false)} className="p-2"><X size={28} /></button>
                     </div>
                     <div className="flex flex-col gap-6 text-xl font-bold text-[#24385E]">
-                        <Link to="#" onClick={() => setIsOpen(false)}>Post a job</Link>
-                        <Link to="#" onClick={() => setIsOpen(false)}>Resources</Link>
                         <Link to="/pricing" onClick={() => setIsOpen(false)}>Pricing</Link>
 
                         {user ? (

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-const fmt$ = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n || 0);
+const fmt$ = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 const fmtDT = (d) => d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
@@ -105,12 +105,28 @@ const OverviewTab = ({ setActiveTab }) => {
             
             const vData = (visitsRes.data && visitsRes.data[0]) || { today_unique: 0, total_unique: 0 };
 
+            // Calculate TODAY's unique specifically (matching local time logic)
+            const { data: vLogs } = await supabase.from('site_visits').select('session_id, user_email, created_at');
+            const { data: admins } = await supabase.from('profiles').select('email').eq('role', 'admin');
+            const adminEmails = new Set(admins?.map(a => a.email) || []);
+            
+            const startOfToday = new Date();
+            startOfToday.setHours(0,0,0,0);
+            
+            const todayUniqueSet = new Set();
+            (vLogs || []).forEach(v => {
+                const vDate = new Date(v.created_at);
+                if (vDate >= startOfToday && !adminEmails.has(v.user_email)) {
+                    todayUniqueSet.add(v.session_id);
+                }
+            });
+
             setStats({ 
                 totalUsers: users.length, 
                 paidUsers: paid, 
                 pendingUsers: pending, 
                 failedUsers: failed,
-                todayUnique: vData.today_unique,
+                todayUnique: todayUniqueSet.size || vData.today_unique, // Fallback to RPC if local calc empty
                 totalUnique: vData.total_unique
             });
             setActivity(recentRes.data || []);
@@ -444,7 +460,7 @@ const PaymentsTab = () => {
     return (
         <div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, marginBottom: 20 }}>
-                <StatCard icon={DollarSign} label="Est. Revenue" value={fmt$(paid.length * 30)} sub={`${paid.length} paid users`} iconBg="#d1fae5" iconColor="#059669" />
+                <StatCard icon={DollarSign} label="Est. Revenue" value={fmt$(paid.length * 39.99)} sub={`${paid.length} paid users`} iconBg="#d1fae5" iconColor="#059669" />
                 <StatCard icon={CheckCircle} label="Completed Payments" value={paid.length} sub="Active" iconBg="#dbeafe" iconColor="#1d4ed8" />
                 <StatCard icon={Clock} label="Pending Payments" value={profiles.filter(p => p.payment_status === 'pending').length} sub="Awaiting" iconBg="#fef3c7" iconColor="#d97706" />
             </div>
@@ -595,8 +611,8 @@ const VisitorsTab = () => {
                 const uniqueBySession = [];
                 const seen = new Set();
                 (data || []).forEach(v => {
-                    // Filter out ADMINS and ensure uniqueness
-                    if (!seen.has(v.session_id) && !adminEmails.has(v.user_email)) {
+                    // Filter out ADMINS, admin pages, and ensure uniqueness
+                    if (!seen.has(v.session_id) && !adminEmails.has(v.user_email) && !v.path.startsWith('/admin')) {
                         seen.add(v.session_id);
                         uniqueBySession.push(v);
                     }
@@ -667,6 +683,17 @@ const AdminDashboard = () => {
     const { user, loading, isAdmin, signOut, role } = useAuth();
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('overview');
+    const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 768);
+    const isMobile = () => window.innerWidth < 768;
+
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth >= 768) setSidebarOpen(true);
+            else setSidebarOpen(false);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         if (!loading && !user) navigate('/login');
@@ -688,19 +715,45 @@ const AdminDashboard = () => {
 
     const titles = { overview: 'Dashboard Overview', users: 'User Management', visitors: 'Visitor Logs', payments: 'Payments', analytics: 'Analytics' };
 
+    const handleNavClick = (id) => {
+        setActiveTab(id);
+        if (isMobile()) setSidebarOpen(false);
+    };
+
     return (
         <div style={S.page}>
+            {/* Mobile overlay */}
+            {sidebarOpen && isMobile() && (
+                <div
+                    onClick={() => setSidebarOpen(false)}
+                    style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 998 }}
+                />
+            )}
+
             {/* Sidebar */}
-            <aside style={S.sidebar}>
+            <aside style={{
+                ...S.sidebar,
+                position: isMobile() ? 'fixed' : 'relative',
+                left: 0, top: 0, zIndex: 999,
+                transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
+                transition: 'transform 280ms cubic-bezier(0.4,0,0.2,1)',
+                boxShadow: isMobile() && sidebarOpen ? '4px 0 24px rgba(0,0,0,0.12)' : 'none',
+            }}>
                 {/* Logo */}
                 <div style={S.logo}>
                     <div style={{ width: 36, height: 36, background: '#24385E', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <Shield size={16} color="#EAB308" />
                     </div>
-                    <div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ margin: 0, fontWeight: 900, color: '#1e2d4a', fontSize: 13, lineHeight: 1.2 }}>Admin</p>
                         <p style={{ margin: 0, fontSize: 10, color: '#aaa' }}>WageTrail Console</p>
                     </div>
+                    {/* Close button on mobile */}
+                    {isMobile() && (
+                        <button onClick={() => setSidebarOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#aaa', display: 'flex', alignItems: 'center' }}>
+                            <X size={18} />
+                        </button>
+                    )}
                 </div>
 
                 {/* Nav */}
@@ -708,7 +761,7 @@ const AdminDashboard = () => {
                     {tabs.map(({ id, label, icon: Icon }) => {
                         const active = activeTab === id;
                         return (
-                            <button key={id} onClick={() => setActiveTab(id)} style={S.navBtn(active)}
+                            <button key={id} onClick={() => handleNavClick(id)} style={S.navBtn(active)}
                                 onMouseEnter={e => { if (!active) e.currentTarget.style.background = '#f5f5f5'; }}
                                 onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent'; }}>
                                 <Icon size={16} color={active ? '#EAB308' : '#888'} />
@@ -735,11 +788,24 @@ const AdminDashboard = () => {
             <div style={S.main}>
                 {/* Topbar */}
                 <div style={S.topbar}>
-                    <div>
-                        <p style={{ margin: 0, fontWeight: 900, color: '#1e2d4a', fontSize: 16 }}>{titles[activeTab]}</p>
+                    {/* Hamburger — always visible on mobile */}
+                    <button
+                        onClick={() => setSidebarOpen(o => !o)}
+                        className="admin-hamburger"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '6px', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1e2d4a', marginRight: 8 }}
+                        aria-label="Toggle sidebar"
+                    >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                            <line x1="3" y1="6" x2="21" y2="6" />
+                            <line x1="3" y1="12" x2="21" y2="12" />
+                            <line x1="3" y1="18" x2="21" y2="18" />
+                        </svg>
+                    </button>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 900, color: '#1e2d4a', fontSize: 16, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{titles[activeTab]}</p>
                         <p style={{ margin: 0, fontSize: 11, color: '#aaa' }}>WageTrail Admin Dashboard</p>
                     </div>
-                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#ede9fe', borderRadius: 20, padding: '4px 10px' }}>
                             <Shield size={12} color="#7c3aed" /><span style={{ fontSize: 11, fontWeight: 700, color: '#7c3aed' }}>Admin</span>
                         </div>
@@ -760,7 +826,26 @@ const AdminDashboard = () => {
                     </div>
                 </div>
             </div>
-            <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+
+            <style>{`
+                @keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }
+                .admin-hamburger { display: none !important; }
+                @media (max-width: 768px) {
+                    .admin-hamburger { display: flex !important; }
+                }
+                @media (max-width: 900px) {
+                    .admin-grid4 { grid-template-columns: repeat(2, 1fr) !important; }
+                    .admin-grid2 { grid-template-columns: 1fr !important; }
+                }
+                @media (max-width: 520px) {
+                    .admin-grid4 { grid-template-columns: 1fr !important; }
+                    .admin-content { padding: 14px !important; }
+                    .admin-topbar { padding: 10px 14px !important; }
+                }
+                ::-webkit-scrollbar { width: 4px; height: 4px; }
+                ::-webkit-scrollbar-track { background: transparent; }
+                ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; }
+            `}</style>
         </div>
     );
 };

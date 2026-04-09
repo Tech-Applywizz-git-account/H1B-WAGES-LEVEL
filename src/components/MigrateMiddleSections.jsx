@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, X, CheckCircle, ArrowRight, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { getCompanyLogo } from '../utils/logoHelper';
+import H1BBlogSection from './H1BBlogSection';
 
 const MigrateMiddleSections = () => {
     return (
@@ -147,6 +148,9 @@ const MigrateMiddleSections = () => {
                     </div>
                 </div>
             </section>
+
+            {/* H-1B Blog Resource Section */}
+            <H1BBlogSection />
 
             {/* 7) SIGN UP SECTION (NAVY BLOCK) */}
             <section className="py-12 md:py-20">
