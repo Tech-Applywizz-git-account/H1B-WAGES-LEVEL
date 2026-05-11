@@ -13,7 +13,7 @@ serve(async (req) => {
     if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
     try {
-        const { email, firstName, lastName, mobileNumber, countryCode, promoCode, experience } = await req.json();
+        const { email, firstName, lastName, mobileNumber, countryCode, promoCode, experience, domain } = await req.json();
 
         if (!email || !firstName || !lastName) {
             throw new Error("Missing required fields: email, firstName, lastName");
@@ -60,6 +60,7 @@ serve(async (req) => {
                 country_code: countryCode || '+1',
                 promo_code: promoCode || null,
                 experience: experience || null,
+                domain: domain || null,
                 role: 'user',
                 payment_status: 'pending',
             }, { onConflict: 'id' });

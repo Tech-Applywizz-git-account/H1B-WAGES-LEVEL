@@ -196,6 +196,7 @@ const Signup = () => {
     const [formData, setFormData] = useState({
         firstName: '', lastName: '', mobileNumber: '',
         countryCode: '+1', promoCode: '', experience: '',
+        domain: '',
     });
     const [otpToken, setOtpToken] = useState(''); // stateless HMAC token from server
     const [loading, setLoading] = useState(false);
@@ -313,6 +314,7 @@ const Signup = () => {
                 countryCode: formData.countryCode,
                 promoCode: formData.promoCode,
                 experience: formData.experience,
+                domain: formData.domain,
             });
             if (!result.success) throw new Error(result.error || 'Signup failed');
 
@@ -734,6 +736,17 @@ const Signup = () => {
                                         <option value="5-10">5–10 years</option>
                                         <option value="10+">10+ years</option>
                                     </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Professional Domain</label>
+                                    <input
+                                        type="text"
+                                        value={formData.domain}
+                                        onChange={(e) => setFormData((p) => ({ ...p, domain: e.target.value }))}
+                                        placeholder="e.g. Software Engineer, Data Analyst"
+                                        className="w-full bg-gray-50 border border-gray-100 rounded-2xl px-4 py-3 text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
+                                    />
                                 </div>
 
                                 <div>
