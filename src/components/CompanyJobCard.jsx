@@ -109,6 +109,8 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
                         <h3 className={`${isLandingPage ? 'text-[14px]' : 'text-[17px]'} font-extrabold text-[#111] leading-tight mb-0.5 truncate group-hover:text-[#EAB308] transition-colors`}>
                             {job.isTeaser ? (
                                 <Link to="/pricing">{job.title}</Link>
+                            ) : (!user && isLandingPage) ? (
+                                <Link to="/pricing">{job.title}</Link>
                             ) : (
                                 <a href={job.url || job.apply_url} target="_blank" rel="noopener noreferrer">{job.title}</a>
                             )}
@@ -141,6 +143,10 @@ const CompanyJobCard = ({ job, onSave, isSaved = false, isLandingPage = false, i
 
                 <div className="flex items-center justify-between md:justify-start gap-4 mt-auto pt-4 border-t border-[#f1f5f9] shrink-0 w-full overflow-hidden">
                     {job.isTeaser ? (
+                        <Link to="/pricing" className={`${baseButtonStyle} whitespace-nowrap flex-1 md:flex-none md:w-fit md:px-4`}>
+                            Apply Now <ExternalLink size={isLandingPage ? 14 : 20} className="stroke-[2.5]" />
+                        </Link>
+                    ) : (!user && isLandingPage) ? (
                         <Link to="/pricing" className={`${baseButtonStyle} whitespace-nowrap flex-1 md:flex-none md:w-fit md:px-4`}>
                             Apply Now <ExternalLink size={isLandingPage ? 14 : 20} className="stroke-[2.5]" />
                         </Link>

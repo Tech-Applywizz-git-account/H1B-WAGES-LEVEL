@@ -245,6 +245,20 @@ const Signup = () => {
 
         setLoading(true);
         try {
+            // 0. Check if user already exists (Frontend check for immediate feedback)
+            const { data: existingUser, error: checkError } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('email', email)
+                .maybeSingle();
+            
+            if (checkError) console.error('Check error:', checkError);
+            if (existingUser) {
+                setError('User already exists');
+                setLoading(false);
+                return;
+            }
+
             const result = await callEdgeFn('send-otp-email', { email });
             if (!result.success) throw new Error(result.error || 'Failed to send OTP');
             setOtpToken(result.token); // store HMAC token (no DB needed)

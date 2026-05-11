@@ -44,7 +44,7 @@ const MigrateFooterSections = () => {
                             <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4 text-center">Help & Support</h4>
                             <div className="bg-gray-50/30 border border-gray-100 rounded-[32px] p-2 shadow-sm max-w-[260px]">
                                 <a 
-                                    href="mailto:manasa@wagetrail.com" 
+                                    href="mailto:veeraj@wagetrail.com" 
                                     style={{ background: '#24385E', color: '#ffffff' }}
                                     className="flex items-center gap-3 px-6 py-4 rounded-full font-black text-sm hover:opacity-90 transition-all shadow-lg active:scale-95"
                                 >

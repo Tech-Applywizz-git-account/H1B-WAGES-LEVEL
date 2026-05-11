@@ -4,7 +4,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 const TENANT_ID = Deno.env.get("AZURE_TENANT_ID") ?? '';
 const CLIENT_ID = Deno.env.get("AZURE_CLIENT_ID") ?? '';
 const CLIENT_SECRET = Deno.env.get("AZURE_CLIENT_SECRET") ?? '';
-const SENDER_EMAIL = Deno.env.get("SENDER_EMAIL_ADDRESS") ?? 'manasa@wagetrail.com';
+const SENDER_EMAIL = Deno.env.get("SENDER_EMAIL_ADDRESS") ?? 'Veeraj@Wagetrail.com';
 const APP_URL = 'https://wagetrail.com';
 
 const corsHeaders = {
@@ -66,7 +66,7 @@ serve(async (req) => {
           <!-- Body -->
           <tr>
             <td style="padding: 0 0 24px 0;">
-              <p style="margin: 0 0 16px 0;">Hey ${firstName},</p>
+              <p style="margin: 0 0 16px 0;">Hey ${firstName.charAt(0).toUpperCase() + firstName.slice(1)},</p>
 
               <p style="margin: 0 0 20px 0;">
                 Welcome to <strong>WageTrail</strong> — your account has been created successfully.
@@ -86,8 +86,8 @@ serve(async (req) => {
                 Do you have any feedback or questions? Just reply to this email — I read every message.
               </p>
 
-              <p style="margin: 0 0 4px 0;"><strong>Manasa</strong></p>
-              <p style="margin: 0; color: #555555; font-size: 14px;">Head of Growth &amp; User Strategy</p>
+              <p style="margin: 0 0 4px 0;"><strong>Veeraj</strong></p>
+              <p style="margin: 0; color: #555555; font-size: 14px;">WageTrail</p>
             </td>
           </tr>
 
@@ -127,7 +127,7 @@ serve(async (req) => {
             from: {
               emailAddress: {
                 address: SENDER_EMAIL,
-                name: 'Manasa from WageTrail',
+                name: 'Veeraj from WageTrail',
               },
             },
           },

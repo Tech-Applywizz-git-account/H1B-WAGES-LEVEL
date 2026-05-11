@@ -659,6 +659,23 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  // Step 2: Sync user identity to Microsoft Clarity for behavior analysis
+  useEffect(() => {
+    if (user && typeof window !== 'undefined' && window.clarity) {
+      try {
+        window.clarity("identify", user.id, {
+          email: user.email,
+          firstName: firstName || 'User',
+          lastName: lastName || '',
+          role: role || 'user',
+          paymentStatus: paymentStatus || 'pending'
+        });
+      } catch (err) {
+        console.warn("Clarity identify failed:", err);
+      }
+    }
+  }, [user, firstName, lastName, role, paymentStatus]);
+
   const refresh = async () => {
     if (user) {
       console.log("🔄 Manually refreshing auth for:", user.email);

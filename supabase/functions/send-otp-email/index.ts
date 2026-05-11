@@ -3,13 +3,17 @@
 // No database table needed.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const TENANT_ID = Deno.env.get("AZURE_TENANT_ID") ?? '';
 const CLIENT_ID = Deno.env.get("AZURE_CLIENT_ID") ?? '';
 const CLIENT_SECRET = Deno.env.get("AZURE_CLIENT_SECRET") ?? '';
-const SENDER_EMAIL = Deno.env.get("SENDER_EMAIL_ADDRESS") ?? 'manasa@wagetrail.com';
+const SENDER_EMAIL = Deno.env.get("SENDER_EMAIL_ADDRESS") ?? 'Veeraj@Wagetrail.com';
 // Use service role key as HMAC signing secret (already available in all edge functions)
-const OTP_SECRET = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "fallback-secret-change-me";
+const OTP_SECRET = SUPABASE_SERVICE_ROLE_KEY || "fallback-secret-change-me";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,6 +61,26 @@ serve(async (req) => {
   try {
     const { email } = await req.json();
     if (!email) throw new Error("Email is required");
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // 1. Check if user already exists
+    const { data: existingUser, error: checkError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (checkError) {
+      console.error('Error checking user existence:', checkError);
+    }
+
+    if (existingUser) {
+      return new Response(
+        JSON.stringify({ success: false, error: "User already exists" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const otp = generateOTP();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes from now
@@ -132,15 +156,11 @@ serve(async (req) => {
           subject: `${otp} — Your WageTrail verification code`,
           body: { contentType: 'HTML', content: htmlContent },
           toRecipients: [{ emailAddress: { address: email } }],
-          // Removed 'from' override — the URL path (users/${SENDER_EMAIL}) already
-          // controls the sender. An explicit 'from' can be silently dropped or cause
-          // delivery issues in some M365 configurations.
         },
-        saveToSentItems: true, // Enable so delivery can be verified in M365 Sent folder
+        saveToSentItems: true,
       }),
     });
 
-    // Always log the exact Graph API response for diagnostics
     const responseBody = await emailRes.text();
     console.log(`[OTP] Graph API response: status=${emailRes.status}, body=${responseBody || '(empty — normal for 202)'}`);
 
@@ -150,7 +170,7 @@ serve(async (req) => {
 
     console.log(`[OTP] ✅ Email accepted by Microsoft Graph for delivery to ${email}`);
 
-    // Return token to client (NO otp in response — client doesn't see it)
+    // Return token to client
     return new Response(
       JSON.stringify({ success: true, token }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -164,3 +184,4 @@ serve(async (req) => {
     );
   }
 });
+

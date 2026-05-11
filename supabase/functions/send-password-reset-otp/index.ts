@@ -9,7 +9,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const TENANT_ID = Deno.env.get("AZURE_TENANT_ID") ?? '';
 const CLIENT_ID = Deno.env.get("AZURE_CLIENT_ID") ?? '';
 const CLIENT_SECRET = Deno.env.get("AZURE_CLIENT_SECRET") ?? '';
-const SENDER_EMAIL = Deno.env.get("SENDER_EMAIL_ADDRESS") ?? 'manasa@wagetrail.com';
+const SENDER_EMAIL = Deno.env.get("SENDER_EMAIL_ADDRESS") ?? 'Veeraj@Wagetrail.com';
 const OTP_SECRET = SUPABASE_SERVICE_ROLE_KEY;
 
 const corsHeaders = {

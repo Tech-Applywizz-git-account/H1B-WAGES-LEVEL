@@ -4551,7 +4551,7 @@ const Homepage = () => {
                           {companyJobs.map((job, i) => (
                             <CompanyJobCard
                               key={`${job.url || job.id || job.job_id || 'job'}_${i}`}
-                              job={{ ...job, isVerified: true }}
+                              job={{ ...job, isVerified: true, isTeaser: paymentStatus === 'pending' }}
                               isMobile={isMobile}
                               isSaved={savedJobIds.has(String(job.id || job.job_id || job.audit_id))}
                               onSave={handleSaveJob}

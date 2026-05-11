@@ -7,7 +7,8 @@ import {
     LayoutDashboard, Users, DollarSign, Briefcase, Activity,
     CreditCard, Shield, Search, RefreshCw, Trash2, CheckCircle,
     XCircle, ChevronLeft, ChevronRight, LogOut, BarChart3,
-    Edit3, X, Save, ArrowRight, Clock, PieChart, ArrowUpRight
+    Edit3, X, Save, ArrowRight, Clock, PieChart, ArrowUpRight,
+    Mail, Eye, MousePointer2, ExternalLink
 } from 'lucide-react';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -678,6 +679,151 @@ const VisitorsTab = () => {
     );
 };
 
+// ── Email Tab ────────────────────────────────────────────────────────────────
+const EmailTab = () => {
+    const [logs, setLogs] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
+    const [stats, setStats] = useState({ total: 0, opened: 0, failed: 0, avgOpenTime: 0 });
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        fetchLogs();
+    }, []);
+
+    const fetchLogs = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const { data, error } = await supabase
+                .from('email_logs')
+                .select('*')
+                .order('sent_at', { ascending: false });
+
+            if (error) {
+                if (error.code === 'PGRST116' || error.message?.includes('does not exist')) {
+                    setError('Table "email_logs" not found. Please run the SQL migration.');
+                } else {
+                    setError(error.message);
+                }
+                setLoading(false);
+                return;
+            }
+
+            if (data) {
+                setLogs(data);
+                
+                const total = data.length;
+                const opened = data.filter(l => l.opened_at).length;
+                const failed = data.filter(l => l.status === 'failed').length;
+                
+                const openTimes = data
+                    .filter(l => l.opened_at)
+                    .map(l => (new Date(l.opened_at) - new Date(l.sent_at)) / 60000);
+                
+                const avgOpenTime = openTimes.length > 0 
+                    ? Math.round(openTimes.reduce((a, b) => a + b, 0) / openTimes.length) 
+                    : 0;
+
+                setStats({ total, opened, failed, avgOpenTime });
+            }
+        } catch (err) {
+            setError(err.message);
+        }
+        setLoading(false);
+    };
+
+    const filtered = logs.filter(l => 
+        !search || l.recipient_email.toLowerCase().includes(search.toLowerCase())
+    );
+
+    const openRate = stats.total > 0 ? ((stats.opened / stats.total) * 100).toFixed(1) : 0;
+    const deliveryRate = stats.total > 0 ? (((stats.total - stats.failed) / stats.total) * 100).toFixed(1) : 0;
+
+    if (error) {
+        return (
+            <div style={{ ...S.card, padding: 40, textAlign: 'center', color: '#666' }}>
+                <Mail size={48} color="#cbd5e1" style={{ marginBottom: 16 }} />
+                <h3 style={{ margin: '0 0 8px', color: '#1e2d4a' }}>Email Logs Unavailable</h3>
+                <p style={{ margin: '0 0 20px', fontSize: 14 }}>{error}</p>
+                <button onClick={fetchLogs} style={S.btn('#f3f4f6')}>Retry Connection</button>
+            </div>
+        );
+    }
+
+    return (
+        <div>
+            {/* Metrics */}
+            <div style={{ ...S.grid4, marginBottom: 20 }}>
+                <StatCard icon={Mail} label="Total Sent" value={stats.total} sub="All campaigns" iconBg="#dbeafe" iconColor="#1d4ed8" />
+                <StatCard icon={Eye} label="Open Rate" value={`${openRate}%`} sub={`${stats.opened} opens`} iconBg="#d1fae5" iconColor="#059669" />
+                <StatCard icon={Clock} label="Avg Open Time" value={stats.avgOpenTime > 60 ? `${(stats.avgOpenTime/60).toFixed(1)}h` : `${stats.avgOpenTime}m`} sub="From delivery" iconBg="#fef3c7" iconColor="#d97706" />
+                <StatCard icon={CheckCircle} label="Delivery Rate" value={`${deliveryRate}%`} sub="Successful" iconBg="#f0fdf4" iconColor="#15803d" />
+            </div>
+
+            {/* Logs Table */}
+            <div style={{ ...S.card, overflow: 'hidden' }}>
+                <div style={{ padding: '16px 20px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <div style={{ position: 'relative', flex: '1 1 200px', maxWidth: 280 }}>
+                        <Search size={14} color="#aaa" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)' }} />
+                        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search recipient…" style={{ ...S.input, paddingLeft: 32 }} />
+                    </div>
+                    <button onClick={fetchLogs} style={{ marginLeft: 'auto', padding: 8, borderRadius: 8, border: '1px solid #e0e0e0', background: '#fff', cursor: 'pointer' }}>
+                        <RefreshCw size={15} color="#666" style={loading ? { animation: 'spin 1s linear infinite' } : {}} />
+                    </button>
+                </div>
+
+                <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                        <thead>
+                            <tr>
+                                {['Recipient', 'Campaign', 'Status', 'Sent At', 'Opened At', 'Latency'].map(h => (
+                                    <th key={h} style={S.th}>{h}</th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {loading ? (
+                                <tr><td colSpan={6} style={{ ...S.td, textAlign: 'center', padding: '50px 0', color: '#aaa' }}>Loading logs…</td></tr>
+                            ) : filtered.length === 0 ? (
+                                <tr><td colSpan={6} style={{ ...S.td, textAlign: 'center', padding: '50px 0', color: '#aaa' }}>No email logs found</td></tr>
+                            ) : filtered.map((l, i) => {
+                                const latency = l.opened_at ? Math.round((new Date(l.opened_at) - new Date(l.sent_at)) / 60000) : null;
+                                return (
+                                    <tr key={i} onMouseEnter={e => e.currentTarget.style.background = '#fafafa'} onMouseLeave={e => e.currentTarget.style.background = ''}>
+                                        <td style={S.td}>
+                                            <div style={{ fontWeight: 600, color: '#1e2d4a', fontSize: 13 }}>{l.recipient_email}</div>
+                                            <div style={{ fontSize: 11, color: '#aaa' }}>{l.subject?.slice(0, 30)}...</div>
+                                        </td>
+                                        <td style={S.td}>
+                                            <span style={{ fontSize: 11, fontWeight: 700, color: '#6366f1', background: '#eef2ff', padding: '2px 8px', borderRadius: 20 }}>
+                                                {l.campaign_type?.replace(/_/g, ' ') || 'default'}
+                                            </span>
+                                        </td>
+                                        <td style={S.td}>
+                                            <span style={S.badge(l.status)}>
+                                                {l.status}
+                                            </span>
+                                        </td>
+                                        <td style={{ ...S.td, fontSize: 12, color: '#666' }}>{fmtDT(l.sent_at)}</td>
+                                        <td style={{ ...S.td, fontSize: 12, color: l.opened_at ? '#059669' : '#ccc', fontWeight: l.opened_at ? 700 : 400 }}>
+                                            {l.opened_at ? fmtDT(l.opened_at) : 'Not opened'}
+                                        </td>
+                                        <td style={{ ...S.td, fontSize: 12, color: '#666' }}>
+                                            {latency !== null ? (latency > 60 ? `${(latency/60).toFixed(1)}h` : `${latency}m`) : '—'}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+        </div>
+    );
+};
+
 // ── Shell ─────────────────────────────────────────────────────────────────────
 const AdminDashboard = () => {
     const { user, loading, isAdmin, signOut, role } = useAuth();
@@ -708,12 +854,20 @@ const AdminDashboard = () => {
     const tabs = [
         { id: 'overview', label: 'Overview', icon: LayoutDashboard },
         { id: 'users', label: 'User Management', icon: Users },
+        { id: 'email', label: 'Email Dashboard', icon: Mail },
         { id: 'visitors', label: 'Visitor Logs', icon: Activity },
         { id: 'payments', label: 'Payments', icon: CreditCard },
         { id: 'analytics', label: 'Analytics', icon: BarChart3 },
     ];
 
-    const titles = { overview: 'Dashboard Overview', users: 'User Management', visitors: 'Visitor Logs', payments: 'Payments', analytics: 'Analytics' };
+    const titles = { 
+        overview: 'Dashboard Overview', 
+        users: 'User Management', 
+        email: 'Email Marketing Dashboard',
+        visitors: 'Visitor Logs', 
+        payments: 'Payments', 
+        analytics: 'Analytics' 
+    };
 
     const handleNavClick = (id) => {
         setActiveTab(id);
@@ -823,6 +977,7 @@ const AdminDashboard = () => {
                         {activeTab === 'visitors' && <VisitorsTab />}
                         {activeTab === 'payments' && <PaymentsTab />}
                         {activeTab === 'analytics' && <AnalyticsTab />}
+                        {activeTab === 'email' && <EmailTab />}
                     </div>
                 </div>
             </div>
