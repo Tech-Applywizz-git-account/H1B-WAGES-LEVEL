@@ -15,6 +15,17 @@ import {
 const fmt$ = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n || 0);
 const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
 const fmtDT = (d) => d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+const fmtInterval = (str) => {
+    if (!str) return '—';
+    const match = String(str).match(/(\d+)\s*hours\s*(\d+)\s*minutes\s*(\d+)\s*seconds/);
+    if (!match) return str;
+    const [_, h, m, s] = match;
+    const parts = [];
+    if (parseInt(h) > 0) parts.push(`${h}h`);
+    if (parseInt(m) > 0) parts.push(`${m}m`);
+    if (parseInt(s) > 0 || parts.length === 0) parts.push(`${s}s`);
+    return parts.join(' ');
+};
 
 const initials = (name) => (name || '??').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
 const avatarColor = (name) => {
@@ -714,12 +725,12 @@ const EmailTab = () => {
                 setLogs(data);
                 
                 const total = data.length;
-                const opened = data.filter(l => l.opened_at).length;
+                const opened = data.filter(l => l.email_opened_at).length;
                 const failed = data.filter(l => l.status === 'failed').length;
                 
                 const openTimes = data
-                    .filter(l => l.opened_at)
-                    .map(l => (new Date(l.opened_at) - new Date(l.sent_at)) / 60000);
+                    .filter(l => l.email_opened_at)
+                    .map(l => (new Date(l.email_opened_at) - new Date(l.sent_at)) / 60000);
                 
                 const avgOpenTime = openTimes.length > 0 
                     ? Math.round(openTimes.reduce((a, b) => a + b, 0) / openTimes.length) 
@@ -788,7 +799,6 @@ const EmailTab = () => {
                             ) : filtered.length === 0 ? (
                                 <tr><td colSpan={6} style={{ ...S.td, textAlign: 'center', padding: '50px 0', color: '#aaa' }}>No email logs found</td></tr>
                             ) : filtered.map((l, i) => {
-                                const latency = l.opened_at ? Math.round((new Date(l.opened_at) - new Date(l.sent_at)) / 60000) : null;
                                 return (
                                     <tr key={i} onMouseEnter={e => e.currentTarget.style.background = '#fafafa'} onMouseLeave={e => e.currentTarget.style.background = ''}>
                                         <td style={S.td}>
@@ -806,11 +816,11 @@ const EmailTab = () => {
                                             </span>
                                         </td>
                                         <td style={{ ...S.td, fontSize: 12, color: '#666' }}>{fmtDT(l.sent_at)}</td>
-                                        <td style={{ ...S.td, fontSize: 12, color: l.opened_at ? '#059669' : '#ccc', fontWeight: l.opened_at ? 700 : 400 }}>
-                                            {l.opened_at ? fmtDT(l.opened_at) : 'Not opened'}
+                                        <td style={{ ...S.td, fontSize: 12, color: l.email_opened_at ? '#059669' : '#ccc', fontWeight: l.email_opened_at ? 700 : 400 }}>
+                                            {l.email_opened_at ? fmtDT(l.email_opened_at) : 'Not opened'}
                                         </td>
                                         <td style={{ ...S.td, fontSize: 12, color: '#666' }}>
-                                            {latency !== null ? (latency > 60 ? `${(latency/60).toFixed(1)}h` : `${latency}m`) : '—'}
+                                            {fmtInterval(l.email_seen_interval)}
                                         </td>
                                     </tr>
                                 );
